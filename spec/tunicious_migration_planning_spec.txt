@@ -1,0 +1,112 @@
+Tunicious Migration Plan – Removing Spotify Dependency
+
+Objective Transform Tunicious from a Spotify-dependent application into
+a platform‑agnostic listening system where Tunicious owns the data,
+playback logic, and listening telemetry. Streaming services become
+optional playback providers.
+
+Architecture Overview
+
+Tunicious Core - Albums - Tracks - User album entries - Notes - Movement
+history - Track playcounts - Playback history
+
+Playback Abstraction Layer - playTrack(track) - playAlbum(album,
+startTrack) - queueTracks(tracks) - pause() - resume() - skip()
+
+Playback Providers - YouTube (primary) - Spotify (optional legacy
+adapter)
+
+Listening Telemetry - Playback session tracking - Last.fm scrobbling -
+History recording - Playcount updates
+
+------------------------------------------------------------------------
+
+Core Data Model
+
+Album - albumId - artistName - albumName - releaseYear - artworkUrl
+
+Track - trackId - albumId - trackName - artistName - trackNumber -
+durationMs - playcount - spotifyTrackId (optional) - youtubeVideoId
+(optional)
+
+UserAlbumEntry - userId - albumId - ratingStage - notes - history
+
+PlaybackSession - sessionId - userId - trackId - provider - startedAt -
+pausedAt - resumedAt - elapsedMs - completedAt - scrobbleSubmitted -
+nowPlayingSubmitted
+
+------------------------------------------------------------------------
+
+Migration Phases
+
+Phase 1 – Database Foundation - Persist albums and tracks to the
+database - Define Tunicious track model - Create playback history
+storage - Introduce PlaybackSession structure
+
+Phase 2 – DB‑First Album Page (POC) - Build a new album page powered
+only by database data - Do not fetch album data from Spotify - Render
+tracklists using Tunicious track records - Confirm the page works
+without Spotify integration
+
+Phase 3 – Playback Abstraction Layer - Introduce PlaybackService -
+Implement YouTubePlaybackProvider - Implement track resolution and
+caching - Support: - play track - play album - queue tracks
+
+Phase 4 – Scrobbling Infrastructure - Add Last.fm connect flow - Store
+Last.fm session key per user - Send “Now Playing” when track begins -
+Track elapsed play time - Submit scrobble after threshold: - track
+longer than 30 seconds - played 50 percent or 4 minutes
+
+Phase 5 – Tunicious‑Owned Listening Loop - Up Next queue generated
+internally - Player bar reads Tunicious playback state - Playback
+history recorded internally - Track playcounts updated internally
+
+Phase 6 – Spotify Downgrade - Use Spotify only as metadata importer if
+needed - Remove Spotify-based UI dependencies - Remove Spotify as
+required authentication - Spotify becomes optional playback provider
+
+------------------------------------------------------------------------
+
+Playback Resolution Strategy
+
+Tracks should resolve playable media once and cache the result.
+
+Example flow:
+
+Tunicious Track ↓ YouTube search (artist + track) ↓ videoId stored in
+database ↓ subsequent playback uses cached videoId
+
+This avoids API quota issues and improves playback speed.
+
+------------------------------------------------------------------------
+
+Playback Session Lifecycle
+
+1.  User presses play
+2.  PlaybackSession created
+3.  Send Last.fm Now Playing
+4.  Track elapsed playback time
+5.  Pause/resume updates elapsed time
+6.  Skip or end finalizes session
+7.  If scrobble threshold met:
+    -   submit scrobble
+8.  Write listening history
+9.  Increment track playcount
+
+Playback providers only emit events. Tunicious session engine decides
+when scrobbling and history updates occur.
+
+------------------------------------------------------------------------
+
+Definition of Spotify‑Free Tunicious
+
+The migration is complete when a user can:
+
+-   Browse albums
+-   Play tracks
+-   Play albums
+-   Use the queue system
+-   Track listening history
+-   Scrobble to Last.fm
+
+without requiring Spotify authentication or Spotify APIs.
