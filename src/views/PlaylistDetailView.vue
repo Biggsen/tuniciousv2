@@ -28,7 +28,7 @@ const members = ref<PlaylistMember[]>([])
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
-const queueReady = ref(false)
+const playError = ref<string | null>(null)
 
 const playlistId = () => String(route.params.id)
 
@@ -62,7 +62,7 @@ async function load() {
 
   loading.value = true
   error.value = null
-  queueReady.value = false
+  playError.value = null
 
   try {
     playlist.value = await getPlaylistById(auth.user.uid, playlistId())
@@ -87,7 +87,6 @@ async function handleAdd(albumId: string) {
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
     await loadMappings()
     playlist.value = await getPlaylistById(auth.user.uid, playlistId())
-    queueReady.value = false
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to add album'
   }
@@ -100,7 +99,6 @@ async function handleRemove(albumId: string) {
     await removeAlbumFromPlaylist(auth.user.uid, playlistId(), albumId)
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
     await loadMappings()
-    queueReady.value = false
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to remove album'
   }
@@ -113,7 +111,6 @@ async function handleReorder(albumId: string, direction: 'up' | 'down') {
     await reorderPlaylistMember(auth.user.uid, playlistId(), albumId, direction)
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
     await loadMappings()
-    queueReady.value = false
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to reorder'
   }
@@ -121,8 +118,11 @@ async function handleReorder(albumId: string, direction: 'up' | 'down') {
 
 async function handlePlay() {
   if (!auth.user) return
-  await playback.setQueueFromPlaylist(members.value, playlistId(), auth.user.uid)
-  queueReady.value = true
+  playError.value = null
+  const started = await playback.playFromPlaylist(members.value, playlistId(), auth.user.uid)
+  if (!started) {
+    playError.value = playback.error ?? 'No resolved tracks to play'
+  }
 }
 
 onMounted(load)
@@ -150,7 +150,7 @@ watch(() => route.params.id, load)
         <button
           type="button"
           class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
-          :disabled="!members.length"
+          :disabled="!members.length || resolvedTracks === 0"
           @click="handlePlay"
         >
           Play
@@ -163,17 +163,7 @@ watch(() => route.params.id, load)
         />
       </div>
 
-      <p
-        v-if="queueReady"
-        class="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm"
-      >
-        Queue ready — {{ playback.resolvedCount }}/{{ playback.trackCount }} tracks have video IDs.
-        Playback engine arrives in Phase 5.
-        <template v-if="playback.unresolvedCount">
-          ({{ playback.unresolvedCount }} unresolved)
-        </template>
-      </p>
-
+      <p v-if="playError" class="mb-4 text-sm text-red-300">{{ playError }}</p>
       <p v-if="error" class="mb-4 text-sm text-red-300">{{ error }}</p>
 
       <p v-if="!members.length" class="text-sm text-text-muted">

@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–4 complete**; Phase 5 (Playback engine) is next  
+**Status:** In progress — **Phases 0–5 complete**; Phase 6 (Session tracking) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -12,7 +12,7 @@
 | 2 — Library import | **Complete** | Import release, multi-artist `artistIds`, library + artists UI |
 | 3 — Playlists | **Complete** | CRUD, membership, reorder, queue builder (playback in Phase 5) |
 | 4 — YouTube resolution | **Complete** | API proxy, mappings, auto/search/manual resolve, channel preference, Topic playlist resolve |
-| 5 — Playback engine | Not started | |
+| 5 — Playback engine | **Complete** | IFrame player, global bar, play album/playlist, skip unresolved |
 | 6 — Session tracking | Not started | |
 | 7 — Last.fm | Not started | |
 | 8 — Polish and ship | Not started | |
@@ -606,17 +606,17 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 5 — Playback engine
+### Phase 5 — Playback engine ✅
 
 **Goal:** Playback with global player.
 
-- [ ] YouTube IFrame API player component
-- [ ] Playback store per §6.3–6.4
-- [ ] Play from album and playlist
-- [ ] Global player bar in app shell
-- [ ] Graceful handling of missing `videoId`
+- [x] YouTube IFrame API player component
+- [x] Playback store per §6.3–6.4 (transport; session writes in Phase 6)
+- [x] Play from album and playlist
+- [x] Global player bar in app shell
+- [x] Graceful handling of missing `videoId` (skip unresolved tracks)
 
-**Done when:** Full album and playlist playback with transport controls. See §6.4.
+**Done when:** Full album and playlist playback with transport controls. See §6.4. **Met.**
 
 **Estimate:** 4–5 days
 
@@ -675,9 +675,9 @@ Implementation milestones. Track with checkboxes or issues.
 
 - [x] Import albums from MusicBrainz into personal library
 - [x] Create playlists; same album on multiple playlists
-- [x] Resolve album and playlist tracks via YouTube (mappings; playback in Phase 5)
-- [ ] Play albums and playlists via YouTube
-- [ ] Persistent player with queue from album or playlist
+- [x] Resolve album and playlist tracks via YouTube
+- [x] Play albums and playlists via YouTube
+- [x] Persistent player with queue from album or playlist
 - [ ] Listen history and local playcounts
 - [ ] Last.fm connect, scrobble, playcount refresh
 - [ ] Appendix A pipeline model understood; no pipeline UI or writes

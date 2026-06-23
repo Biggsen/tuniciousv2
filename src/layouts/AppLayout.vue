@@ -2,10 +2,14 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
+import PlayerBar from '@/components/playback/PlayerBar.vue'
+import YouTubePlayer from '@/components/playback/YouTubePlayer.vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePlaybackStore } from '@/stores/playback'
 
 const route = useRoute()
 const auth = useAuthStore()
+const playback = usePlaybackStore()
 
 const navItems = [
   { name: 'home', label: 'Home', to: '/' },
@@ -76,9 +80,12 @@ function isActive(name: string) {
         <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
       </header>
 
-      <main class="flex-1 px-8 py-6">
+      <main class="flex-1 px-8 py-6" :class="playback.showPlayerBar ? 'pb-28' : ''">
         <RouterView />
       </main>
+
+      <PlayerBar v-if="playback.showPlayerBar" />
+      <YouTubePlayer />
     </div>
   </div>
 </template>

@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 4 — YouTube resolution
+**Status:** Phase 5 — Playback engine
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -123,7 +123,8 @@ docs/             Product specification
 - [x] Phase 2 — Library import (multi-artist `artistIds`, dedupe on `releaseMbid`)
 - [x] Phase 3 — Playlists (CRUD, membership, reorder, queue builder)
 - [x] Phase 4 — YouTube resolution (mappings, channel preference, Topic playlist resolve)
+- [x] Phase 5 — Playback engine (IFrame player, global bar, album/playlist play)
 
-## Next: Phase 5
+## Next: Phase 6
 
-YouTube IFrame playback engine and global player bar. See spec §11 Phase 5.
+Session tracking and listen history. See spec §11 Phase 6.

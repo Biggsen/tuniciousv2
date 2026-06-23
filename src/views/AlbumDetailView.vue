@@ -20,11 +20,13 @@ import {
 } from '@/lib/youtube/playlistResolve'
 import { resolveAllAlbumTracks } from '@/lib/youtube/resolve'
 import { useAuthStore } from '@/stores/auth'
+import { usePlaybackStore } from '@/stores/playback'
 import type { Album, Artist } from '@/types/library'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
 const auth = useAuthStore()
+const playback = usePlaybackStore()
 
 const album = ref<Album | null>(null)
 const primaryArtist = ref<Artist | null>(null)
@@ -37,6 +39,7 @@ const resolvingPlaylist = ref(false)
 const playlistProgress = ref('')
 const playlistInput = ref('')
 const playlistMessage = ref<string | null>(null)
+const playError = ref<string | null>(null)
 
 const resolveContext = computed(() => {
   if (!album.value) return null
@@ -135,6 +138,15 @@ async function applyPlaylistResolveResult(
       : ''
 
   playlistMessage.value = `Resolved ${result.resolved}/${result.total} from “${result.playlist.title}”${unmatched}`
+}
+
+async function handlePlay() {
+  if (!auth.user || !album.value) return
+  playError.value = null
+  const started = await playback.playFromAlbum(album.value, auth.user.uid)
+  if (!started) {
+    playError.value = playback.error ?? 'No resolved tracks to play'
+  }
 }
 
 async function handleResolveFromPlaylist() {
@@ -313,6 +325,14 @@ onMounted(load)
             <button
               type="button"
               class="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
+              :disabled="resolvedCount === 0"
+              @click="handlePlay"
+            >
+              Play
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
               :disabled="resolvingPlaylist || resolvingAll"
               @click="handleResolveFromPlaylist"
             >
@@ -362,6 +382,7 @@ onMounted(load)
         </div>
       </header>
 
+      <p v-if="playError" class="mb-4 text-sm text-red-300">{{ playError }}</p>
       <p v-if="error" class="mb-4 text-sm text-red-300">{{ error }}</p>
 
       <h3 class="mb-3 text-sm font-medium uppercase tracking-wider text-text-muted">Tracklist</h3>
