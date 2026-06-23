@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–2 complete**; Phase 3 (Playlists) is next  
+**Status:** In progress — **Phases 0–3 complete**; Phase 4 (YouTube resolution) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -10,7 +10,7 @@
 | 0 — Repository bootstrap | **Complete** | Vue shell, Firebase Auth, Firestore user profile, CI |
 | 1 — MusicBrainz Explorer | **Complete** | Search, browse, release tracklists; dev + Cloud Function proxy |
 | 2 — Library import | **Complete** | Import release, multi-artist `artistIds`, library + artists UI |
-| 3 — Playlists | Not started | |
+| 3 — Playlists | **Complete** | CRUD, membership, reorder, queue builder (playback in Phase 5) |
 | 4 — YouTube resolution | Not started | |
 | 5 — Playback engine | Not started | |
 | 6 — Session tracking | Not started | |
@@ -505,7 +505,7 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 
 - ~~Firebase / Firestore persistence~~ — **done** (Phase 2)
 - ~~MusicBrainz server proxy~~ — **done** (Phase 1); YouTube and Last.fm proxies still pending
-- Playlists with multi-membership (lab used single global stage history — **do not replicate**)
+- ~~Playlists with multi-membership~~ — **done** (Phase 3); lab used single global stage history — **do not replicate**
 
 ---
 
@@ -562,17 +562,17 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 3 — Playlists
+### Phase 3 — Playlists ✅
 
 **Goal:** Spotify-style playlist collections.
 
-- [ ] Playlist CRUD
-- [ ] `PlaylistMembership` add, remove, reorder
-- [ ] Add albums from library on playlist detail
-- [ ] Multi-playlist membership (same album on A and B)
-- [ ] Queue builder from playlist (playback wiring in Phase 5)
+- [x] Playlist CRUD
+- [x] `PlaylistMembership` add, remove, reorder
+- [x] Add albums from library on playlist detail
+- [x] Multi-playlist membership (same album on A and B)
+- [x] Queue builder from playlist (playback wiring in Phase 5)
 
-**Done when:** Playlists are independent collections; no pipeline concepts in UI.
+**Done when:** Playlists are independent collections; no pipeline concepts in UI. **Met.**
 
 **Estimate:** 3–4 days
 
@@ -662,7 +662,7 @@ Implementation milestones. Track with checkboxes or issues.
 ## 12. Exit criteria (iteration 1 complete)
 
 - [x] Import albums from MusicBrainz into personal library
-- [ ] Create playlists; same album on multiple playlists
+- [x] Create playlists; same album on multiple playlists
 - [ ] Resolve and play albums and playlists via YouTube
 - [ ] Persistent player with queue from album or playlist
 - [ ] Listen history and local playcounts

@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 1 — MusicBrainz Explorer
+**Status:** Phase 3 — Playlists
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -101,8 +101,9 @@ docs/             Product specification
 - [x] Phase 0 — Auth shell, Firestore user profile, placeholder routes
 - [x] Phase 1 — MusicBrainz Explorer (search, browse, tracklists)
 - [x] Phase 2 — Library import (multi-artist `artistIds`, dedupe on `releaseMbid`)
-- [ ] Phase 3 — Playlists
+- [x] Phase 3 — Playlists (CRUD, membership, reorder, queue builder)
+- [ ] Phase 4 — YouTube resolution
 
-## Next: Phase 3
+## Next: Phase 4
 
-Playlist CRUD and multi-membership. See spec §11 Phase 3.
+YouTube track resolution and server proxy. See spec §11 Phase 4.

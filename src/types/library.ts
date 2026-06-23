@@ -59,3 +59,36 @@ export interface AlbumImportInput {
   album: Omit<Album, 'importedAt'>
   artists: Omit<Artist, 'importedAt'>[]
 }
+
+export interface Playlist {
+  id: string
+  name: string
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface PlaylistDocument {
+  id: string
+  name: string
+  description?: string
+  createdAt: import('firebase/firestore').Timestamp
+  updatedAt: import('firebase/firestore').Timestamp
+}
+
+export interface PlaylistMembership {
+  albumId: string
+  addedAt: Date
+  position: number
+}
+
+export interface PlaylistMembershipDocument {
+  albumId: string
+  addedAt: import('firebase/firestore').Timestamp
+  position: number
+}
+
+export interface PlaylistMember {
+  membership: PlaylistMembership
+  album: Album
+}
