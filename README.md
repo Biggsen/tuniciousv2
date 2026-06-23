@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 5 — Playback engine
+**Status:** Phase 6 — Session tracking
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -124,7 +124,8 @@ docs/             Product specification
 - [x] Phase 3 — Playlists (CRUD, membership, reorder, queue builder)
 - [x] Phase 4 — YouTube resolution (mappings, channel preference, Topic playlist resolve)
 - [x] Phase 5 — Playback engine (IFrame player, global bar, album/playlist play)
+- [x] Phase 6 — Session tracking (PlaybackSession, TrackListenRecord, /history, local playcounts)
 
-## Next: Phase 6
+## Next: Phase 7
 
-Session tracking and listen history. See spec §11 Phase 6.
+Last.fm connect, scrobbling, and playcount sync. See spec §11 Phase 7.

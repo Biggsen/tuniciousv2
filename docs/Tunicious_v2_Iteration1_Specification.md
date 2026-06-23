@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–5 complete**; Phase 6 (Session tracking) is next  
+**Status:** In progress — **Phases 0–6 complete**; Phase 7 (Last.fm) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -13,7 +13,7 @@
 | 3 — Playlists | **Complete** | CRUD, membership, reorder, queue builder (playback in Phase 5) |
 | 4 — YouTube resolution | **Complete** | API proxy, mappings, auto/search/manual resolve, channel preference, Topic playlist resolve |
 | 5 — Playback engine | **Complete** | IFrame player, global bar, play album/playlist, skip unresolved |
-| 6 — Session tracking | Not started | |
+| 6 — Session tracking | **Complete** | PlaybackSession, TrackListenRecord, /history, local playcounts |
 | 7 — Last.fm | Not started | |
 | 8 — Polish and ship | Not started | |
 
@@ -622,16 +622,16 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 6 — Session tracking
+### Phase 6 — Session tracking ✅
 
 **Goal:** App-owned listen telemetry.
 
-- [ ] `PlaybackSession` and `TrackListenRecord` Firestore writes
-- [ ] Behaviour per §6.5
-- [ ] `/history` screen
-- [ ] Local playcount increment on completed listen
+- [x] `PlaybackSession` and `TrackListenRecord` Firestore writes
+- [x] Behaviour per §6.5
+- [x] `/history` screen
+- [x] Local playcount increment on completed listen
 
-**Done when:** History reflects real listening; playcounts update locally. See §10 Sessions.
+**Done when:** History reflects real listening; playcounts update locally. See §10 Sessions. **Met.**
 
 **Estimate:** 2–3 days
 
@@ -678,7 +678,7 @@ Implementation milestones. Track with checkboxes or issues.
 - [x] Resolve album and playlist tracks via YouTube
 - [x] Play albums and playlists via YouTube
 - [x] Persistent player with queue from album or playlist
-- [ ] Listen history and local playcounts
+- [x] Listen history and local playcounts
 - [ ] Last.fm connect, scrobble, playcount refresh
 - [ ] Appendix A pipeline model understood; no pipeline UI or writes
 - [ ] This spec is the sole build reference for iteration 1
