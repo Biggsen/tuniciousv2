@@ -12,18 +12,27 @@ const auth = useAuthStore()
 const playback = usePlaybackStore()
 
 const navItems = [
-  { name: 'home', label: 'Home', to: '/' },
-  { name: 'explorer', label: 'Explorer', to: '/explorer' },
-  { name: 'library', label: 'Library', to: '/library' },
-  { name: 'artists', label: 'Artists', to: '/artists' },
-  { name: 'playlists', label: 'Playlists', to: '/playlists' },
-  { name: 'history', label: 'History', to: '/history' },
-  { name: 'settings', label: 'Settings', to: '/settings' },
+  { name: 'home', label: 'Home', to: '/', mobile: true },
+  { name: 'explorer', label: 'Explorer', to: '/explorer', mobile: false },
+  { name: 'library', label: 'Library', to: '/library', mobile: true },
+  { name: 'artists', label: 'Artists', to: '/artists', mobile: false },
+  { name: 'playlists', label: 'Playlists', to: '/playlists', mobile: true },
+  { name: 'history', label: 'History', to: '/history', mobile: false },
+  { name: 'settings', label: 'Settings', to: '/settings', mobile: true },
 ]
+
+const mobileNavItems = computed(() => navItems.filter((item) => item.mobile))
 
 const pageTitle = computed(() => {
   const title = route.meta.title
   return typeof title === 'string' ? title : 'Tunicious'
+})
+
+const mainPaddingClass = computed(() => {
+  if (playback.showPlayerBar) {
+    return 'max-md:pb-52 md:pb-6'
+  }
+  return 'max-md:pb-20 md:pb-6'
 })
 
 function isActive(name: string) {
@@ -40,7 +49,9 @@ function isActive(name: string) {
 
 <template>
   <div class="flex min-h-screen">
-    <aside class="flex w-56 shrink-0 flex-col border-r border-border bg-surface-raised">
+    <aside
+      class="hidden w-56 shrink-0 flex-col border-r border-border bg-surface-raised md:flex"
+    >
       <div class="border-b border-border px-5 py-6">
         <p class="text-lg font-semibold tracking-tight">Tunicious</p>
         <p class="mt-1 truncate text-xs text-text-muted">
@@ -76,15 +87,50 @@ function isActive(name: string) {
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="border-b border-border px-8 py-5">
-        <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
+      <header
+        class="flex items-center justify-between gap-4 border-b border-border px-4 py-4 md:px-8 md:py-5"
+      >
+        <div class="min-w-0 md:hidden">
+          <p class="text-xs font-medium uppercase tracking-wider text-accent">Tunicious</p>
+        </div>
+        <h1 class="text-lg font-semibold md:text-xl">{{ pageTitle }}</h1>
+        <button
+          type="button"
+          class="shrink-0 text-sm text-text-muted transition-colors hover:text-text md:hidden"
+          @click="auth.signOutUser()"
+        >
+          Sign out
+        </button>
       </header>
 
-      <main class="flex-1 px-8 py-6" :class="playback.showPlayerBar ? 'pb-28' : ''">
+      <main class="flex-1 px-4 py-5 md:px-8 md:py-6" :class="mainPaddingClass">
         <RouterView />
       </main>
 
       <PlayerBar v-if="playback.showPlayerBar" />
+
+      <nav
+        class="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden"
+        aria-label="Main navigation"
+      >
+        <div class="grid grid-cols-5">
+          <RouterLink
+            v-for="item in mobileNavItems"
+            :key="item.name"
+            :to="item.to"
+            class="flex flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] transition-colors"
+            :class="
+              isActive(item.name)
+                ? 'text-accent'
+                : 'text-text-muted hover:text-text'
+            "
+          >
+            <span class="text-base leading-none">{{ item.name === 'home' ? '⌂' : item.name === 'library' ? '♫' : item.name === 'playlists' ? '☰' : item.name === 'settings' ? '⚙' : '·' }}</span>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </div>
+      </nav>
+
       <YouTubePlayer />
     </div>
   </div>

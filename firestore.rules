@@ -1,5 +1,8 @@
 rules_version = '2';
 
+// All user data is scoped under users/{uid}. Clients may only access their own subtree.
+// Note: Last.fm session keys live on the user profile document in v1; only the
+// authenticated owner can read them. Signed API calls go through Cloud Functions.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId}/{document=**} {

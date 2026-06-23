@@ -1,7 +1,14 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { getAlbumById } from '@/lib/album/firestore'
+import {
+  clearPlaybackState,
+  loadPlaybackState,
+  savePlaybackState,
+} from '@/lib/playback/persist'
 import { buildQueueFromAlbum, buildQueueFromPlaylist } from '@/lib/playback/queue'
+import { listPlaylistMembers } from '@/lib/playlist/firestore'
 import {
   onPaused,
   onPlaybackStop,
@@ -131,6 +138,10 @@ export const usePlaybackStore = defineStore('playback', () => {
     sourcePlaylistId.value = null
   }
 
+  function persistState() {
+    savePlaybackState(queue.value, currentIndex.value, sourcePlaylistId.value)
+  }
+
   function startPlayback(fromIndex = 0) {
     error.value = null
     const index = findPlayableIndex(fromIndex, 1)
@@ -145,6 +156,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     status.value = 'playing'
     loadCurrentVideo(true)
     void trackCurrentItem()
+    persistState()
     return true
   }
 
@@ -202,6 +214,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     status.value = 'playing'
     loadCurrentVideo(true)
     void trackCurrentItem()
+    persistState()
   }
 
   async function previous() {
@@ -231,6 +244,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     status.value = 'playing'
     loadCurrentVideo(true)
     void trackCurrentItem()
+    persistState()
   }
 
   function onPlayerReady() {
@@ -274,6 +288,11 @@ export const usePlaybackStore = defineStore('playback', () => {
     const uid = playbackUid()
     if (uid) await onPlaybackStop('stopped')
 
+    const resumeIndex = currentIndex.value
+    if (resumeIndex >= 0) {
+      savePlaybackState(queue.value, resumeIndex, sourcePlaylistId.value)
+    }
+
     player?.stopVideo()
     stopProgressTimer()
     status.value = 'idle'
@@ -295,8 +314,41 @@ export const usePlaybackStore = defineStore('playback', () => {
     queue.value = []
     sourcePlaylistId.value = null
     error.value = null
+    clearPlaybackState()
     await resetSessionTracking()
   }
+
+  async function resumeFromPersisted(uid: string): Promise<boolean> {
+    if (currentIndex.value >= 0) {
+      play()
+      return true
+    }
+
+    const persisted = loadPlaybackState()
+    if (!persisted) return false
+
+    try {
+      if (persisted.sourceType === 'playlist' && persisted.sourcePlaylistId) {
+        const members = await listPlaylistMembers(uid, persisted.sourcePlaylistId)
+        if (!members.length) return false
+        await setQueueFromPlaylist(members, persisted.sourcePlaylistId, uid)
+      } else {
+        const album = await getAlbumById(uid, persisted.albumId)
+        if (!album) return false
+        await setQueueFromAlbum(album, uid)
+      }
+
+      const trackIndex = queue.value.findIndex(
+        (item) => item.trackId === persisted.currentTrackId,
+      )
+      const fromIndex = trackIndex >= 0 ? trackIndex : persisted.currentIndex
+      return startPlayback(fromIndex)
+    } catch {
+      return false
+    }
+  }
+
+  const hasPersistedPlayback = computed(() => loadPlaybackState() !== null)
 
   return {
     queue,
@@ -330,5 +382,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     onPlayerError,
     stop,
     clearQueue,
+    resumeFromPersisted,
+    hasPersistedPlayback,
   }
 })

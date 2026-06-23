@@ -14,7 +14,7 @@ const progressPercent = computed(() => {
 
 <template>
   <footer
-    class="border-t border-border bg-surface-raised px-6 py-3"
+    class="fixed inset-x-0 bottom-14 z-40 border-t border-border bg-surface-raised px-4 py-3 md:static md:bottom-auto md:z-auto md:px-6"
     role="region"
     aria-label="Playback"
   >
@@ -22,45 +22,47 @@ const progressPercent = computed(() => {
       {{ playback.error }}
     </div>
 
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="min-w-0 flex-1">
-        <p v-if="playback.currentItem" class="truncate text-sm font-medium">
-          {{ playback.currentItem.title }}
-        </p>
-        <p v-if="playback.currentItem" class="truncate text-xs text-text-muted">
-          {{ playback.currentItem.artist }}
-          · {{ playback.currentItem.albumTitle }}
-        </p>
+    <div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
+      <div class="flex min-w-0 items-center gap-3 md:flex-1">
+        <div class="min-w-0 flex-1">
+          <p v-if="playback.currentItem" class="truncate text-sm font-medium">
+            {{ playback.currentItem.title }}
+          </p>
+          <p v-if="playback.currentItem" class="truncate text-xs text-text-muted">
+            {{ playback.currentItem.artist }}
+            · {{ playback.currentItem.albumTitle }}
+          </p>
+        </div>
+
+        <div class="flex shrink-0 items-center gap-1 md:gap-2">
+          <button
+            type="button"
+            class="rounded-lg px-2 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            title="Previous"
+            @click="playback.previous()"
+          >
+            ⏮
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
+            :title="playback.isPlaying ? 'Pause' : 'Play'"
+            @click="playback.togglePlayPause()"
+          >
+            {{ playback.status === 'playing' ? '⏸' : '▶' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg px-2 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            title="Next"
+            @click="playback.next()"
+          >
+            ⏭
+          </button>
+        </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="rounded-lg px-2.5 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          title="Previous"
-          @click="playback.previous()"
-        >
-          ⏮
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
-          :title="playback.isPlaying ? 'Pause' : 'Play'"
-          @click="playback.togglePlayPause()"
-        >
-          {{ playback.status === 'playing' ? '⏸' : '▶' }}
-        </button>
-        <button
-          type="button"
-          class="rounded-lg px-2.5 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          title="Next"
-          @click="playback.next()"
-        >
-          ⏭
-        </button>
-      </div>
-
-      <div class="flex min-w-[10rem] flex-1 items-center gap-2 sm:max-w-xs">
+      <div class="flex w-full items-center gap-2 md:min-w-[10rem] md:flex-1 md:max-w-xs">
         <span class="shrink-0 text-xs tabular-nums text-text-muted">
           {{ formatDuration(playback.positionMs) }}
         </span>
@@ -73,16 +75,15 @@ const progressPercent = computed(() => {
         <span class="shrink-0 text-xs tabular-nums text-text-muted">
           {{ formatDuration(playback.durationMs || playback.currentItem?.lengthMs) }}
         </span>
+        <button
+          type="button"
+          class="shrink-0 text-xs text-text-muted transition-colors hover:text-text md:ml-2"
+          title="Stop playback"
+          @click="playback.stop()"
+        >
+          Stop
+        </button>
       </div>
-
-      <button
-        type="button"
-        class="text-xs text-text-muted transition-colors hover:text-text"
-        title="Stop playback"
-        @click="playback.stop()"
-      >
-        Stop
-      </button>
     </div>
   </footer>
 </template>

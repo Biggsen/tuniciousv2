@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import PlaceholderPage from '@/components/PlaceholderPage.vue'
 import {
   completeLastfmConnect,
   connectLastfm,
@@ -28,6 +27,11 @@ const lastfmMessage = ref<string | null>(null)
 const pendingLastfmToken = ref<string | null>(null)
 
 const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.username))
+
+const memberSince = computed(() => {
+  const date = auth.profile?.createdAt
+  return date ? date.toLocaleDateString(undefined, { dateStyle: 'long' }) : '—'
+})
 
 watch(
   () => auth.profile?.settings.musicbrainzUserAgent,
@@ -135,26 +139,34 @@ async function handleRefreshPlaycounts() {
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-8">
-    <PlaceholderPage
-      title="Account"
-      description="Signed-in user details."
-    >
-      <dl class="mt-4 space-y-3 text-sm">
+  <div class="mx-auto max-w-2xl space-y-6">
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">Account</h2>
+      <p class="mt-1 text-sm text-text-muted">Your signed-in profile</p>
+
+      <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
         <div>
           <dt class="text-text-muted">Display name</dt>
-          <dd>{{ auth.profile?.displayName ?? '—' }}</dd>
+          <dd class="mt-0.5 font-medium">{{ auth.profile?.displayName ?? '—' }}</dd>
         </div>
         <div>
           <dt class="text-text-muted">Email</dt>
-          <dd>{{ auth.profile?.email ?? '—' }}</dd>
+          <dd class="mt-0.5">{{ auth.profile?.email ?? '—' }}</dd>
         </div>
-        <div>
-          <dt class="text-text-muted">User ID</dt>
-          <dd class="break-all font-mono text-xs">{{ auth.user?.uid ?? '—' }}</dd>
+        <div class="sm:col-span-2">
+          <dt class="text-text-muted">Member since</dt>
+          <dd class="mt-0.5">{{ memberSince }}</dd>
         </div>
       </dl>
-    </PlaceholderPage>
+
+      <button
+        type="button"
+        class="mt-5 rounded-lg border border-border px-4 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text md:hidden"
+        @click="auth.signOutUser()"
+      >
+        Sign out
+      </button>
+    </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">Last.fm</h2>
@@ -233,14 +245,14 @@ async function handleRefreshPlaycounts() {
         Default: {{ getDefaultMusicBrainzUserAgent() }}
       </p>
 
-      <div class="mt-4 flex items-center gap-3">
+      <div class="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
           class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
           :disabled="saving"
           @click="saveMusicBrainzUserAgent"
         >
-          Save
+          {{ saving ? 'Saving…' : 'Save' }}
         </button>
         <span v-if="saved" class="text-sm text-emerald-400">Saved</span>
         <span v-if="saveError" class="text-sm text-red-300">{{ saveError }}</span>

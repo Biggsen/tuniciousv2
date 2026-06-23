@@ -78,18 +78,21 @@ onMounted(async () => {
 
 <template>
   <div>
-    <p v-if="!loading && !error && !listens.length" class="text-sm text-text-muted">
+    <ExplorerLoading v-if="loading" message="Loading history…" />
+    <ExplorerError v-else-if="error" :message="error" />
+
+    <p
+      v-else-if="!listens.length && !sessions.length"
+      class="text-sm text-text-muted"
+    >
       No listening history yet. Play something from your
       <RouterLink to="/library" class="text-accent hover:underline">Library</RouterLink>
       or a
       <RouterLink to="/playlists" class="text-accent hover:underline">Playlist</RouterLink>.
     </p>
 
-    <ExplorerLoading v-if="loading" />
-    <ExplorerError v-else-if="error" :message="error" />
-
     <div v-else class="space-y-10">
-      <section>
+      <section v-if="listens.length">
         <h2 class="mb-4 text-sm font-medium uppercase tracking-wide text-text-muted">
           Recent listens
         </h2>
