@@ -186,6 +186,39 @@ export async function finalizeTrackListenRecord(
   }
 }
 
+export async function getTrackListenById(
+  uid: string,
+  listenId: string,
+): Promise<TrackListenRecord | null> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'track_listens', listenId)
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) return null
+  return toTrackListenRecord(snapshot.id, snapshot.data() as TrackListenRecordDocument)
+}
+
+export async function markListenScrobbled(uid: string, listenId: string): Promise<void> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'track_listens', listenId)
+  await updateDoc(ref, { scrobbled: true })
+}
+
+export async function syncTrackPlaycountFromLastfm(
+  uid: string,
+  trackId: string,
+  lastfmPlaycount: number,
+): Promise<void> {
+  const ref = trackStatsDoc(uid, trackId)
+  await setDoc(
+    ref,
+    {
+      trackId,
+      playcount: lastfmPlaycount,
+      lastSyncedAt: serverTimestamp(),
+      lastfmPlaycountAtSync: lastfmPlaycount,
+    },
+    { merge: true },
+  )
+}
+
 async function incrementTrackPlaycount(uid: string, trackId: string): Promise<void> {
   const ref = trackStatsDoc(uid, trackId)
   await setDoc(

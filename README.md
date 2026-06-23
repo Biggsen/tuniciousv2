@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 6 — Session tracking
+**Status:** Phase 7 — Last.fm
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -125,7 +125,25 @@ docs/             Product specification
 - [x] Phase 4 — YouTube resolution (mappings, channel preference, Topic playlist resolve)
 - [x] Phase 5 — Playback engine (IFrame player, global bar, album/playlist play)
 - [x] Phase 6 — Session tracking (PlaybackSession, TrackListenRecord, /history, local playcounts)
+- [x] Phase 7 — Last.fm (connect, scrobbling, now playing, playcount sync)
 
-## Next: Phase 7
+## Last.fm (Phase 7)
 
-Last.fm connect, scrobbling, and playcount sync. See spec §11 Phase 7.
+Create a Last.fm API application at [last.fm/api/account/create](https://www.last.fm/api/account/create) and add credentials to `.env`:
+
+```env
+LASTFM_API_KEY=your-api-key
+LASTFM_SHARED_SECRET=your-shared-secret
+LASTFM_CALLBACK_URL=http://localhost:4827/lastfm/callback
+```
+
+Use a separate Last.fm app per environment (dev vs production) — each app allows one callback URL.
+
+Connect in **Settings → Last.fm**. Scrobbles fire when a listen reaches `min(track length / 2, 4 minutes)` of playing time.
+
+- **Local dev:** Vite middleware proxies `/api/lastfm` (uses `LASTFM_*` from `.env`)
+- **Production:** Firebase Cloud Function `lastfmProxy` (set `LASTFM_*` in Functions config)
+
+## Next: Phase 8
+
+Polish, home screen, mobile player bar, and production deploy. See spec §11 Phase 8.

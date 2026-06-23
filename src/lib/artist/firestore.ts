@@ -151,6 +151,26 @@ export async function setArtistPreferredYouTubeChannel(
   return toArtist(updated.id, updated.data() as ArtistDocument)
 }
 
+export async function setArtistScrobbleName(
+  uid: string,
+  artistId: string,
+  scrobbleName: string,
+): Promise<Artist> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  const trimmed = scrobbleName.trim()
+  await updateDoc(
+    ref,
+    trimmed ? { scrobbleName: trimmed } : { scrobbleName: deleteField() },
+  )
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Artist not found')
+  }
+
+  return toArtist(updated.id, updated.data() as ArtistDocument)
+}
+
 export async function clearArtistPreferredYouTubeChannel(uid: string, artistId: string): Promise<Artist> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
   await updateDoc(ref, {

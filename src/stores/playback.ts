@@ -11,6 +11,7 @@ import {
   resetSessionTracking,
   updateTrackLength,
 } from '@/lib/sessions/tracker'
+import { handleTrackStarted } from '@/lib/lastfm/scrobble'
 import type { YouTubePlayerInstance } from '@/lib/youtube/iframeApi'
 import { YT_PLAYER_STATE } from '@/lib/youtube/iframeApi'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
@@ -46,6 +47,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     if (status.value === 'playing') {
       onPlaying()
     }
+    void handleTrackStarted(uid, item, item.lengthMs ?? (durationMs.value || undefined))
   }
 
   const trackCount = computed(() => queue.value.length)

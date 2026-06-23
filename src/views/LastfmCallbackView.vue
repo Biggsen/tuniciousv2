@@ -10,6 +10,11 @@ onMounted(() => {
 
 <template>
   <div class="flex min-h-screen items-center justify-center px-4">
-    <p class="text-sm text-text-muted">Last.fm authentication callback — wired in Phase 7.</p>
+    <div class="max-w-sm text-center">
+      <p class="text-sm font-medium">Last.fm authorization complete</p>
+      <p class="mt-2 text-sm text-text-muted">
+        You can close this window and return to Tunicious.
+      </p>
+    </div>
   </div>
 </template>

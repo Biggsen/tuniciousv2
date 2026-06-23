@@ -30,6 +30,10 @@
         "function": "youtubeProxy"
       },
       {
+        "source": "/api/lastfm/**",
+        "function": "lastfmProxy"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

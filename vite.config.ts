@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig, loadEnv } from 'vite'
 
 import { youtubeDevProxy } from './src/lib/youtube/vitePlugin'
+import { lastfmDevProxy } from './src/lib/lastfm/vitePlugin'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -18,6 +19,7 @@ export default defineConfig(({ mode }) => {
       vue(),
       tailwindcss(),
       youtubeDevProxy(env.YOUTUBE_API_KEY, env.YOUTUBE_API_REFERER),
+      lastfmDevProxy(env.LASTFM_API_KEY, env.LASTFM_SHARED_SECRET),
     ],
     server: {
       port: 4827,

@@ -4,6 +4,7 @@ import {
   endPlaybackSession,
   finalizeTrackListenRecord,
 } from '@/lib/sessions/firestore'
+import { handleListenFinalized } from '@/lib/lastfm/scrobble'
 import type { PlaybackQueueItem } from '@/types/playback'
 import type { ListenEndReason } from '@/types/sessions'
 
@@ -47,6 +48,7 @@ async function finalizeActiveListen(endReason: ListenEndReason) {
       trackLengthMs,
       endReason,
     )
+    await handleListenFinalized(activeUid, listenId)
   } catch (err) {
     console.error('Failed to finalize listen record', err)
   }

@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
-import { getArtistById } from '@/lib/artist/firestore'
+import { getArtistById, setArtistScrobbleName } from '@/lib/artist/firestore'
 import { listAlbumsByArtist } from '@/lib/album/firestore'
 import { useAuthStore } from '@/stores/auth'
 import type { Album, Artist } from '@/types/library'
@@ -16,6 +16,10 @@ const artist = ref<Artist | null>(null)
 const albums = ref<Album[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const scrobbleName = ref('')
+const savingScrobbleName = ref(false)
+const scrobbleNameSaved = ref(false)
+const scrobbleNameError = ref<string | null>(null)
 
 onMounted(async () => {
   if (!auth.user) return
@@ -28,6 +32,7 @@ onMounted(async () => {
       error.value = 'Artist not found'
       return
     }
+    scrobbleName.value = artist.value.scrobbleName ?? ''
     albums.value = await listAlbumsByArtist(auth.user.uid, artistId)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load artist'
@@ -35,6 +40,28 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+async function saveScrobbleName() {
+  if (!auth.user || !artist.value) return
+
+  savingScrobbleName.value = true
+  scrobbleNameSaved.value = false
+  scrobbleNameError.value = null
+
+  try {
+    artist.value = await setArtistScrobbleName(
+      auth.user.uid,
+      artist.value.id,
+      scrobbleName.value,
+    )
+    scrobbleNameSaved.value = true
+  } catch (err) {
+    scrobbleNameError.value =
+      err instanceof Error ? err.message : 'Failed to save Last.fm artist name'
+  } finally {
+    savingScrobbleName.value = false
+  }
+}
 </script>
 
 <template>
@@ -45,6 +72,31 @@ onMounted(async () => {
       <header class="mb-6">
         <h2 class="text-2xl font-semibold">{{ artist.name }}</h2>
       </header>
+
+      <section class="mb-8 rounded-xl border border-border bg-surface-raised/50 p-4">
+        <h3 class="text-sm font-medium">Last.fm artist name</h3>
+        <p class="mt-1 text-sm text-text-muted">
+          Override when MusicBrainz credit does not match Last.fm (e.g. featured artists, punctuation).
+        </p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            v-model="scrobbleName"
+            type="text"
+            :placeholder="artist.name"
+            class="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button
+            type="button"
+            class="rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+            :disabled="savingScrobbleName"
+            @click="saveScrobbleName"
+          >
+            Save
+          </button>
+        </div>
+        <p v-if="scrobbleNameSaved" class="mt-2 text-sm text-emerald-400">Saved</p>
+        <p v-if="scrobbleNameError" class="mt-2 text-sm text-red-300">{{ scrobbleNameError }}</p>
+      </section>
 
       <h3 class="mb-3 text-sm font-medium uppercase tracking-wider text-text-muted">
         Albums in library

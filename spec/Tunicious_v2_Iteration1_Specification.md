@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–6 complete**; Phase 7 (Last.fm) is next  
+**Status:** In progress — **Phases 0–7 complete**; Phase 8 (Polish and ship) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -14,7 +14,7 @@
 | 4 — YouTube resolution | **Complete** | API proxy, mappings, auto/search/manual resolve, channel preference, Topic playlist resolve |
 | 5 — Playback engine | **Complete** | IFrame player, global bar, play album/playlist, skip unresolved |
 | 6 — Session tracking | **Complete** | PlaybackSession, TrackListenRecord, /history, local playcounts |
-| 7 — Last.fm | Not started | |
+| 7 — Last.fm | **Complete** | Auth, scrobbling, now playing, playcount sync, artist scrobbleName |
 | 8 — Polish and ship | Not started | |
 
 ---
@@ -513,7 +513,7 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 ### Deliberately not validated in lab (iteration 1 adds)
 
 - ~~Firebase / Firestore persistence~~ — **done** (Phase 2)
-- ~~MusicBrainz server proxy~~ — **done** (Phase 1); ~~YouTube proxy~~ — **done** (Phase 4); Last.fm proxy still pending
+- ~~MusicBrainz server proxy~~ — **done** (Phase 1); ~~YouTube proxy~~ — **done** (Phase 4); ~~Last.fm proxy~~ — **done** (Phase 7)
 - ~~Playlists with multi-membership~~ — **done** (Phase 3); lab used single global stage history — **do not replicate**
 
 ---
@@ -637,18 +637,18 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 7 — Last.fm
+### Phase 7 — Last.fm ✅
 
 **Goal:** Scrobbling and playcount sync.
 
-- [ ] Server-side auth token exchange
-- [ ] Connect / disconnect UI per §5.3
-- [ ] Now playing on track start
-- [ ] Scrobble on listen finalize when threshold met
-- [ ] Playcount refresh (Last.fm wins)
-- [ ] Basic artist/title normalization
+- [x] Server-side auth token exchange
+- [x] Connect / disconnect UI per §5.3
+- [x] Now playing on track start
+- [x] Scrobble on listen finalize when threshold met
+- [x] Playcount refresh (Last.fm wins)
+- [x] Basic artist/title normalization
 
-**Done when:** Scrobbles appear on Last.fm; playcounts sync for most tracks. See §5.3 and §10 Last.fm.
+**Done when:** Scrobbles appear on Last.fm; playcounts sync for most tracks. See §5.3 and §10 Last.fm. **Met.**
 
 **Estimate:** 4–5 days
 
@@ -679,7 +679,7 @@ Implementation milestones. Track with checkboxes or issues.
 - [x] Play albums and playlists via YouTube
 - [x] Persistent player with queue from album or playlist
 - [x] Listen history and local playcounts
-- [ ] Last.fm connect, scrobble, playcount refresh
+- [x] Last.fm connect, scrobble, playcount refresh
 - [ ] Appendix A pipeline model understood; no pipeline UI or writes
 - [ ] This spec is the sole build reference for iteration 1
 

@@ -9,6 +9,7 @@ import {
 import type { User } from 'firebase/auth'
 
 import { getFirestoreDb } from '@/lib/firebase'
+import { lastfmFromProfile } from '@/lib/lastfm/firestore'
 import type { UserProfile, UserProfileDocument, UserSettings } from '@/types/user'
 
 function toUserProfile(data: UserProfileDocument): UserProfile {
@@ -17,6 +18,7 @@ function toUserProfile(data: UserProfileDocument): UserProfile {
     email: data.email,
     createdAt: data.createdAt.toDate(),
     settings: data.settings ?? {},
+    lastfm: lastfmFromProfile(data) ?? undefined,
   }
 }
 
