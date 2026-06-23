@@ -12,6 +12,7 @@ import {
   removeAlbumFromPlaylist,
   reorderPlaylistMember,
 } from '@/lib/playlist/firestore'
+import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { useAuthStore } from '@/stores/auth'
 import { usePlaybackStore } from '@/stores/playback'
@@ -204,8 +205,8 @@ watch(() => route.params.id, load)
           >
             <div class="h-12 w-12 shrink-0 overflow-hidden rounded bg-surface">
               <img
-                v-if="member.album.coverUrl"
-                :src="member.album.coverUrl"
+                v-if="pickAlbumCoverSmall(member.album)"
+                :src="pickAlbumCoverSmall(member.album)"
                 :alt="member.album.title"
                 class="h-full w-full object-cover"
               />

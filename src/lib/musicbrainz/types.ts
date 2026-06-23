@@ -18,6 +18,8 @@ export interface MbReleaseRef {
   date?: string
   country?: string
   status?: string
+  'artist-credit'?: MbArtistCredit[]
+  'release-group'?: MbReleaseGroupRef
 }
 
 export interface MbRecording {
@@ -86,4 +88,22 @@ export interface MbSearchResponse<T> {
   'release-group-count'?: number
   offset?: number
   count?: number
+}
+
+export interface MbIsrcRecording {
+  id: string
+  title: string
+  length?: number
+}
+
+export interface MbRecordingDetail {
+  id: string
+  title: string
+  length?: number
+  releases?: MbReleaseRef[]
+}
+
+export interface MbIsrcLookupResult {
+  isrc: string
+  recordings?: MbIsrcRecording[]
 }

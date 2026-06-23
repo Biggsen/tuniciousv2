@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { listAlbums } from '@/lib/album/firestore'
@@ -32,7 +33,8 @@ onMounted(async () => {
     <p v-if="!loading && !error && !albums.length" class="text-sm text-text-muted">
       No albums yet. Browse the
       <RouterLink to="/explorer" class="text-accent hover:underline">Explorer</RouterLink>
-      and import a release.
+      and import a release, or
+      <RouterLink to="/import" class="text-accent hover:underline">import from a Spotify export</RouterLink>.
     </p>
 
     <ExplorerLoading v-if="loading" />
@@ -48,9 +50,11 @@ onMounted(async () => {
             class="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-surface"
           >
             <img
-              v-if="album.coverUrl"
-              :src="album.coverUrl"
+              v-if="pickAlbumCoverSmall(album)"
+              :src="pickAlbumCoverSmall(album)"
               :alt="album.title"
+              loading="lazy"
+              decoding="async"
               class="h-full w-full object-cover"
             />
             <div

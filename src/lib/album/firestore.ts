@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore'
 
 import { buildAlbumFromRelease } from '@/lib/album/buildFromRelease'
-import { fetchReleaseCoverUrl } from '@/lib/album/coverArt'
+import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
 import { getRelease } from '@/lib/musicbrainz/api'
 import { getFirestoreDb } from '@/lib/firebase'
@@ -30,6 +30,7 @@ function albumsCollection(uid: string) {
 }
 
 function toAlbum(id: string, data: AlbumDocument): Album {
+  const legacyCover = data.coverUrl
   return {
     id,
     title: data.title,
@@ -39,7 +40,8 @@ function toAlbum(id: string, data: AlbumDocument): Album {
     albumYear: data.albumYear,
     type: data.type,
     releaseMbid: data.releaseMbid,
-    coverUrl: data.coverUrl,
+    coverUrlSmall: data.coverUrlSmall ?? legacyCover,
+    coverUrlLarge: data.coverUrlLarge ?? legacyCover,
     tracks: data.tracks,
     youtubePlaylistId: data.youtubePlaylistId,
     youtubePlaylistTitle: data.youtubePlaylistTitle,
@@ -95,7 +97,7 @@ export async function importReleaseToLibrary(
   const release = await getRelease(releaseMbid, userAgent)
   const artists = await findOrCreateArtistsFromCredits(uid, release['artist-credit'])
   const built = buildAlbumFromRelease(release, artists)
-  const coverUrl = await fetchReleaseCoverUrl(releaseMbid)
+  const covers = await fetchReleaseCoverUrls(releaseMbid)
 
   const albumId = crypto.randomUUID()
   const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
@@ -106,7 +108,8 @@ export async function importReleaseToLibrary(
       id: albumId,
       ...built,
       tracks: built.tracks.map((track) => omitUndefined(track)),
-      coverUrl,
+      coverUrlSmall: covers.small,
+      coverUrlLarge: covers.large,
       importedAt: serverTimestamp(),
     }),
   )

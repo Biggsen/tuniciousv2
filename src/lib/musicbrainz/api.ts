@@ -2,6 +2,8 @@ import { musicBrainzFetch } from '@/lib/musicbrainz/client'
 import type {
   MbArtistDetail,
   MbArtistSearchResult,
+  MbIsrcLookupResult,
+  MbRecordingDetail,
   MbReleaseGroupDetail,
   MbReleaseGroupSearchResult,
   MbReleaseDetail,
@@ -56,6 +58,24 @@ export async function getReleaseGroup(
 export async function getRelease(mbid: string, userAgent?: string): Promise<MbReleaseDetail> {
   return musicBrainzFetch<MbReleaseDetail>(
     `release/${mbid}?${searchParams({ inc: 'recordings+artist-credits+release-groups' })}`,
+    userAgent,
+  )
+}
+
+export async function lookupIsrc(isrc: string, userAgent?: string): Promise<MbIsrcLookupResult> {
+  const normalized = isrc.trim().toUpperCase()
+  return musicBrainzFetch<MbIsrcLookupResult>(
+    `isrc/${encodeURIComponent(normalized)}?${searchParams({})}`,
+    userAgent,
+  )
+}
+
+export async function getRecording(
+  mbid: string,
+  userAgent?: string,
+): Promise<MbRecordingDetail> {
+  return musicBrainzFetch<MbRecordingDetail>(
+    `recording/${mbid}?${searchParams({ inc: 'releases+release-groups+artist-credits' })}`,
     userAgent,
   )
 }

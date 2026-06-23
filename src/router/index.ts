@@ -65,6 +65,12 @@ const router = createRouter({
           meta: { title: 'Library' },
         },
         {
+          path: 'import',
+          name: 'import',
+          component: () => import('@/views/ImportView.vue'),
+          meta: { title: 'Import' },
+        },
+        {
           path: 'library/:id',
           name: 'album-detail',
           component: () => import('@/views/AlbumDetailView.vue'),

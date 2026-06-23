@@ -8,6 +8,7 @@ import {
   getPendingLastfmAuthToken,
 } from '@/lib/lastfm/auth'
 import { refreshLibraryPlaycounts } from '@/lib/lastfm/scrobble'
+import { refreshAlbumCoverUrls } from '@/lib/album/refreshCoverUrls'
 import { getDefaultMusicBrainzUserAgent } from '@/lib/musicbrainz/userAgent'
 import { updateUserSettings } from '@/lib/userProfile'
 import { useAuthStore } from '@/stores/auth'
@@ -25,6 +26,10 @@ const lastfmSyncing = ref(false)
 const lastfmError = ref<string | null>(null)
 const lastfmMessage = ref<string | null>(null)
 const pendingLastfmToken = ref<string | null>(null)
+
+const coverRefreshing = ref(false)
+const coverMessage = ref<string | null>(null)
+const coverError = ref<string | null>(null)
 
 const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.username))
 
@@ -136,6 +141,24 @@ async function handleRefreshPlaycounts() {
     lastfmSyncing.value = false
   }
 }
+
+async function handleRefreshCoverUrls() {
+  if (!auth.user) return
+  if (!confirm('Re-fetch cover art for all library albums? This may take a minute.')) return
+
+  coverRefreshing.value = true
+  coverError.value = null
+  coverMessage.value = null
+
+  try {
+    const result = await refreshAlbumCoverUrls(auth.user.uid)
+    coverMessage.value = `Updated ${result.updated} covers · ${result.unchanged} unchanged · ${result.noArt} without art · ${result.failed} failed`
+  } catch (err) {
+    coverError.value = err instanceof Error ? err.message : 'Failed to refresh cover art'
+  } finally {
+    coverRefreshing.value = false
+  }
+}
 </script>
 
 <template>
@@ -222,6 +245,28 @@ async function handleRefreshPlaycounts() {
 
       <p v-if="lastfmMessage" class="mt-3 text-sm text-emerald-400">{{ lastfmMessage }}</p>
       <p v-if="lastfmError" class="mt-3 text-sm text-red-300">{{ lastfmError }}</p>
+    </section>
+
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">Library</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Re-fetch small and large album cover images from Cover Art Archive. Run once after
+        upgrading cover art settings, or if covers are missing.
+      </p>
+
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+          :disabled="coverRefreshing"
+          @click="handleRefreshCoverUrls"
+        >
+          {{ coverRefreshing ? 'Refreshing covers…' : 'Refresh cover art' }}
+        </button>
+      </div>
+
+      <p v-if="coverMessage" class="mt-3 text-sm text-emerald-400">{{ coverMessage }}</p>
+      <p v-if="coverError" class="mt-3 text-sm text-red-300">{{ coverError }}</p>
     </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">

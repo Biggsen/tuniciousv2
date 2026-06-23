@@ -11,6 +11,7 @@ import {
 } from '@/lib/artist/firestore'
 import { formatDuration } from '@/lib/musicbrainz/format'
 import { getAlbumById } from '@/lib/album/firestore'
+import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
 import { deleteMappingsForTrackIds, getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { parsePlaylistIdFromInput } from '@/lib/youtube/parseUrl'
@@ -261,8 +262,8 @@ onMounted(load)
       <header class="mb-6 flex gap-6">
         <div class="h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-surface-raised">
           <img
-            v-if="album.coverUrl"
-            :src="album.coverUrl"
+            v-if="pickAlbumCoverLarge(album)"
+            :src="pickAlbumCoverLarge(album)"
             :alt="album.title"
             class="h-full w-full object-cover"
           />

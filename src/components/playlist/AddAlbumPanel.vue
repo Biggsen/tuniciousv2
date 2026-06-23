@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import { listAlbums } from '@/lib/album/firestore'
+import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import type { Album } from '@/types/library'
 
 const props = defineProps<{
@@ -75,8 +76,8 @@ async function addAlbum(albumId: string) {
           >
             <div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-surface">
               <img
-                v-if="album.coverUrl"
-                :src="album.coverUrl"
+                v-if="pickAlbumCoverSmall(album)"
+                :src="pickAlbumCoverSmall(album)"
                 :alt="album.title"
                 class="h-full w-full object-cover"
               />

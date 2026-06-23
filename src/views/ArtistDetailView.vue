@@ -6,6 +6,7 @@ import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { getArtistById, setArtistScrobbleName } from '@/lib/artist/firestore'
 import { listAlbumsByArtist } from '@/lib/album/firestore'
+import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { useAuthStore } from '@/stores/auth'
 import type { Album, Artist } from '@/types/library'
 
@@ -114,8 +115,8 @@ async function saveScrobbleName() {
           >
             <div class="h-12 w-12 shrink-0 overflow-hidden rounded bg-surface">
               <img
-                v-if="album.coverUrl"
-                :src="album.coverUrl"
+                v-if="pickAlbumCoverSmall(album)"
+                :src="pickAlbumCoverSmall(album)"
                 :alt="album.title"
                 class="h-full w-full object-cover"
               />

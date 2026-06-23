@@ -40,7 +40,8 @@ export interface Album {
   albumYear?: string
   type?: string
   releaseMbid: string
-  coverUrl?: string
+  coverUrlSmall?: string
+  coverUrlLarge?: string
   tracks: Track[]
   youtubePlaylistId?: string
   youtubePlaylistTitle?: string
@@ -56,6 +57,9 @@ export interface AlbumDocument {
   albumYear?: string
   type?: string
   releaseMbid: string
+  coverUrlSmall?: string
+  coverUrlLarge?: string
+  /** @deprecated Legacy single cover field — read for migration only */
   coverUrl?: string
   tracks: Track[]
   youtubePlaylistId?: string
