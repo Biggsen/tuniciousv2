@@ -3,12 +3,13 @@ import {
   getDoc,
   serverTimestamp,
   setDoc,
+  updateDoc,
   type Timestamp,
 } from 'firebase/firestore'
 import type { User } from 'firebase/auth'
 
 import { getFirestoreDb } from '@/lib/firebase'
-import type { UserProfile, UserProfileDocument } from '@/types/user'
+import type { UserProfile, UserProfileDocument, UserSettings } from '@/types/user'
 
 function toUserProfile(data: UserProfileDocument): UserProfile {
   return {
@@ -58,4 +59,18 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   }
 
   return toUserProfile(snapshot.data() as UserProfileDocument)
+}
+
+export async function updateUserSettings(
+  uid: string,
+  settings: Partial<UserSettings>,
+): Promise<void> {
+  const ref = doc(getFirestoreDb(), 'users', uid)
+  const payload: Record<string, string> = {}
+
+  if ('musicbrainzUserAgent' in settings) {
+    payload['settings.musicbrainzUserAgent'] = settings.musicbrainzUserAgent?.trim() ?? ''
+  }
+
+  await updateDoc(ref, payload)
 }

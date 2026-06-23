@@ -1,7 +1,21 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** Ready to build  
+**Status:** In progress — **Phases 0–2 complete**; Phase 3 (Playlists) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
+
+### Build progress
+
+| Phase | Status | Summary |
+|-------|--------|---------|
+| 0 — Repository bootstrap | **Complete** | Vue shell, Firebase Auth, Firestore user profile, CI |
+| 1 — MusicBrainz Explorer | **Complete** | Search, browse, release tracklists; dev + Cloud Function proxy |
+| 2 — Library import | **Complete** | Import release, multi-artist `artistIds`, library + artists UI |
+| 3 — Playlists | Not started | |
+| 4 — YouTube resolution | Not started | |
+| 5 — Playback engine | Not started | |
+| 6 — Session tracking | Not started | |
+| 7 — Last.fm | Not started | |
+| 8 — Polish and ship | Not started | |
 
 ---
 
@@ -138,8 +152,9 @@ Firestore: `users/{uid}/albums/{albumId}`
 |-------|------|-------|
 | `id` | string | App-owned |
 | `title` | string | |
-| `artistId` | string | FK → `artists` |
-| `artist` | string | Denormalized display (frozen at import) |
+| `artistIds` | string[] | All album-level credited artists (ordered) |
+| `artistId` | string | Primary artist FK → `artists` (`artistIds[0]`) |
+| `artist` | string | Full formatted credit, frozen at import (e.g. `A & B`) |
 | `albumYear` | string? | Release group `first-release-date` year |
 | `type` | string? | RG primary-type lowercase: `album`, `ep`, `single`, … |
 | `releaseMbid` | string | Import provenance |
@@ -149,6 +164,8 @@ Firestore: `users/{uid}/albums/{albumId}`
 
 **Import unit:** MusicBrainz **release** (edition), not release group.  
 **Dedupe:** One album per `releaseMbid` per user on import.
+
+**Multi-artist albums:** Parse MusicBrainz `artist-credit` on import. Find-or-create an `Artist` for each credited artist. Set `artistIds` from that list; `artistId` = first; `artist` = full formatted string. Artist detail queries albums via `artistIds` `array-contains`. Per-track artists for compilations deferred (v1 uses album-level credit only).
 
 ### 4.5 `Track` (embedded on `Album`)
 
@@ -265,9 +282,9 @@ On import from a MusicBrainz release:
 1. Fetch release detail from MusicBrainz.
 2. Resolve release-group fields for `albumYear` and `type` (fetch RG if stub incomplete).
 3. Build flat `Track[]` from all media on the release.
-4. Format artist credit → seed `Artist` (find or create by normalized name / optional `artistMbid`).
+4. Parse release `artist-credit` → find-or-create an `Artist` for **each** credited artist (by `artistMbid` when present, else normalized name).
 5. Fetch cover from Cover Art Archive using `releaseMbid`.
-6. Write `Album` with app-owned IDs; freeze display fields.
+6. Write `Album` with `artistIds`, `artistId` (primary), frozen `artist` display string, and app-owned IDs.
 7. **Sever:** library does not live-sync to MusicBrainz for normal use.
 
 Edition metadata (country, format, packaging) stays in Explorer only — not required on the frozen library copy.
@@ -420,6 +437,7 @@ MUSICBRAINZ_DEFAULT_USER_AGENT=Tunicious/2.0 (your@email.com)
 | Shared libraries | Per-user only |
 | Pipelines | Appendix A only; zero UI and zero writes in v1 |
 | Playcount refresh | Manual or post-scrobble bump; scheduled sync optional later |
+| Compilation per-track artists | Album-level credit only; per-track `artist` deferred |
 
 ---
 
@@ -443,7 +461,7 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 | Assumption | Result |
 |------------|--------|
 | Frozen tracklist + cover at import | Works |
-| `Artist` as first-class entity with `artistId` on album | Required (not display string alone) |
+| `Artist` as first-class entity with `artistIds` on album | Required — all album-level credits, not display string alone |
 | `type` from RG primary-type | Useful; lowercase normalize |
 | Recording MBIDs on tracks | Omit for v1 |
 
@@ -485,9 +503,9 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 
 ### Deliberately not validated in lab (iteration 1 adds)
 
-- Firebase / Firestore persistence
+- ~~Firebase / Firestore persistence~~ — **done** (Phase 2)
+- ~~MusicBrainz server proxy~~ — **done** (Phase 1); YouTube and Last.fm proxies still pending
 - Playlists with multi-membership (lab used single global stage history — **do not replicate**)
-- Server-side API proxies for secrets
 
 ---
 
@@ -495,49 +513,50 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 
 Implementation milestones. Track with checkboxes or issues.
 
-### Phase 0 — Repository bootstrap
+### Phase 0 — Repository bootstrap ✅
 
 **Goal:** Runnable authenticated shell in a new repo.
 
-- [ ] New repository scaffolded (Vue 3, TS, Vite, Tailwind, Pinia, Router)
-- [ ] Firebase project: Auth, Firestore, Hosting
-- [ ] Login flow; `users/{uid}` profile on first sign-in
-- [ ] App layout, nav placeholders, empty routes
-- [ ] CI: `npm run build` on push
-- [ ] README with setup instructions
+- [x] New repository scaffolded (Vue 3, TS, Vite, Tailwind, Pinia, Router)
+- [x] Firebase project: Auth, Firestore, Hosting (config in repo; project setup per developer)
+- [x] Login flow; `users/{uid}` profile on first sign-in
+- [x] App layout, nav placeholders, empty routes
+- [x] CI: `npm run build` on push
+- [x] README with setup instructions
 
-**Done when:** Sign in works; deployed empty shell loads.
+**Done when:** Sign in works; deployed empty shell loads. **Met.**
 
 **Estimate:** 1–2 days
 
 ---
 
-### Phase 1 — MusicBrainz Explorer
+### Phase 1 — MusicBrainz Explorer ✅
 
 **Goal:** Live browse against MusicBrainz; no import yet.
 
-- [ ] MusicBrainz proxy (dev + production)
-- [ ] Throttled client; User-Agent from settings
-- [ ] Artist search, album search
-- [ ] Release group view, release view, tracklist view
+- [x] MusicBrainz proxy (Vite dev proxy + Firebase Cloud Function `musicbrainzProxy`)
+- [x] Throttled client; User-Agent from settings
+- [x] Artist search, album search
+- [x] Release group view, release view, tracklist view
 
-**Done when:** Full explorer browse works; rate limit respected. See §10 MusicBrainz identity.
+**Done when:** Full explorer browse works; rate limit respected. **Met.** See §10 MusicBrainz identity.
 
 **Estimate:** 3–5 days
 
 ---
 
-### Phase 2 — Library import
+### Phase 2 — Library import ✅
 
 **Goal:** App-owned album records in Firestore.
 
-- [ ] `Artist` + `Album` Firestore services
-- [ ] Import pipeline per §4.12
-- [ ] Library list and album detail
-- [ ] Artists list and detail
-- [ ] Dedupe on `releaseMbid` per user
+- [x] `Artist` + `Album` Firestore services
+- [x] Import pipeline per §4.12 (multi-artist `artistIds`, Cover Art Archive)
+- [x] Library list and album detail
+- [x] Artists list and detail (`artistIds` `array-contains` query)
+- [x] Dedupe on `releaseMbid` per user
+- [x] Import button on Explorer release view
 
-**Done when:** Import release → library album with cover, tracks, artist link. See §10 Library model.
+**Done when:** Import release → library album with cover, tracks, artist link. **Met.** See §10 Library model.
 
 **Estimate:** 3–5 days
 
@@ -642,7 +661,7 @@ Implementation milestones. Track with checkboxes or issues.
 
 ## 12. Exit criteria (iteration 1 complete)
 
-- [ ] Import albums from MusicBrainz into personal library
+- [x] Import albums from MusicBrainz into personal library
 - [ ] Create playlists; same album on multiple playlists
 - [ ] Resolve and play albums and playlists via YouTube
 - [ ] Persistent player with queue from album or playlist

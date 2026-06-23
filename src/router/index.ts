@@ -30,9 +30,33 @@ const router = createRouter({
         },
         {
           path: 'explorer',
-          name: 'explorer',
-          component: () => import('@/views/ExplorerView.vue'),
+          component: () => import('@/views/explorer/ExplorerLayout.vue'),
           meta: { title: 'Explorer' },
+          children: [
+            {
+              path: '',
+              name: 'explorer',
+              component: () => import('@/views/explorer/ExplorerSearchView.vue'),
+            },
+            {
+              path: 'artist/:mbid',
+              name: 'explorer-artist',
+              component: () => import('@/views/explorer/ExplorerArtistView.vue'),
+              meta: { title: 'Artist' },
+            },
+            {
+              path: 'release-group/:mbid',
+              name: 'explorer-release-group',
+              component: () => import('@/views/explorer/ExplorerReleaseGroupView.vue'),
+              meta: { title: 'Release group' },
+            },
+            {
+              path: 'release/:mbid',
+              name: 'explorer-release',
+              component: () => import('@/views/explorer/ExplorerReleaseView.vue'),
+              meta: { title: 'Release' },
+            },
+          ],
         },
         {
           path: 'library',

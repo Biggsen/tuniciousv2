@@ -10,7 +10,7 @@ import {
 import { ref } from 'vue'
 
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase'
-import { ensureUserProfile } from '@/lib/userProfile'
+import { ensureUserProfile, getUserProfile } from '@/lib/userProfile'
 import type { UserProfile } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -68,6 +68,11 @@ export const useAuthStore = defineStore('auth', () => {
     await signOut(getFirebaseAuth())
   }
 
+  async function refreshProfile() {
+    if (!user.value) return
+    profile.value = (await getUserProfile(user.value.uid)) ?? profile.value
+  }
+
   return {
     user,
     profile,
@@ -77,5 +82,6 @@ export const useAuthStore = defineStore('auth', () => {
     signInWithGoogle,
     signInWithEmail,
     signOutUser,
+    refreshProfile,
   }
 })

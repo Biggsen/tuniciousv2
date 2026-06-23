@@ -24,6 +24,9 @@ const pageTitle = computed(() => {
 
 function isActive(name: string) {
   const current = String(route.name ?? '')
+  if (name === 'explorer') {
+    return current === 'explorer' || current.startsWith('explorer-')
+  }
   if (name === 'library') return current === 'library' || current === 'album-detail'
   if (name === 'artists') return current === 'artists' || current === 'artist-detail'
   if (name === 'playlists') return current === 'playlists' || current === 'playlist-detail'

@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 0 — authenticated app shell.
+**Status:** Phase 1 — MusicBrainz Explorer
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -49,7 +49,20 @@ Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicio
    npm run dev
    ```
 
-6. Open the app, sign in. On first sign-in a `users/{uid}` profile document is created in Firestore.
+6. Open **Explorer** — search artists or albums, browse release groups, releases, and tracklists.
+
+## MusicBrainz (Phase 1)
+
+No MusicBrainz account or API key. Set your contact email in `.env`:
+
+```env
+VITE_MUSICBRAINZ_DEFAULT_USER_AGENT=Tunicious/2.0 (your@email.com)
+```
+
+Optional per-user override in **Settings**. Requests are rate-limited to 1/sec.
+
+- **Local dev:** Vite proxies `/api/musicbrainz` → musicbrainz.org
+- **Production:** Firebase Cloud Function `musicbrainzProxy` (deploy functions + hosting)
 
 ## Scripts
 
@@ -83,15 +96,13 @@ functions/        API proxies (Phase 1+)
 docs/             Product specification
 ```
 
-## Phase 0 checklist
+## Phase checklist
 
-- [x] Vue 3 + TS + Vite + Tailwind + Pinia + Router
-- [x] Firebase Auth + Firestore user profile on first sign-in
-- [x] App layout, nav, placeholder routes
-- [x] CI: `npm run build` on push
-- [ ] Firebase project configured locally (your step)
-- [ ] Deployed empty shell (your step)
+- [x] Phase 0 — Auth shell, Firestore user profile, placeholder routes
+- [x] Phase 1 — MusicBrainz Explorer (search, browse, tracklists)
+- [x] Phase 2 — Library import (multi-artist `artistIds`, dedupe on `releaseMbid`)
+- [ ] Phase 3 — Playlists
 
-## Next: Phase 1
+## Next: Phase 3
 
-MusicBrainz Explorer — server proxy, search, release group/release browse. See spec §11 Phase 1.
+Playlist CRUD and multi-membership. See spec §11 Phase 3.
