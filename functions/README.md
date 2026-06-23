@@ -10,11 +10,24 @@ Proxies `GET /api/musicbrainz/**` to `https://musicbrainz.org/ws/2/**`.
 
 Local dev uses the Vite proxy instead (`vite.config.ts`).
 
-Deploy:
+## youtubeProxy
+
+Proxies `GET /api/youtube/**` to the YouTube Data API v3.
+
+- Requires `YOUTUBE_API_KEY` in Functions environment
+- Used for search and video metadata during track resolution
+- Used in production via Firebase Hosting rewrite (`/api/youtube/**`)
+
+Local dev uses the Vite plugin instead (`src/lib/youtube/vitePlugin.ts` + `YOUTUBE_API_KEY` in `.env`).
+
+## Deploy
 
 ```bash
 cd functions && npm install && npm run build
 firebase deploy --only functions,hosting
 ```
 
-Set `MUSICBRAINZ_DEFAULT_USER_AGENT` in Firebase Functions environment if needed.
+Set environment variables in Firebase Functions config:
+
+- `MUSICBRAINZ_DEFAULT_USER_AGENT` — contact string for MusicBrainz
+- `YOUTUBE_API_KEY` — YouTube Data API v3 key

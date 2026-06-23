@@ -1,11 +1,13 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   type Timestamp,
 } from 'firebase/firestore'
@@ -30,6 +32,8 @@ function toArtist(id: string, data: ArtistDocument): Artist {
     artistMbid: data.artistMbid,
     scrobbleName: data.scrobbleName,
     nameLower: data.nameLower,
+    preferredYouTubeChannelId: data.preferredYouTubeChannelId,
+    preferredYouTubeChannelTitle: data.preferredYouTubeChannelTitle,
     importedAt: data.importedAt.toDate(),
   }
 }
@@ -123,4 +127,41 @@ export async function listArtists(uid: string): Promise<Artist[]> {
   return snapshot.docs
     .map((docSnap) => toArtist(docSnap.id, docSnap.data() as ArtistDocument))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function setArtistPreferredYouTubeChannel(
+  uid: string,
+  artistId: string,
+  channel: { channelId: string; channelTitle: string },
+): Promise<Artist> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  await updateDoc(
+    ref,
+    omitUndefined({
+      preferredYouTubeChannelId: channel.channelId,
+      preferredYouTubeChannelTitle: channel.channelTitle,
+    }),
+  )
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Artist not found')
+  }
+
+  return toArtist(updated.id, updated.data() as ArtistDocument)
+}
+
+export async function clearArtistPreferredYouTubeChannel(uid: string, artistId: string): Promise<Artist> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  await updateDoc(ref, {
+    preferredYouTubeChannelId: deleteField(),
+    preferredYouTubeChannelTitle: deleteField(),
+  })
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Artist not found')
+  }
+
+  return toArtist(updated.id, updated.data() as ArtistDocument)
 }

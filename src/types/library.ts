@@ -7,6 +7,8 @@ export interface Artist {
   artistMbid?: string
   scrobbleName?: string
   nameLower: string
+  preferredYouTubeChannelId?: string
+  preferredYouTubeChannelTitle?: string
   importedAt: Date
 }
 
@@ -17,6 +19,8 @@ export interface ArtistDocument {
   artistMbid?: string
   scrobbleName?: string
   nameLower: string
+  preferredYouTubeChannelId?: string
+  preferredYouTubeChannelTitle?: string
   importedAt: Timestamp
 }
 
@@ -38,6 +42,8 @@ export interface Album {
   releaseMbid: string
   coverUrl?: string
   tracks: Track[]
+  youtubePlaylistId?: string
+  youtubePlaylistTitle?: string
   importedAt: Date
 }
 
@@ -52,6 +58,8 @@ export interface AlbumDocument {
   releaseMbid: string
   coverUrl?: string
   tracks: Track[]
+  youtubePlaylistId?: string
+  youtubePlaylistTitle?: string
   importedAt: Timestamp
 }
 

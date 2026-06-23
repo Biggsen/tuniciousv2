@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–3 complete**; Phase 4 (YouTube resolution) is next  
+**Status:** In progress — **Phases 0–4 complete**; Phase 5 (Playback engine) is next  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -11,7 +11,7 @@
 | 1 — MusicBrainz Explorer | **Complete** | Search, browse, release tracklists; dev + Cloud Function proxy |
 | 2 — Library import | **Complete** | Import release, multi-artist `artistIds`, library + artists UI |
 | 3 — Playlists | **Complete** | CRUD, membership, reorder, queue builder (playback in Phase 5) |
-| 4 — YouTube resolution | Not started | |
+| 4 — YouTube resolution | **Complete** | API proxy, mappings, auto/search/manual resolve, channel preference, Topic playlist resolve |
 | 5 — Playback engine | Not started | |
 | 6 — Session tracking | Not started | |
 | 7 — Last.fm | Not started | |
@@ -142,6 +142,8 @@ Firestore: `users/{uid}/artists/{artistId}`
 | `artistMbid` | string? | Import provenance |
 | `scrobbleName` | string? | Last.fm canonical name; defaults to normalized `name` |
 | `nameLower` | string | Prefix search |
+| `preferredYouTubeChannelId` | string? | Locked Topic/label channel for resolve |
+| `preferredYouTubeChannelTitle` | string? | Display only |
 | `importedAt` | timestamp | |
 
 ### 4.4 `Album`
@@ -160,6 +162,8 @@ Firestore: `users/{uid}/albums/{albumId}`
 | `releaseMbid` | string | Import provenance |
 | `coverUrl` | string? | Cover Art Archive at import |
 | `tracks` | `Track[]` | Embedded ordered tracklist |
+| `youtubePlaylistId` | string? | Linked YouTube album playlist for bulk resolve |
+| `youtubePlaylistTitle` | string? | Display only |
 | `importedAt` | timestamp | |
 
 **Import unit:** MusicBrainz **release** (edition), not release group.  
@@ -217,7 +221,7 @@ Document ID = `trackId`.
 | `videoTitle` | string | |
 | `channelTitle` | string? | |
 | `durationMs` | number? | |
-| `source` | `'auto' \| 'manual'` | |
+| `source` | `'auto' \| 'manual' \| 'playlist'` | |
 | `resolvedAt` | timestamp | |
 | `searchQuery` | string? | For debug / re-resolve |
 
@@ -304,13 +308,16 @@ Edition metadata (country, format, packaging) stays in Explorer only — not req
 
 ### 5.2 YouTube
 
-- **Auto search query:** `[artist] Topic [track]` — **omit album title** from default auto-query (manual search may include it).
-- **Ranking:** Score candidates by artist-in-title and duration proximity; prefer plausible Topic/label uploads.
-- **Auto-resolve:** Starting point only — live versions, covers, and junk results are common. Manual override (search → pick, paste URL/ID) is first-class.
-- **At playback:** Use cached `videoId` only; do not re-search. Manual and auto mappings behave identically.
-- **Unresolved:** Clear UI when `videoId` is missing; block or skip at play time.
-- **Production:** All Data API calls via server proxy (lab used referrer-restricted browser keys for POC only).
-- **Optional improvements (post-v1):** Penalize title tokens (live, cover, karaoke); stricter duration gate; second-pass query without `Topic` when first pass fails.
+- **Server proxy:** All Data API calls via Vite dev plugin + `youtubeProxy` Cloud Function; `YOUTUBE_API_KEY` server-side only.
+- **Auto search query:** `[artist] Topic [track]` — omit album title from default auto-query.
+- **Preferred channel:** Per-artist `preferredYouTubeChannelId` on `Artist`; set via “Use this channel” when picking a video. When set, auto-resolve searches track title within that channel first, then falls back to broad search.
+- **Playlist resolve (primary for albums):** Find or link a YouTube playlist (e.g. Topic album playlist), enumerate items via `playlistItems.list`, match tracks by normalized title + duration + order. Store `youtubePlaylistId` on `Album`. Paste playlist URL or auto-find from artist + album title.
+- **Ranking:** Score candidates by title match, preferred channel, duration proximity, Topic channel heuristics.
+- **Auto-resolve:** Starting point only — manual override (search → pick, paste URL/ID) is first-class.
+- **Clear resolves:** Album detail can wipe all `youtube_mappings` for the album’s tracks.
+- **At playback:** Use cached `videoId` only; do not re-search (Phase 5).
+- **Unresolved:** Badges on album and playlist; resolved count on playlist members.
+- **Optional improvements (post-v1):** Penalize live/cover/karaoke tokens; album-delete mapping cleanup.
 
 ### 5.3 Last.fm
 
@@ -474,6 +481,8 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 | Cached `videoId` stable until user changes | Yes |
 | Topic-biased query | Helps when Topic channels exist |
 | Album title in auto-query | Often hurts; omit from default |
+| Topic playlist enumeration | Reliable for full albums; preferred over search |
+| Per-artist channel lock | Speeds resolve when Topic channel is consistent |
 
 ### Playback
 
@@ -504,7 +513,7 @@ Summary of what the disposable lab proved. Implement per sections 4–6 above; n
 ### Deliberately not validated in lab (iteration 1 adds)
 
 - ~~Firebase / Firestore persistence~~ — **done** (Phase 2)
-- ~~MusicBrainz server proxy~~ — **done** (Phase 1); YouTube and Last.fm proxies still pending
+- ~~MusicBrainz server proxy~~ — **done** (Phase 1); ~~YouTube proxy~~ — **done** (Phase 4); Last.fm proxy still pending
 - ~~Playlists with multi-membership~~ — **done** (Phase 3); lab used single global stage history — **do not replicate**
 
 ---
@@ -578,17 +587,20 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 4 — YouTube resolution
+### Phase 4 — YouTube resolution ✅
 
 **Goal:** Persisted track → video mappings.
 
-- [ ] YouTube API server proxy
-- [ ] `TrackYouTubeMapping` Firestore CRUD
-- [ ] Auto-resolve, search panel, manual URL
-- [ ] Unresolved indicators on album and playlist
-- [ ] Optional resolve-all for an album
+- [x] YouTube API server proxy (dev + Cloud Function)
+- [x] `TrackYouTubeMapping` Firestore CRUD
+- [x] Auto-resolve, search panel, manual URL
+- [x] Unresolved indicators on album and playlist
+- [x] Resolve-all for an album (search-based fallback)
+- [x] Per-artist preferred YouTube channel
+- [x] Album resolve from Topic playlist (find, link URL, re-resolve)
+- [x] Clear all resolves on album detail
 
-**Done when:** Mappings persist; manual override works. See §5.2 and §10 YouTube resolution.
+**Done when:** Mappings persist; manual override works. See §5.2 and §10 YouTube resolution. **Met.**
 
 **Estimate:** 4–6 days
 
@@ -663,7 +675,8 @@ Implementation milestones. Track with checkboxes or issues.
 
 - [x] Import albums from MusicBrainz into personal library
 - [x] Create playlists; same album on multiple playlists
-- [ ] Resolve and play albums and playlists via YouTube
+- [x] Resolve album and playlist tracks via YouTube (mappings; playback in Phase 5)
+- [ ] Play albums and playlists via YouTube
 - [ ] Persistent player with queue from album or playlist
 - [ ] Listen history and local playcounts
 - [ ] Last.fm connect, scrobble, playcount refresh

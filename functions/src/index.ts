@@ -55,3 +55,39 @@ export const musicbrainzProxy = onRequest({ cors: true }, async (req, res) => {
     })
   }
 })
+
+export const youtubeProxy = onRequest({ cors: true }, async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('')
+    return
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  const apiKey = process.env.YOUTUBE_API_KEY
+  if (!apiKey) {
+    res.status(503).json({ error: 'YouTube API key not configured' })
+    return
+  }
+
+  try {
+    const rawPath = req.path.replace(/^\/api\/youtube\/?/, '')
+    const queryIndex = req.url.indexOf('?')
+    const existingQuery = queryIndex >= 0 ? req.url.slice(queryIndex + 1) : ''
+    const params = new URLSearchParams(existingQuery)
+    params.set('key', apiKey)
+
+    const targetUrl = `https://www.googleapis.com/youtube/v3/${rawPath}?${params.toString()}`
+
+    const upstream = await fetch(targetUrl)
+    const body = await upstream.text()
+    res.status(upstream.status).set('Content-Type', 'application/json').send(body)
+  } catch (error) {
+    res.status(502).json({
+      error: error instanceof Error ? error.message : 'YouTube proxy failed',
+    })
+  }
+})

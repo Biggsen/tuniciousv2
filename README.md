@@ -2,7 +2,7 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 3 — Playlists
+**Status:** Phase 4 — YouTube resolution
 
 Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
 
@@ -15,6 +15,7 @@ Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicio
 
 - Node.js 22+
 - A Firebase project with **Authentication** and **Cloud Firestore** enabled
+- A **YouTube Data API v3** key (for track resolution)
 
 ## Setup
 
@@ -64,6 +65,24 @@ Optional per-user override in **Settings**. Requests are rate-limited to 1/sec.
 - **Local dev:** Vite proxies `/api/musicbrainz` → musicbrainz.org
 - **Production:** Firebase Cloud Function `musicbrainzProxy` (deploy functions + hosting)
 
+## YouTube (Phase 4)
+
+Create a YouTube Data API v3 key in Google Cloud Console and add it to `.env`:
+
+```env
+YOUTUBE_API_KEY=your-api-key
+```
+
+**API key restrictions (Google Cloud Console → Credentials):**
+
+- **Local dev:** Application restriction → *HTTP referrers* → add `http://localhost:4827/*`. The Vite proxy sends this referrer on your behalf. If your dev URL differs, set `YOUTUBE_API_REFERER` in `.env` to match (e.g. `http://localhost:4827/`).
+- **Production (Cloud Functions):** Server-side calls have no browser referrer — use *None* for application restrictions on a separate key, or IP-restrict to Google’s egress ranges. Set that key as `YOUTUBE_API_KEY` in Functions config.
+
+Resolve tracks from **Library → album detail**: auto-resolve, manual search, paste URL, or **resolve from Topic playlist** (find/link playlist URL).
+
+- **Local dev:** Vite proxies `/api/youtube` → YouTube Data API (set `YOUTUBE_API_REFERER` if key is referrer-restricted)
+- **Production:** Firebase Cloud Function `youtubeProxy` (set `YOUTUBE_API_KEY` in Functions config)
+
 ## Scripts
 
 | Command | Description |
@@ -76,10 +95,11 @@ Optional per-user override in **Settings**. Requests are rate-limited to 1/sec.
 
 ```bash
 npm run build
-firebase deploy --only hosting
+cd functions && npm run build
+firebase deploy --only functions,hosting
 ```
 
-Ensure `.env` values are set in your CI/deploy environment (Vite inlines `VITE_*` at build time).
+Ensure `.env` values are set in your CI/deploy environment (Vite inlines `VITE_*` at build time). Set `YOUTUBE_API_KEY` and `MUSICBRAINZ_DEFAULT_USER_AGENT` for Cloud Functions.
 
 ## Project layout
 
@@ -102,8 +122,8 @@ docs/             Product specification
 - [x] Phase 1 — MusicBrainz Explorer (search, browse, tracklists)
 - [x] Phase 2 — Library import (multi-artist `artistIds`, dedupe on `releaseMbid`)
 - [x] Phase 3 — Playlists (CRUD, membership, reorder, queue builder)
-- [ ] Phase 4 — YouTube resolution
+- [x] Phase 4 — YouTube resolution (mappings, channel preference, Topic playlist resolve)
 
-## Next: Phase 4
+## Next: Phase 5
 
-YouTube track resolution and server proxy. See spec §11 Phase 4.
+YouTube IFrame playback engine and global player bar. See spec §11 Phase 5.

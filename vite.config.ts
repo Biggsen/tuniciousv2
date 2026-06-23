@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig, loadEnv } from 'vite'
 
+import { youtubeDevProxy } from './src/lib/youtube/vitePlugin'
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const defaultUserAgent =
@@ -12,7 +14,11 @@ export default defineConfig(({ mode }) => {
     'Tunicious/2.0 (https://github.com/tunicious)'
 
   return {
-    plugins: [vue(), tailwindcss()],
+    plugins: [
+      vue(),
+      tailwindcss(),
+      youtubeDevProxy(env.YOUTUBE_API_KEY, env.YOUTUBE_API_REFERER),
+    ],
     server: {
       port: 4827,
       proxy: {

@@ -6,6 +6,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore'
 
@@ -40,6 +41,8 @@ function toAlbum(id: string, data: AlbumDocument): Album {
     releaseMbid: data.releaseMbid,
     coverUrl: data.coverUrl,
     tracks: data.tracks,
+    youtubePlaylistId: data.youtubePlaylistId,
+    youtubePlaylistTitle: data.youtubePlaylistTitle,
     importedAt: data.importedAt.toDate(),
   }
 }
@@ -110,4 +113,26 @@ export async function importReleaseToLibrary(
 
   const created = await getDoc(ref)
   return toAlbum(created.id, created.data() as AlbumDocument)
+}
+
+export async function setAlbumYouTubePlaylist(
+  uid: string,
+  albumId: string,
+  playlist: { playlistId: string; title: string },
+): Promise<Album> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
+  await updateDoc(
+    ref,
+    omitUndefined({
+      youtubePlaylistId: playlist.playlistId,
+      youtubePlaylistTitle: playlist.title,
+    }),
+  )
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Album not found')
+  }
+
+  return toAlbum(updated.id, updated.data() as AlbumDocument)
 }

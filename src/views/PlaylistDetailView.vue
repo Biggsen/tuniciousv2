@@ -12,9 +12,12 @@ import {
   removeAlbumFromPlaylist,
   reorderPlaylistMember,
 } from '@/lib/playlist/firestore'
+import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { useAuthStore } from '@/stores/auth'
 import { usePlaybackStore } from '@/stores/playback'
 import type { Playlist, PlaylistMember } from '@/types/library'
+
+import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -22,6 +25,7 @@ const playback = usePlaybackStore()
 
 const playlist = ref<Playlist | null>(null)
 const members = ref<PlaylistMember[]>([])
+const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
 const queueReady = ref(false)
@@ -33,6 +37,25 @@ const memberAlbumIds = computed(() => members.value.map((member) => member.album
 const totalTracks = computed(() =>
   members.value.reduce((sum, member) => sum + member.album.tracks.length, 0),
 )
+
+const resolvedTracks = computed(() => {
+  const trackIds = members.value.flatMap((member) => member.album.tracks.map((t) => t.id))
+  return trackIds.filter((id) => mappings.value.has(id)).length
+})
+
+function albumResolvedCount(albumId: string): { resolved: number; total: number } {
+  const member = members.value.find((item) => item.album.id === albumId)
+  if (!member) return { resolved: 0, total: 0 }
+  const total = member.album.tracks.length
+  const resolved = member.album.tracks.filter((track) => mappings.value.has(track.id)).length
+  return { resolved, total }
+}
+
+async function loadMappings() {
+  if (!auth.user) return
+  const trackIds = members.value.flatMap((member) => member.album.tracks.map((track) => track.id))
+  mappings.value = await getMappingsForTrackIds(auth.user.uid, trackIds)
+}
 
 async function load() {
   if (!auth.user) return
@@ -48,6 +71,7 @@ async function load() {
       return
     }
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    await loadMappings()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load playlist'
   } finally {
@@ -61,6 +85,7 @@ async function handleAdd(albumId: string) {
   try {
     await addAlbumToPlaylist(auth.user.uid, playlistId(), albumId)
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    await loadMappings()
     playlist.value = await getPlaylistById(auth.user.uid, playlistId())
     queueReady.value = false
   } catch (err) {
@@ -74,6 +99,7 @@ async function handleRemove(albumId: string) {
   try {
     await removeAlbumFromPlaylist(auth.user.uid, playlistId(), albumId)
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    await loadMappings()
     queueReady.value = false
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to remove album'
@@ -86,14 +112,16 @@ async function handleReorder(albumId: string, direction: 'up' | 'down') {
   try {
     await reorderPlaylistMember(auth.user.uid, playlistId(), albumId, direction)
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    await loadMappings()
     queueReady.value = false
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to reorder'
   }
 }
 
-function handlePlay() {
-  playback.setQueueFromPlaylist(members.value, playlistId())
+async function handlePlay() {
+  if (!auth.user) return
+  await playback.setQueueFromPlaylist(members.value, playlistId(), auth.user.uid)
   queueReady.value = true
 }
 
@@ -114,6 +142,7 @@ watch(() => route.params.id, load)
         <p class="mt-2 text-xs text-text-muted">
           {{ members.length }} album{{ members.length === 1 ? '' : 's' }}
           · {{ totalTracks }} track{{ totalTracks === 1 ? '' : 's' }}
+          · {{ resolvedTracks }}/{{ totalTracks }} resolved
         </p>
       </header>
 
@@ -138,7 +167,11 @@ watch(() => route.params.id, load)
         v-if="queueReady"
         class="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm"
       >
-        Queue ready — {{ playback.trackCount }} tracks. Playback engine arrives in Phase 5.
+        Queue ready — {{ playback.resolvedCount }}/{{ playback.trackCount }} tracks have video IDs.
+        Playback engine arrives in Phase 5.
+        <template v-if="playback.unresolvedCount">
+          ({{ playback.unresolvedCount }} unresolved)
+        </template>
       </p>
 
       <p v-if="error" class="mb-4 text-sm text-red-300">{{ error }}</p>
@@ -190,6 +223,20 @@ watch(() => route.params.id, load)
             <span class="min-w-0">
               <span class="block truncate font-medium">{{ member.album.title }}</span>
               <span class="block truncate text-xs text-text-muted">{{ member.album.artist }}</span>
+              <span
+                class="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px]"
+                :class="
+                  albumResolvedCount(member.album.id).resolved ===
+                  albumResolvedCount(member.album.id).total
+                    ? 'bg-emerald-500/15 text-emerald-300'
+                    : 'bg-amber-500/15 text-amber-200'
+                "
+              >
+                {{ albumResolvedCount(member.album.id).resolved }}/{{
+                  albumResolvedCount(member.album.id).total
+                }}
+                resolved
+              </span>
             </span>
           </RouterLink>
 
