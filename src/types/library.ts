@@ -1,5 +1,7 @@
 import type { Timestamp } from 'firebase/firestore'
 
+import type { RatingSource, StarRating } from '@/types/pipeline'
+
 export interface Artist {
   id: string
   name: string
@@ -49,6 +51,11 @@ export interface Album {
   tracks: Track[]
   youtubePlaylistId?: string
   youtubePlaylistTitle?: string
+  rating?: StarRating
+  ratingSource?: RatingSource
+  ratingSubmittedPipelineId?: string
+  ratingBeforeSubmission?: StarRating
+  ratedAt?: Date
   importedAt: Date
 }
 
@@ -68,6 +75,11 @@ export interface AlbumDocument {
   tracks: Track[]
   youtubePlaylistId?: string
   youtubePlaylistTitle?: string
+  rating?: StarRating
+  ratingSource?: RatingSource
+  ratingSubmittedPipelineId?: string
+  ratingBeforeSubmission?: StarRating
+  ratedAt?: Timestamp
   importedAt: Timestamp
 }
 
@@ -80,6 +92,7 @@ export interface Playlist {
   id: string
   name: string
   description?: string
+  pipelineId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -88,6 +101,7 @@ export interface PlaylistDocument {
   id: string
   name: string
   description?: string
+  pipelineId?: string
   createdAt: import('firebase/firestore').Timestamp
   updatedAt: import('firebase/firestore').Timestamp
 }

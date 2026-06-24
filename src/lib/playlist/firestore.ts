@@ -4,9 +4,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 
@@ -34,6 +36,7 @@ function toPlaylist(id: string, data: PlaylistDocument): Playlist {
     id,
     name: data.name,
     description: data.description,
+    pipelineId: data.pipelineId,
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   }
@@ -54,6 +57,18 @@ export async function listPlaylists(uid: string): Promise<Playlist[]> {
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 }
 
+export async function listPlaylistsByPipelineId(
+  uid: string,
+  pipelineId: string,
+): Promise<Playlist[]> {
+  const snapshot = await getDocs(
+    query(playlistsCollection(uid), where('pipelineId', '==', pipelineId)),
+  )
+  return snapshot.docs
+    .map((docSnap) => toPlaylist(docSnap.id, docSnap.data() as PlaylistDocument))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export async function getPlaylistById(uid: string, playlistId: string): Promise<Playlist | null> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId)
   const snapshot = await getDoc(ref)
@@ -65,6 +80,7 @@ export async function createPlaylist(
   uid: string,
   name: string,
   description?: string,
+  pipelineId?: string,
 ): Promise<Playlist> {
   const id = crypto.randomUUID()
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', id)
@@ -76,6 +92,7 @@ export async function createPlaylist(
       id,
       name: name.trim(),
       description: description?.trim(),
+      pipelineId,
       createdAt: now,
       updatedAt: now,
     }),

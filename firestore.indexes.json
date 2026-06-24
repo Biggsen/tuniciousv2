@@ -21,6 +21,59 @@
       "fields": [
         { "fieldPath": "startedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "albumId", "order": "ASCENDING" },
+        { "fieldPath": "pipelineId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pipelineId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "albumId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pipelineId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "playlistId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pipelines",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "templateId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "playlists",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pipelineId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

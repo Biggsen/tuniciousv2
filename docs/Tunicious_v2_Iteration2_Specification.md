@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 2 Specification
 
-**Status:** Not started  
+**Status:** In progress (Phase 0 complete)  
 **Prerequisite:** [Iteration 1](Tunicious_v2_Iteration1_Specification.md) complete (Phases 0–8).  
 **Scope:** Evaluation funnel (pipelines, stages, ratings). Custom pipeline editing and smart queue are **deferred** — see §1.2 and §12.
 
@@ -10,7 +10,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| 0 — Data model & services | Not started | Pipeline, Stage, StageMembership, Album rating fields |
+| 0 — Data model & services | Complete | Pipeline, Stage, StageMembership, Album rating fields |
 | 1 — Evaluation template bootstrap | Not started | One-click create funnel + 10 playlists |
 | 2 — Playlist grouping UI | Not started | Collapsible pipeline group on `/playlists` |
 | 3 — Pipeline workflow engine | Not started | Enter, move, yes/no, start, undo, playlist sync |

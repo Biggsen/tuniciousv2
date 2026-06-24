@@ -18,6 +18,7 @@ import { getRelease } from '@/lib/musicbrainz/api'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 import type { Album, AlbumDocument } from '@/types/library'
+import type { RatingSource, StarRating } from '@/types/pipeline'
 
 export class AlbumAlreadyImportedError extends Error {
   constructor(readonly albumId: string) {
@@ -46,6 +47,11 @@ function toAlbum(id: string, data: AlbumDocument): Album {
     tracks: data.tracks,
     youtubePlaylistId: data.youtubePlaylistId,
     youtubePlaylistTitle: data.youtubePlaylistTitle,
+    rating: data.rating,
+    ratingSource: data.ratingSource,
+    ratingSubmittedPipelineId: data.ratingSubmittedPipelineId,
+    ratingBeforeSubmission: data.ratingBeforeSubmission,
+    ratedAt: data.ratedAt?.toDate(),
     importedAt: data.importedAt.toDate(),
   }
 }
@@ -138,6 +144,67 @@ export async function setAlbumYouTubePlaylist(
     omitUndefined({
       youtubePlaylistId: playlist.playlistId,
       youtubePlaylistTitle: playlist.title,
+    }),
+  )
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Album not found')
+  }
+
+  return toAlbum(updated.id, updated.data() as AlbumDocument)
+}
+
+export async function updateAlbumRating(
+  uid: string,
+  albumId: string,
+  rating: StarRating | null,
+  source: RatingSource | null,
+): Promise<Album> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
+
+  if (rating === null) {
+    await updateDoc(
+      ref,
+      omitUndefined({
+        rating: null,
+        ratingSource: null,
+        ratedAt: null,
+      }),
+    )
+  } else {
+    await updateDoc(
+      ref,
+      omitUndefined({
+        rating,
+        ratingSource: source ?? undefined,
+        ratedAt: serverTimestamp(),
+      }),
+    )
+  }
+
+  const updated = await getDoc(ref)
+  if (!updated.exists()) {
+    throw new Error('Album not found')
+  }
+
+  return toAlbum(updated.id, updated.data() as AlbumDocument)
+}
+
+export async function updateAlbumSubmissionState(
+  uid: string,
+  albumId: string,
+  updates: {
+    ratingSubmittedPipelineId?: string | null
+    ratingBeforeSubmission?: StarRating | null
+  },
+): Promise<Album> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
+  await updateDoc(
+    ref,
+    omitUndefined({
+      ratingSubmittedPipelineId: updates.ratingSubmittedPipelineId,
+      ratingBeforeSubmission: updates.ratingBeforeSubmission,
     }),
   )
 
