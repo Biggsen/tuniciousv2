@@ -4,7 +4,10 @@ Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobb
 
 **Status:** Phase 8 — Polish and ship
 
-Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
+Specifications:
+
+- Iteration 1: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
+- Iteration 2 (evaluation funnel): [docs/Tunicious_v2_Iteration2_Specification.md](docs/Tunicious_v2_Iteration2_Specification.md)
 
 ## Stack
 

@@ -16,7 +16,6 @@ const navItems = [
   { name: 'explorer', label: 'Explorer', to: '/explorer', mobile: false },
   { name: 'library', label: 'Library', to: '/library', mobile: true },
   { name: 'import', label: 'Import', to: '/import', mobile: false },
-  { name: 'artists', label: 'Artists', to: '/artists', mobile: false },
   { name: 'playlists', label: 'Playlists', to: '/playlists', mobile: true },
   { name: 'history', label: 'History', to: '/history', mobile: false },
   { name: 'settings', label: 'Settings', to: '/settings', mobile: true },
@@ -41,8 +40,9 @@ function isActive(name: string) {
   if (name === 'explorer') {
     return current === 'explorer' || current.startsWith('explorer-')
   }
-  if (name === 'library') return current === 'library' || current === 'album-detail'
-  if (name === 'artists') return current === 'artists' || current === 'artist-detail'
+  if (name === 'library') {
+    return current === 'library' || current === 'album-detail' || current === 'artist-detail'
+  }
   if (name === 'playlists') return current === 'playlists' || current === 'playlist-detail'
   return current === name
 }

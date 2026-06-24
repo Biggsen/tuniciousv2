@@ -718,8 +718,8 @@ tunicious/
 
 ## Appendix A — Pipeline data model (iteration 2)
 
-**Status:** Defined, not implemented in iteration 1.  
-**Purpose:** Ensure iteration 1 schema does not block pipelines later.
+**Status:** Superseded for build purposes by [Tunicious_v2_Iteration2_Specification.md](Tunicious_v2_Iteration2_Specification.md).  
+**Purpose:** Ensure iteration 1 schema does not block pipelines later. Retained here as a short reference; full workflow, rating, and UI rules are in the iteration 2 spec.
 
 ### Concepts
 
@@ -828,10 +828,6 @@ Queued (source)
 | One playlist membership implied by stage | Many playlists + pipeline position |
 | Spotify playback | YouTube playback |
 
-### Iteration 2 features (not scheduled here)
+### Iteration 2
 
-- Pipeline / stage CRUD UI
-- Advance / terminate / undo
-- Funnel template creation
-- Smart queue generation
-- Spotify → MusicBrainz migration
+See [Tunicious_v2_Iteration2_Specification.md](Tunicious_v2_Iteration2_Specification.md). Evaluation funnel, ratings, and playlist grouping ship in iteration 2. Custom pipeline editor and smart queue are deferred to iteration 3.

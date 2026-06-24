@@ -309,7 +309,12 @@ onMounted(load)
         </div>
         <div class="min-w-0 flex-1">
           <h2 class="text-2xl font-semibold">{{ album.title }}</h2>
-          <p class="mt-1 text-sm text-text-muted">{{ album.artist }}</p>
+          <RouterLink
+            :to="{ name: 'artist-detail', params: { id: album.artistId } }"
+            class="mt-1 inline-block text-sm text-text-muted transition-colors hover:text-accent"
+          >
+            {{ artistName }}
+          </RouterLink>
           <p class="mt-2 text-xs text-text-muted">
             <template v-if="album.albumYear">{{ album.albumYear }}</template>
             <template v-if="album.type"> · {{ album.type }}</template>
