@@ -82,6 +82,37 @@ async function handleRequest(
       return
     }
 
+    const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo'])
+
+    if (subpath === 'public') {
+      const method = body.method
+      if (typeof method !== 'string' || !method.trim()) {
+        sendJson(res, 400, { error: 'Missing method' })
+        return
+      }
+
+      const trimmedMethod = method.trim()
+      if (!PUBLIC_LASTFM_METHODS.has(trimmedMethod)) {
+        sendJson(res, 403, { error: 'Method not allowed' })
+        return
+      }
+
+      const params: Record<string, string> = {
+        method: trimmedMethod,
+        api_key: config.apiKey,
+        format: 'json',
+      }
+
+      for (const [key, value] of Object.entries(body)) {
+        if (key === 'method' || value === undefined || value === null) continue
+        params[key] = String(value)
+      }
+
+      const data = await callLastfmApi(config, params)
+      sendJson(res, 200, data)
+      return
+    }
+
     if (subpath === 'api') {
       const sessionHeader = req.headers['x-lastfm-session']
       const sessionKey =

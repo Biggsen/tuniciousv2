@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
@@ -150,6 +150,38 @@ async function handlePlay() {
   }
 }
 
+async function handlePlayTrack(index: number) {
+  if (!auth.user || !album.value) return
+  const track = album.value.tracks[index]
+  if (!track) return
+
+  playError.value = null
+
+  if (isCurrentTrack(track.id)) {
+    playback.togglePlayPause()
+    return
+  }
+
+  const started = await playback.playFromAlbumAtTrack(album.value, auth.user.uid, index)
+  if (!started) {
+    playError.value = playback.error ?? 'This track is not resolved'
+  }
+}
+
+function isTrackResolved(trackId: string): boolean {
+  return mappings.value.has(trackId)
+}
+
+function isCurrentTrack(trackId: string): boolean {
+  if (!album.value || !playback.showPlayerBar) return false
+  const current = playback.currentItem
+  return current?.trackId === trackId && current.albumId === album.value.id
+}
+
+function isTrackPlaying(trackId: string): boolean {
+  return isCurrentTrack(trackId) && playback.isPlaying
+}
+
 async function handleResolveFromPlaylist() {
   if (!auth.user || !album.value || !resolveContext.value) return
 
@@ -259,6 +291,13 @@ onMounted(load)
     <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error && !album" :message="error" />
     <template v-else-if="album && resolveContext">
+      <RouterLink
+        :to="{ name: 'library' }"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-text"
+      >
+        ← Library
+      </RouterLink>
+
       <header class="mb-6 flex gap-6">
         <div class="h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-surface-raised">
           <img
@@ -389,15 +428,38 @@ onMounted(load)
       <h3 class="mb-3 text-sm font-medium uppercase tracking-wider text-text-muted">Tracklist</h3>
       <ol class="divide-y divide-border rounded-xl border border-border">
         <li
-          v-for="track in album.tracks"
+          v-for="(track, index) in album.tracks"
           :key="track.id"
-          class="flex items-start gap-4 px-4 py-3 text-sm"
+          class="flex items-center gap-3 px-4 py-3 text-sm transition-colors"
+          :class="isCurrentTrack(track.id) ? 'bg-accent/10' : ''"
         >
-          <span class="w-8 shrink-0 pt-0.5 text-right text-text-muted tabular-nums">
-            {{ track.trackNumber }}
+          <button
+            type="button"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md p-1.5 text-xs leading-none transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+            :disabled="!isTrackResolved(track.id)"
+            :title="
+              !isTrackResolved(track.id)
+                ? 'Resolve track first'
+                : isTrackPlaying(track.id)
+                  ? 'Pause'
+                  : isCurrentTrack(track.id)
+                    ? 'Resume'
+                    : 'Play track'
+            "
+            @click="handlePlayTrack(index)"
+          >
+            {{ isTrackPlaying(track.id) ? '⏸' : '▶' }}
+          </button>
+          <span class="w-8 shrink-0 text-right text-text-muted tabular-nums">
+            {{ index + 1 }}
           </span>
           <div class="min-w-0 flex-1">
-            <p class="truncate font-medium">{{ track.title }}</p>
+            <p
+              class="truncate font-medium"
+              :class="isCurrentTrack(track.id) ? 'text-accent' : ''"
+            >
+              {{ track.title }}
+            </p>
             <p class="text-xs text-text-muted tabular-nums">{{ formatDuration(track.lengthMs) }}</p>
           </div>
           <TrackResolvePanel

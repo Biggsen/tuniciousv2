@@ -17,14 +17,18 @@ export interface BuiltAlbum {
 export function buildTracksFromRelease(release: MbReleaseDetail): Track[] {
   if (!release.media?.length) return []
 
-  return release.media.flatMap((medium) =>
+  const tracks = release.media.flatMap((medium) =>
     (medium.tracks ?? []).map((track) => ({
       id: crypto.randomUUID(),
-      trackNumber: track.number,
       title: track.title,
       lengthMs: track.length ?? track.recording?.length,
     })),
   )
+
+  return tracks.map((track, index) => ({
+    ...track,
+    trackNumber: String(index + 1),
+  }))
 }
 
 export function buildAlbumFromRelease(

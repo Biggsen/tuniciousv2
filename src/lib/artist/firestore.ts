@@ -32,6 +32,8 @@ function toArtist(id: string, data: ArtistDocument): Artist {
     artistMbid: data.artistMbid,
     scrobbleName: data.scrobbleName,
     nameLower: data.nameLower,
+    imageUrlSmall: data.imageUrlSmall,
+    imageUrlLarge: data.imageUrlLarge,
     preferredYouTubeChannelId: data.preferredYouTubeChannelId,
     preferredYouTubeChannelTitle: data.preferredYouTubeChannelTitle,
     importedAt: data.importedAt.toDate(),

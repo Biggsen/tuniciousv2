@@ -71,6 +71,18 @@ export interface MbArtistDetail extends MbArtistSearchResult {
   'release-groups'?: MbReleaseGroupRef[]
 }
 
+export interface MbUrlRelation {
+  type: string
+  'target-type'?: string
+  url?: {
+    resource?: string
+  }
+}
+
+export interface MbArtistWithUrlRels extends MbArtistSearchResult {
+  relations?: MbUrlRelation[]
+}
+
 export interface MbReleaseGroupDetail extends MbReleaseGroupSearchResult {
   releases?: MbReleaseRef[]
 }

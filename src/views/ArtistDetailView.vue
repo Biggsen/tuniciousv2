@@ -4,6 +4,8 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
+import ArtistAvatar from '@/components/artist/ArtistAvatar.vue'
+import { pickArtistImageLarge } from '@/lib/artist/artistImage'
 import { getArtistById, setArtistScrobbleName } from '@/lib/artist/firestore'
 import { listAlbumsByArtist } from '@/lib/album/firestore'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
@@ -70,8 +72,14 @@ async function saveScrobbleName() {
     <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="artist">
-      <header class="mb-6">
-        <h2 class="text-2xl font-semibold">{{ artist.name }}</h2>
+      <header class="mb-6 flex items-center gap-5">
+        <ArtistAvatar :artist="artist" size="lg" rounded="full" />
+        <div class="min-w-0">
+          <h2 class="text-2xl font-semibold">{{ artist.name }}</h2>
+          <p v-if="pickArtistImageLarge(artist)" class="mt-1 text-xs text-text-muted">
+            Photo via Wikimedia Commons
+          </p>
+        </div>
       </header>
 
       <section class="mb-8 rounded-xl border border-border bg-surface-raised/50 p-4">

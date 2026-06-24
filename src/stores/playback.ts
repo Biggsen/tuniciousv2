@@ -170,6 +170,11 @@ export const usePlaybackStore = defineStore('playback', () => {
     return startPlayback(0)
   }
 
+  async function playFromAlbumAtTrack(album: Album, uid: string, trackIndex: number) {
+    await setQueueFromAlbum(album, uid)
+    return startPlayback(trackIndex)
+  }
+
   function play() {
     if (!activeVideoId.value) return
     if (!player) {
@@ -372,6 +377,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     startPlayback,
     playFromPlaylist,
     playFromAlbum,
+    playFromAlbumAtTrack,
     play,
     pause,
     togglePlayPause,

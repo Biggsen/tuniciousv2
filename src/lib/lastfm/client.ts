@@ -64,6 +64,24 @@ export async function disconnectLastfmApi(): Promise<void> {
   await parseResponse(response)
 }
 
+export async function callLastfmPublicMethod(
+  method: string,
+  params: Record<string, string | number | undefined>,
+): Promise<Record<string, unknown>> {
+  const body: Record<string, string | number> = { method }
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) body[key] = value
+  }
+
+  const response = await fetch('/api/lastfm/public', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify(body),
+  })
+
+  return parseResponse(response)
+}
+
 export async function callLastfmMethod(
   method: string,
   params: Record<string, string | number | undefined>,

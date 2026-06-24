@@ -31,7 +31,7 @@ const pageTitle = computed(() => {
 
 const mainPaddingClass = computed(() => {
   if (playback.showPlayerBar) {
-    return 'max-md:pb-52 md:pb-6'
+    return 'pb-44 md:pb-24'
   }
   return 'max-md:pb-20 md:pb-6'
 })
@@ -60,7 +60,7 @@ function isActive(name: string) {
         </p>
       </div>
 
-      <nav class="flex flex-1 flex-col gap-1 p-3">
+      <nav class="flex flex-col gap-1 p-3">
         <RouterLink
           v-for="item in navItems"
           :key="item.name"
@@ -74,17 +74,16 @@ function isActive(name: string) {
         >
           {{ item.label }}
         </RouterLink>
+        <div class="-mx-3 mt-2 border-t border-border px-3 pt-2">
+          <button
+            type="button"
+            class="w-full rounded-lg px-3 py-2 text-left text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            @click="auth.signOutUser()"
+          >
+            Sign out
+          </button>
+        </div>
       </nav>
-
-      <div class="border-t border-border p-3">
-        <button
-          type="button"
-          class="w-full rounded-lg px-3 py-2 text-left text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          @click="auth.signOutUser()"
-        >
-          Sign out
-        </button>
-      </div>
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -107,8 +106,6 @@ function isActive(name: string) {
       <main class="flex-1 px-4 py-5 md:px-8 md:py-6" :class="mainPaddingClass">
         <RouterView />
       </main>
-
-      <PlayerBar v-if="playback.showPlayerBar" />
 
       <nav
         class="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden"
@@ -135,4 +132,6 @@ function isActive(name: string) {
       <YouTubePlayer />
     </div>
   </div>
+
+  <PlayerBar v-if="playback.showPlayerBar" />
 </template>

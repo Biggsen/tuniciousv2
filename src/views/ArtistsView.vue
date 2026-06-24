@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
+import ArtistAvatar from '@/components/artist/ArtistAvatar.vue'
 import { listArtists } from '@/lib/artist/firestore'
 import { useAuthStore } from '@/stores/auth'
 import type { Artist } from '@/types/library'
@@ -40,8 +41,9 @@ onMounted(async () => {
       <li v-for="artist in artists" :key="artist.id">
         <RouterLink
           :to="{ name: 'artist-detail', params: { id: artist.id } }"
-          class="block px-4 py-3 transition-colors hover:bg-white/5"
+          class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/5"
         >
+          <ArtistAvatar :artist="artist" size="sm" rounded="full" />
           <span class="font-medium">{{ artist.name }}</span>
         </RouterLink>
       </li>

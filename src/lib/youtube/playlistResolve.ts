@@ -132,6 +132,7 @@ export async function resolveAlbumFromYouTubePlaylist(
         videoId: video.videoId,
         videoTitle: video.title,
         channelTitle: video.channelTitle,
+        channelId: video.channelId,
         durationMs: video.durationMs,
         source: 'playlist',
         searchQuery: `playlist:${playlistId}`,

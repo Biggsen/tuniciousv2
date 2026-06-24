@@ -7,13 +7,13 @@ export function buildQueueFromAlbum(
   mappings: Map<string, TrackYouTubeMapping> = new Map(),
   sourcePlaylistId?: string,
 ): PlaybackQueueItem[] {
-  return album.tracks.map((track) => ({
+  return album.tracks.map((track, index) => ({
     trackId: track.id,
     albumId: album.id,
     title: track.title,
     artist: album.artist,
     albumTitle: album.title,
-    trackNumber: track.trackNumber,
+    trackNumber: String(index + 1),
     lengthMs: track.lengthMs,
     videoId: mappings.get(track.id)?.videoId ?? null,
     sourceType: sourcePlaylistId ? 'playlist' : 'album',

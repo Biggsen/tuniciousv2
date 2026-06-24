@@ -14,7 +14,7 @@ const progressPercent = computed(() => {
 
 <template>
   <footer
-    class="fixed inset-x-0 bottom-14 z-40 border-t border-border bg-surface-raised px-4 py-3 md:static md:bottom-auto md:z-auto md:px-6"
+    class="fixed inset-x-0 bottom-14 z-40 border-t border-border bg-surface-raised px-4 py-3 md:bottom-0 md:px-8"
     role="region"
     aria-label="Playback"
   >

@@ -7,6 +7,8 @@ export interface Artist {
   artistMbid?: string
   scrobbleName?: string
   nameLower: string
+  imageUrlSmall?: string
+  imageUrlLarge?: string
   preferredYouTubeChannelId?: string
   preferredYouTubeChannelTitle?: string
   importedAt: Date
@@ -19,6 +21,8 @@ export interface ArtistDocument {
   artistMbid?: string
   scrobbleName?: string
   nameLower: string
+  imageUrlSmall?: string
+  imageUrlLarge?: string
   preferredYouTubeChannelId?: string
   preferredYouTubeChannelTitle?: string
   importedAt: Timestamp

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { formatDuration } from '@/lib/musicbrainz/format'
 import {
   setArtistPreferredYouTubeChannel,
 } from '@/lib/artist/firestore'
 import { getVideoById } from '@/lib/youtube/client'
+import { youtubeChannelUrl } from '@/lib/youtube/parseUrl'
 import { buildAutoSearchQuery, buildChannelScopedSearchQuery } from '@/lib/youtube/query'
 import { deleteTrackMapping } from '@/lib/youtube/firestore'
 import {
@@ -38,6 +39,33 @@ const searchQuery = ref('')
 const manualInput = ref('')
 const candidates = ref<YouTubeVideoCandidate[]>([])
 const useChannelForArtist = ref(false)
+const resolvedChannelId = ref<string | null>(null)
+
+const mappingChannelUrl = computed(() => {
+  const channelId = props.mapping?.channelId ?? resolvedChannelId.value
+  return channelId ? youtubeChannelUrl(channelId) : null
+})
+
+watch(
+  () => [props.mapping?.videoId, props.mapping?.channelId, expanded.value] as const,
+  async ([videoId, channelId, isExpanded]) => {
+    if (!isExpanded || !videoId) {
+      resolvedChannelId.value = null
+      return
+    }
+    if (channelId) {
+      resolvedChannelId.value = channelId
+      return
+    }
+    try {
+      const video = await getVideoById(videoId)
+      resolvedChannelId.value = video?.channelId ?? null
+    } catch {
+      resolvedChannelId.value = null
+    }
+  },
+  { immediate: true },
+)
 
 const isMappingChannelPreferred = computed(() => {
   if (!props.mapping?.channelTitle || !props.resolveContext.preferredChannelTitle) return false
@@ -225,7 +253,18 @@ function toggleExpanded() {
     >
       <div v-if="mapping" class="mb-3 text-xs text-text-muted">
         <p class="truncate font-medium text-text">{{ mapping.videoTitle }}</p>
-        <p v-if="mapping.channelTitle">{{ mapping.channelTitle }}</p>
+        <p v-if="mapping.channelTitle">
+          <a
+            v-if="mappingChannelUrl"
+            :href="mappingChannelUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="transition-colors hover:text-accent hover:underline"
+          >
+            {{ mapping.channelTitle }}
+          </a>
+          <template v-else>{{ mapping.channelTitle }}</template>
+        </p>
         <p>{{ mapping.source }} · {{ mapping.videoId }}</p>
         <button
           v-if="canSetChannelFromMapping"

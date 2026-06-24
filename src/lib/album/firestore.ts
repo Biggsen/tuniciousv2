@@ -13,6 +13,7 @@ import {
 import { buildAlbumFromRelease } from '@/lib/album/buildFromRelease'
 import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
+import { ensureArtistImages } from '@/lib/artist/syncImages'
 import { getRelease } from '@/lib/musicbrainz/api'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
@@ -115,7 +116,15 @@ export async function importReleaseToLibrary(
   )
 
   const created = await getDoc(ref)
-  return toAlbum(created.id, created.data() as AlbumDocument)
+  const album = toAlbum(created.id, created.data() as AlbumDocument)
+
+  try {
+    await ensureArtistImages(uid, artists, userAgent)
+  } catch {
+    // Best-effort — album import already succeeded.
+  }
+
+  return album
 }
 
 export async function setAlbumYouTubePlaylist(

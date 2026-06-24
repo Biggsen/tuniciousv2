@@ -9,6 +9,7 @@ import {
 } from '@/lib/lastfm/auth'
 import { refreshLibraryPlaycounts } from '@/lib/lastfm/scrobble'
 import { refreshAlbumCoverUrls } from '@/lib/album/refreshCoverUrls'
+import { refreshArtistImageUrls } from '@/lib/artist/refreshImageUrls'
 import { getDefaultMusicBrainzUserAgent } from '@/lib/musicbrainz/userAgent'
 import { updateUserSettings } from '@/lib/userProfile'
 import { useAuthStore } from '@/stores/auth'
@@ -30,6 +31,10 @@ const pendingLastfmToken = ref<string | null>(null)
 const coverRefreshing = ref(false)
 const coverMessage = ref<string | null>(null)
 const coverError = ref<string | null>(null)
+
+const artistImageRefreshing = ref(false)
+const artistImageMessage = ref<string | null>(null)
+const artistImageError = ref<string | null>(null)
 
 const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.username))
 
@@ -159,6 +164,29 @@ async function handleRefreshCoverUrls() {
     coverRefreshing.value = false
   }
 }
+
+async function handleRefreshArtistImages() {
+  if (!auth.user) return
+  if (!confirm('Re-fetch artist photos from MusicBrainz / Wikidata? This may take several minutes.')) {
+    return
+  }
+
+  artistImageRefreshing.value = true
+  artistImageMessage.value = null
+  artistImageError.value = null
+
+  try {
+    const result = await refreshArtistImageUrls(
+      auth.user.uid,
+      musicbrainzUserAgent.value || undefined,
+    )
+    artistImageMessage.value = `Updated ${result.updated} photos · ${result.unchanged} unchanged · ${result.noArt} without art · ${result.failed} failed`
+  } catch (err) {
+    artistImageError.value = err instanceof Error ? err.message : 'Failed to refresh artist photos'
+  } finally {
+    artistImageRefreshing.value = false
+  }
+}
 </script>
 
 <template>
@@ -250,8 +278,8 @@ async function handleRefreshCoverUrls() {
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">Library</h2>
       <p class="mt-2 text-sm text-text-muted">
-        Re-fetch small and large album cover images from Cover Art Archive. Run once after
-        upgrading cover art settings, or if covers are missing.
+        Re-fetch album covers from Cover Art Archive, or artist photos via MusicBrainz and Wikidata
+        (with album-cover fallback). May take a while for large libraries.
       </p>
 
       <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -263,10 +291,20 @@ async function handleRefreshCoverUrls() {
         >
           {{ coverRefreshing ? 'Refreshing covers…' : 'Refresh cover art' }}
         </button>
+        <button
+          type="button"
+          class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+          :disabled="artistImageRefreshing"
+          @click="handleRefreshArtistImages"
+        >
+          {{ artistImageRefreshing ? 'Refreshing photos…' : 'Refresh artist photos' }}
+        </button>
       </div>
 
       <p v-if="coverMessage" class="mt-3 text-sm text-emerald-400">{{ coverMessage }}</p>
       <p v-if="coverError" class="mt-3 text-sm text-red-300">{{ coverError }}</p>
+      <p v-if="artistImageMessage" class="mt-3 text-sm text-emerald-400">{{ artistImageMessage }}</p>
+      <p v-if="artistImageError" class="mt-3 text-sm text-red-300">{{ artistImageError }}</p>
     </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">

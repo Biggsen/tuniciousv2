@@ -3,7 +3,10 @@ import { computed, ref } from 'vue'
 
 import { listAlbums } from '@/lib/album/firestore'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
+import { albumResolveStatus } from '@/lib/youtube/albumResolve'
+import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import type { Album } from '@/types/library'
+import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const props = defineProps<{
   uid: string
@@ -17,17 +20,34 @@ const emit = defineEmits<{
 const open = ref(false)
 const loading = ref(false)
 const albums = ref<Album[]>([])
+const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
 const error = ref<string | null>(null)
 
 const availableAlbums = computed(() =>
   albums.value.filter((album) => !props.memberAlbumIds.includes(album.id)),
 )
 
+const addableAlbums = computed(() =>
+  availableAlbums.value.filter(
+    (album) => albumResolveStatus(album, mappings.value) === 'resolved',
+  ),
+)
+
+const emptyMessage = computed(() => {
+  if (!availableAlbums.value.length) {
+    return 'No more albums to add. Import albums from the Explorer first.'
+  }
+  return 'No fully resolved albums available. Resolve every track on an album before adding it to a playlist.'
+})
+
 async function loadAlbums() {
   loading.value = true
   error.value = null
   try {
-    albums.value = await listAlbums(props.uid)
+    const loaded = await listAlbums(props.uid)
+    albums.value = loaded
+    const trackIds = loaded.flatMap((album) => album.tracks.map((track) => track.id))
+    mappings.value = await getMappingsForTrackIds(props.uid, trackIds)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load library'
   } finally {
@@ -63,12 +83,12 @@ async function addAlbum(albumId: string) {
     >
       <p v-if="loading" class="text-sm text-text-muted">Loading library…</p>
       <p v-else-if="error" class="text-sm text-red-300">{{ error }}</p>
-      <p v-else-if="!availableAlbums.length" class="text-sm text-text-muted">
-        No more albums to add. Import albums from the Explorer first.
+      <p v-else-if="!addableAlbums.length" class="text-sm text-text-muted">
+        {{ emptyMessage }}
       </p>
 
       <ul v-else class="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-        <li v-for="album in availableAlbums" :key="album.id">
+        <li v-for="album in addableAlbums" :key="album.id">
           <button
             type="button"
             class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"

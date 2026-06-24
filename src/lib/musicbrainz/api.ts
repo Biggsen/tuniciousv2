@@ -2,6 +2,7 @@ import { musicBrainzFetch } from '@/lib/musicbrainz/client'
 import type {
   MbArtistDetail,
   MbArtistSearchResult,
+  MbArtistWithUrlRels,
   MbIsrcLookupResult,
   MbRecordingDetail,
   MbReleaseGroupDetail,
@@ -41,6 +42,16 @@ export async function searchReleaseGroups(
 export async function getArtist(mbid: string, userAgent?: string): Promise<MbArtistDetail> {
   return musicBrainzFetch<MbArtistDetail>(
     `artist/${mbid}?${searchParams({ inc: 'release-groups' })}`,
+    userAgent,
+  )
+}
+
+export async function getArtistWithUrlRels(
+  mbid: string,
+  userAgent?: string,
+): Promise<MbArtistWithUrlRels> {
+  return musicBrainzFetch<MbArtistWithUrlRels>(
+    `artist/${mbid}?${searchParams({ inc: 'url-rels' })}`,
     userAgent,
   )
 }

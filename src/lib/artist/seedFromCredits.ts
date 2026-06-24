@@ -44,6 +44,8 @@ export function toArtistDocumentFields(
     artistMbid: artist.artistMbid,
     scrobbleName: artist.scrobbleName,
     nameLower: artist.nameLower,
+    imageUrlSmall: artist.imageUrlSmall,
+    imageUrlLarge: artist.imageUrlLarge,
     preferredYouTubeChannelId: artist.preferredYouTubeChannelId,
     preferredYouTubeChannelTitle: artist.preferredYouTubeChannelTitle,
   }

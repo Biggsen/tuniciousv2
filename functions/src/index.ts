@@ -6,10 +6,13 @@ import { onRequest } from 'firebase-functions/v2/https'
 import {
   buildAuthUrl,
   callAuthenticatedLastfm,
+  callLastfmApi,
   getAuthSession,
   getAuthToken,
   type LastfmConfig,
 } from './lastfm/api'
+
+const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo'])
 
 initializeApp()
 
@@ -90,6 +93,35 @@ export const lastfmProxy = onRequest({ cors: true }, async (req, res) => {
 
     if (path === 'auth/disconnect') {
       sendJson(res, 200, { ok: true })
+      return
+    }
+
+    if (path === 'public') {
+      const method = req.body?.method
+      if (typeof method !== 'string' || !method.trim()) {
+        sendJson(res, 400, { error: 'Missing method' })
+        return
+      }
+
+      const trimmedMethod = method.trim()
+      if (!PUBLIC_LASTFM_METHODS.has(trimmedMethod)) {
+        sendJson(res, 403, { error: 'Method not allowed' })
+        return
+      }
+
+      const params: Record<string, string> = {
+        method: trimmedMethod,
+        api_key: config.apiKey,
+        format: 'json',
+      }
+      const body = req.body as Record<string, unknown>
+      for (const [key, value] of Object.entries(body)) {
+        if (key === 'method' || value === undefined || value === null) continue
+        params[key] = String(value)
+      }
+
+      const data = await callLastfmApi(config, params)
+      sendJson(res, 200, data)
       return
     }
 
