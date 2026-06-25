@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import { listAlbums } from '@/lib/album/firestore'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
-import { albumResolveStatus } from '@/lib/youtube/albumResolve'
+import { albumResolveStatus, countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import type { Album } from '@/types/library'
 import type { TrackYouTubeMapping } from '@/types/youtube'
@@ -27,18 +28,17 @@ const availableAlbums = computed(() =>
   albums.value.filter((album) => !props.memberAlbumIds.includes(album.id)),
 )
 
-const addableAlbums = computed(() =>
-  availableAlbums.value.filter(
-    (album) => albumResolveStatus(album, mappings.value) === 'resolved',
-  ),
-)
+function resolveBadgeClass(album: Album): string {
+  const status = albumResolveStatus(album, mappings.value)
+  if (status === 'resolved') return 'bg-emerald-500/15 text-emerald-300'
+  if (status === 'partial') return 'bg-amber-500/15 text-amber-200'
+  return 'bg-red-500/15 text-red-300'
+}
 
-const emptyMessage = computed(() => {
-  if (!availableAlbums.value.length) {
-    return 'No more albums to add. Import albums from the Explorer first.'
-  }
-  return 'No fully resolved albums available. Resolve every track on an album before adding it to a playlist.'
-})
+function resolveLabel(album: Album): string {
+  const { resolved, total } = countAlbumResolvedTracks(album, mappings.value)
+  return `${resolved}/${total} resolved`
+}
 
 async function loadAlbums() {
   loading.value = true
@@ -83,12 +83,14 @@ async function addAlbum(albumId: string) {
     >
       <p v-if="loading" class="text-sm text-text-muted">Loading library…</p>
       <p v-else-if="error" class="text-sm text-red-300">{{ error }}</p>
-      <p v-else-if="!addableAlbums.length" class="text-sm text-text-muted">
-        {{ emptyMessage }}
+      <p v-else-if="!availableAlbums.length" class="text-sm text-text-muted">
+        No more albums to add. Import albums from the
+        <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
+        first.
       </p>
 
       <ul v-else class="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-        <li v-for="album in addableAlbums" :key="album.id">
+        <li v-for="album in availableAlbums" :key="album.id">
           <button
             type="button"
             class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
@@ -102,9 +104,15 @@ async function addAlbum(albumId: string) {
                 class="h-full w-full object-cover"
               />
             </div>
-            <span class="min-w-0">
+            <span class="min-w-0 flex-1">
               <span class="block truncate font-medium">{{ album.title }}</span>
               <span class="block truncate text-xs text-text-muted">{{ album.artist }}</span>
+              <span
+                class="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px]"
+                :class="resolveBadgeClass(album)"
+              >
+                {{ resolveLabel(album) }}
+              </span>
             </span>
           </button>
         </li>

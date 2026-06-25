@@ -11,7 +11,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | Phase | Status | Summary |
 |-------|--------|---------|
 | 0 — Data model & services | Complete | Pipeline, Stage, StageMembership, Album rating fields |
-| 1 — Evaluation template bootstrap | Not started | One-click create funnel + 10 playlists |
+| 1 — Evaluation template bootstrap | Not started | Set up funnel; map stages to existing or new playlists |
 | 2 — Playlist grouping UI | Not started | Collapsible pipeline group on `/playlists` |
 | 3 — Pipeline workflow engine | Not started | Enter, move, yes/no, start, undo, playlist sync |
 | 4 — Rating & submission | Not started | Manual stars, submission, auto-rate, display states |
@@ -27,7 +27,7 @@ Iteration 2 builds on the iteration 1 player (library, playlists, YouTube playba
 
 ### 1.1 Iteration 2 delivers
 
-- **Evaluation pipeline** — one-click template (fixed 10-stage graph + playlists)
+- **Evaluation pipeline** — set up fixed 10-stage graph; map each stage to an existing or new playlist
 - **Pipeline workflow** — stage membership, moves, playlist sync, one-level undo
 - **Album ratings** — manual 1–5 outside the funnel; submission + auto-rate inside
 - **Playlists UI** — pipeline stage playlists grouped in a collapsible section; workflow actions on playlist detail rows
@@ -38,7 +38,7 @@ Iteration 2 builds on the iteration 1 player (library, playlists, YouTube playba
 - **Non-evaluation workflow pipelines** — defer (schema supports later)
 - **Smart queue** playlist playback mode — iteration 3
 - **Dedicated `/evaluation` route** — navigation stays under `/playlists`
-- **Spotify migration** — out of scope (see iteration 1 `/import`)
+- **Spotify migration** — out of scope for automated tooling (see iteration 1 `/import`); personal v1 cutover → [Iteration 2b Migration](Tunicious_v2_Iteration2b_Migration_Specification.md)
 - **Yes/No/Start on album detail** — actions only on stage playlist views (avoids conflicts when multiple pipelines exist later)
 
 ### 1.3 Design principles
@@ -76,8 +76,8 @@ Unchanged from iteration 1 (Vue 3, TypeScript, Vite, Tailwind 4, Pinia, Vue Rout
 
 ### 3.1 Core flows
 
-**Create evaluation funnel**  
-Playlists screen → “Create evaluation funnel” → one `Pipeline`, ten `Playlist`s, ten `Stage`s, graph wired per §6.3. Only if user has no existing evaluation pipeline.
+**Set up evaluation funnel**  
+Playlists screen → “Set up evaluation funnel” → user maps each of the ten template stages to an **existing** playlist or creates a new one → one `Pipeline`, ten linked `Playlist`s (`pipelineId` set), ten `Stage`s with graph wired per §5.1. Only if user has no existing evaluation pipeline. Albums already on mapped playlists are retained.
 
 **Enter evaluation**  
 Add album to **any** stage playlist of the evaluation pipeline (typically **Queued**). Creates `PlaylistMembership` + open `StageMembership`. If pipeline is evaluation: **submission** flow (§7). Moving to a different stage playlist **moves** the album in the pipeline (one stage at a time).
@@ -122,7 +122,7 @@ Firestore: `users/{uid}/pipelines/{pipelineId}`
 |-------|------|-------|
 | `id` | string | |
 | `name` | string | e.g. `Evaluation` |
-| `templateId` | `'evaluation'`? | Set for one-click template |
+| `templateId` | `'evaluation'`? | Set when evaluation funnel is provisioned |
 | `createdAt` | timestamp | |
 | `updatedAt` | timestamp? | |
 
@@ -213,12 +213,12 @@ Existing iteration 1 fields unchanged. Add:
 
 ## 5. Evaluation funnel template
 
-One-click **Create evaluation funnel** provisions:
+**Set up evaluation funnel** provisions a fixed graph. Stages reference playlists via mapping — the template writer does **not** always create ten empty playlists (see §5.3).
 
-| Step | Creates |
-|------|---------|
+| Step | Creates / updates |
+|------|-------------------|
 | 1 | `Pipeline` (`name`: Evaluation, `templateId`: `evaluation`) |
-| 2 | Ten `Playlist`s (one per stage) |
+| 2 | Per stage: link an **existing** `Playlist` or create one; set `Playlist.pipelineId` |
 | 3 | Ten `Stage`s with `playlistId`, roles, edges, `outcomeRating` on sinks + terminal |
 
 ### 5.1 Graph
@@ -242,11 +242,31 @@ Queued (source)
 | 3★ | sink | — | — | 3 |
 | 4★ | sink | — | — | 4 |
 
-### 5.2 Playlist naming
+### 5.2 Stage names and default playlist names
 
-Default playlist names match stage names (e.g. `Queued`, `Curious`, `1★`, `Wonderful`). `Playlist.pipelineId` set for UI grouping.
+Template stage names are fixed: `Queued`, `Curious`, `Interested`, `Good`, `Excellent`, `Wonderful`, `1★`, `2★`, `3★`, `4★`. When the user creates a new playlist for a stage, default its name to the stage name.
 
-### 5.3 Re-evaluation
+### 5.3 Playlist mapping
+
+Setup UI lists the ten stages in graph order. For each stage the user either:
+
+- **Maps to an existing playlist** — typical for v1/Spotify-shaped libraries; existing `PlaylistMembership` rows are kept, or
+- **Creates a new playlist** — only for stages with no suitable existing list.
+
+**Auto-suggest:** Pre-select existing playlists whose names match the stage name (exact or normalized). User confirms or overrides per row.
+
+**Validation (setup must block confirm until satisfied):**
+
+| Rule | Reason |
+|------|--------|
+| Each stage maps to exactly one playlist | Graph integrity |
+| A playlist maps to at most one stage | No duplicate stage lists |
+| A playlist must not already have a different `pipelineId` | No cross-pipeline links |
+| All ten stages mapped before confirm | Complete graph |
+
+**On confirm:** Write `Pipeline`, ten `Stage` docs, and `pipelineId` on each linked playlist. Do **not** clear or replace playlist memberships. Pipeline position (`StageMembership`) is **not** written in Phase 1 — see iteration 2 Phase 3 and [Iteration 2b Migration](Tunicious_v2_Iteration2b_Migration_Specification.md).
+
+### 5.4 Re-evaluation
 
 No single-pass lock. User may remove album from sink/terminal (rating **retained**), then add back to **Queued**. Submission rules apply again (confirm if `rating` set; stash `ratingBeforeSubmission`).
 
@@ -372,14 +392,14 @@ No new top-level routes required. Extend existing:
 
 | Route | Iteration 2 changes |
 |-------|---------------------|
-| `/playlists` | “Create evaluation funnel” at top; collapsible **Evaluation** group with stage playlists; flat list for other playlists |
+| `/playlists` | “Set up evaluation funnel” at top (mapping flow); collapsible **Evaluation** group with stage playlists; flat list for other playlists |
 | `/playlists/:id` | If stage playlist: per-row **Start** (Queued), **Yes** / **No** (transients), **Undo** (last step) |
 | `/library`, `/library/:id` | Star rating display + manual edit when allowed |
 
 ### 8.2 Playlists list
 
 ```
-[ Create evaluation funnel ]     ← only if no evaluation pipeline exists
+[ Set up evaluation funnel ]     ← only if no evaluation pipeline exists
 
 ▼ Evaluation                     ← collapsible; not a playlist
     Queued
@@ -451,13 +471,15 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 
 ### Phase 1 — Evaluation template bootstrap
 
-- “Create evaluation funnel” on `/playlists`
-- Template writer: pipeline + 10 playlists + 10 stages + edges + `outcomeRating`
+- “Set up evaluation funnel” on `/playlists` (only if no evaluation pipeline exists)
+- **Mapping UI:** ten fixed stages → pick existing playlist or create new per stage; auto-suggest by name
+- **Template writer:** `Pipeline` + ten `Stage`s (edges, roles, `outcomeRating`) + `pipelineId` on linked playlists
+- Validation per §5.3; preserve existing playlist memberships
 - Enforce one evaluation pipeline per user
 
-**Done when:** Button creates full funnel; stage playlists have `pipelineId`.
+**Done when:** User can complete setup with mapped playlists; linked playlists have `pipelineId`; graph matches §5.1. Albums on mapped playlists unchanged.
 
-**Estimate:** 1–2 days
+**Estimate:** 2–3 days
 
 ---
 
@@ -513,7 +535,7 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 
 ## 12. Exit criteria (iteration 2 complete)
 
-- [ ] User can create evaluation funnel once (10 stage playlists)
+- [ ] User can set up evaluation funnel once (ten stages mapped to playlists; existing memberships preserved)
 - [ ] Stage playlists appear in collapsible group on `/playlists`
 - [ ] Add album to Queued → submission; Start → Curious
 - [ ] Yes/No through transients; lands on correct sink or Wonderful

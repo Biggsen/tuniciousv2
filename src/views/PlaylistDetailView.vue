@@ -169,7 +169,8 @@ watch(() => route.params.id, load)
 
       <p v-if="!members.length" class="text-sm text-text-muted">
         This playlist is empty. Add albums from your
-        <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>.
+        <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
+        — unresolved albums are fine; resolve tracks before playing.
       </p>
 
       <ul v-else class="divide-y divide-border rounded-xl border border-border">
