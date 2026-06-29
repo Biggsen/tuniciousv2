@@ -11,6 +11,7 @@ import {
   listPlaylistMembers,
   removeAlbumFromPlaylist,
   reorderPlaylistMember,
+  updatePlaylist,
 } from '@/lib/playlist/firestore'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
@@ -30,6 +31,10 @@ const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
 const playError = ref<string | null>(null)
+const editingName = ref(false)
+const nameDraft = ref('')
+const savingName = ref(false)
+const nameError = ref<string | null>(null)
 
 const playlistId = () => String(route.params.id)
 
@@ -71,6 +76,7 @@ async function load() {
       error.value = 'Playlist not found'
       return
     }
+    editingName.value = false
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
     await loadMappings()
   } catch (err) {
@@ -126,6 +132,36 @@ async function handlePlay() {
   }
 }
 
+function startRename() {
+  if (!playlist.value) return
+  nameDraft.value = playlist.value.name
+  editingName.value = true
+  nameError.value = null
+}
+
+function cancelRename() {
+  editingName.value = false
+  nameError.value = null
+}
+
+async function saveRename() {
+  if (!auth.user || !playlist.value || !nameDraft.value.trim()) return
+
+  savingName.value = true
+  nameError.value = null
+
+  try {
+    const trimmed = nameDraft.value.trim()
+    await updatePlaylist(auth.user.uid, playlistId(), { name: trimmed })
+    playlist.value = { ...playlist.value, name: trimmed }
+    editingName.value = false
+  } catch (err) {
+    nameError.value = err instanceof Error ? err.message : 'Failed to rename playlist'
+  } finally {
+    savingName.value = false
+  }
+}
+
 onMounted(load)
 watch(() => route.params.id, load)
 </script>
@@ -135,8 +171,52 @@ watch(() => route.params.id, load)
     <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error && !playlist" :message="error" />
     <template v-else-if="playlist">
+      <RouterLink
+        :to="{ name: 'playlists' }"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-text"
+      >
+        ← Playlists
+      </RouterLink>
+
       <header class="mb-6">
-        <h2 class="text-2xl font-semibold">{{ playlist.name }}</h2>
+        <div v-if="editingName" class="flex max-w-xl flex-wrap items-center gap-2">
+          <input
+            v-model="nameDraft"
+            type="text"
+            required
+            class="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-lg font-semibold outline-none focus:border-accent"
+            :disabled="savingName"
+            @keydown.enter.prevent="saveRename"
+            @keydown.escape="cancelRename"
+          />
+          <button
+            type="button"
+            class="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
+            :disabled="savingName || !nameDraft.trim()"
+            @click="saveRename"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+            :disabled="savingName"
+            @click="cancelRename"
+          >
+            Cancel
+          </button>
+        </div>
+        <div v-else class="flex flex-wrap items-center gap-3">
+          <h2 class="text-2xl font-semibold">{{ playlist.name }}</h2>
+          <button
+            type="button"
+            class="text-sm text-text-muted transition-colors hover:text-accent"
+            @click="startRename"
+          >
+            Rename
+          </button>
+        </div>
+        <p v-if="nameError" class="mt-2 text-sm text-red-300">{{ nameError }}</p>
         <p v-if="playlist.description" class="mt-1 text-sm text-text-muted">
           {{ playlist.description }}
         </p>

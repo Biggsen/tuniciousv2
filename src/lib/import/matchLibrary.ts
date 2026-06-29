@@ -1,3 +1,4 @@
+import { albumTitleMatchKeys } from '@/lib/import/normalizeAlbumTitle'
 import type { StagedAlbum } from '@/lib/import/types'
 import { normalizeTrackTitle } from '@/lib/youtube/match'
 import type { Album } from '@/types/library'
@@ -14,26 +15,46 @@ function artistsMatch(csvArtist: string, libraryArtist: string): boolean {
   return csvNorm.includes(libNorm) || libNorm.includes(csvNorm)
 }
 
-export function findLibraryMatch(album: StagedAlbum, library: Album[]): Album | null {
-  const titleNorm = normalizeForMatch(album.albumName)
-  if (!titleNorm) return null
+function buildLibraryIndex(library: Album[]): Map<string, Album[]> {
+  const index = new Map<string, Album[]>()
 
   for (const candidate of library) {
-    const candidateTitle = normalizeForMatch(candidate.title)
-    if (candidateTitle !== titleNorm) continue
-    if (artistsMatch(album.albumArtist, candidate.artist)) {
-      return candidate
+    for (const key of albumTitleMatchKeys(candidate.title)) {
+      const matches = index.get(key) ?? []
+      matches.push(candidate)
+      index.set(key, matches)
+    }
+  }
+
+  return index
+}
+
+function findMatchInIndex(
+  album: StagedAlbum,
+  index: Map<string, Album[]>,
+): Album | null {
+  for (const key of albumTitleMatchKeys(album.albumName)) {
+    for (const candidate of index.get(key) ?? []) {
+      if (artistsMatch(album.albumArtist, candidate.artist)) {
+        return candidate
+      }
     }
   }
 
   return null
 }
 
+export function findLibraryMatch(album: StagedAlbum, library: Album[]): Album | null {
+  return findMatchInIndex(album, buildLibraryIndex(library))
+}
+
 export function markAlbumsInLibrary(staged: StagedAlbum[], library: Album[]): StagedAlbum[] {
+  const index = buildLibraryIndex(library)
+
   return staged.map((album) => {
     if (album.status !== 'pending') return album
 
-    const match = findLibraryMatch(album, library)
+    const match = findMatchInIndex(album, index)
     if (!match) return album
 
     return {

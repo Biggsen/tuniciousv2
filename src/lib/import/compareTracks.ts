@@ -72,3 +72,7 @@ export function tracklistMatchPercent(rows: ComparedTrackRow[]): number {
   const matched = rows.filter((row) => row.match === 'exact' || row.match === 'partial').length
   return Math.round((matched / rows.length) * 100)
 }
+
+export function isTracklistFullyAlignedByPosition(rows: ComparedTrackRow[]): boolean {
+  return rows.length > 0 && tracklistMatchPercent(rows) === 100
+}

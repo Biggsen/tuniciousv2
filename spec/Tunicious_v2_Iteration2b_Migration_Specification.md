@@ -199,7 +199,7 @@ Pending v1 export. Expected differences from iteration 1 Appendix A:
 |--------|----------|
 | Album | Prefer `releaseMbid` match; fallback title+artist; maintain `v1AlbumId → v2AlbumId` map for failures |
 | Playlist / stage | Match evaluation template names (Queued, Curious, …); map v1 playlist/stage IDs to v2 `stageId` / `playlistId` after funnel creation |
-| Pipeline | Single evaluation pipeline per user (`templateId: 'evaluation'`) |
+| Pipeline | Multiple evaluation pipelines per user; names unique; `templateId: 'evaluation'` |
 
 ---
 

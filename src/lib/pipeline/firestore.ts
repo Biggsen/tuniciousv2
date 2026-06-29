@@ -43,13 +43,19 @@ export async function getPipelineById(uid: string, pipelineId: string): Promise<
   return toPipeline(snapshot.id, snapshot.data() as PipelineDocument)
 }
 
-export async function getEvaluationPipeline(uid: string): Promise<Pipeline | null> {
+export async function listEvaluationPipelines(uid: string): Promise<Pipeline[]> {
   const snapshot = await getDocs(
     query(pipelinesCollection(uid), where('templateId', '==', 'evaluation')),
   )
-  if (snapshot.empty) return null
-  const docSnap = snapshot.docs[0]
-  return toPipeline(docSnap.id, docSnap.data() as PipelineDocument)
+  return snapshot.docs
+    .map((docSnap) => toPipeline(docSnap.id, docSnap.data() as PipelineDocument))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** @deprecated Use listEvaluationPipelines — returns first match only. */
+export async function getEvaluationPipeline(uid: string): Promise<Pipeline | null> {
+  const pipelines = await listEvaluationPipelines(uid)
+  return pipelines[0] ?? null
 }
 
 export async function createPipeline(

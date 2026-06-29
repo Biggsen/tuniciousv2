@@ -6,8 +6,8 @@ import TrackCompareTable from '@/components/import/TrackCompareTable.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { useMusicBrainzUserAgent } from '@/composables/useMusicBrainzUserAgent'
-import { compareTracklists, tracklistMatchPercent } from '@/lib/import/compareTracks'
-import { isStagedAlbumResolved } from '@/lib/import/matchLibrary'
+import { compareTracklists, isTracklistFullyAlignedByPosition, tracklistMatchPercent } from '@/lib/import/compareTracks'
+import { findLibraryMatch, isStagedAlbumResolved } from '@/lib/import/matchLibrary'
 import { getPrimaryIsrc } from '@/lib/import/parseSpotifyCsv'
 import { pickBestRelease } from '@/lib/import/suggestRelease'
 import type { StagedAlbum } from '@/lib/import/types'
@@ -31,6 +31,7 @@ import {
   yearFromDate,
 } from '@/lib/musicbrainz/format'
 import { useAuthStore } from '@/stores/auth'
+import { useImportStore } from '@/stores/import'
 import type { Album } from '@/types/library'
 import type { MbReleaseDetail, MbReleaseGroupSearchResult, MbReleaseRef } from '@/lib/musicbrainz/types'
 
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const importStore = useImportStore()
 const { userAgent } = useMusicBrainzUserAgent()
 
 const loading = ref(false)
@@ -61,6 +63,29 @@ const searchResults = ref<MbReleaseGroupSearchResult[]>([])
 const browsingReleases = ref<MbReleaseRef[] | null>(null)
 const browsingGroupTitle = ref<string | null>(null)
 const loadingEdition = ref(false)
+const autoImportPending = ref(false)
+
+const AUTO_IMPORT_DELAY_MS = 500
+const AUTO_ADVANCE_DELAY_MS = 400
+let autoImportToken = 0
+let loadSuggestionToken = 0
+
+const autoAdvancePending = ref(false)
+
+function isActiveSuggestion(token: number, album: StagedAlbum): boolean {
+  return token === loadSuggestionToken && props.album?.id === album.id
+}
+
+function cancelAutoImport() {
+  autoImportToken++
+  autoImportPending.value = false
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
 
 const releaseCache = new Map<string, MbReleaseDetail>()
 
@@ -84,7 +109,71 @@ function buildDefaultSearchQuery(album: StagedAlbum): string {
   return `artist:"${artist}" AND release:"${release}"`
 }
 
-async function loadRelease(releaseId: string, source: 'isrc' | 'manual') {
+async function maybeAutoImportFromIsrc(release: MbReleaseDetail, album: StagedAlbum, token: number): Promise<boolean> {
+  if (!importStore.automationEnabled) return false
+  if (!isActiveSuggestion(token, album) || album.status !== 'pending' || suggestionSource.value !== 'isrc') {
+    return false
+  }
+  if (libraryAlbum.value || importing.value) return false
+
+  const mbTracks = release.media?.flatMap((medium) => medium.tracks ?? []) ?? []
+  const rows = compareTracklists(album.tracks, mbTracks)
+  if (!isTracklistFullyAlignedByPosition(rows)) return false
+
+  const autoToken = ++autoImportToken
+  autoImportPending.value = true
+
+  await delay(AUTO_IMPORT_DELAY_MS)
+
+  if (autoToken !== autoImportToken || !isActiveSuggestion(token, album)) {
+    autoImportPending.value = false
+    return false
+  }
+  if (props.album?.status !== 'pending') {
+    autoImportPending.value = false
+    return false
+  }
+  if (libraryAlbum.value || importing.value) {
+    autoImportPending.value = false
+    return false
+  }
+
+  try {
+    await importSelected(album)
+    return !importError.value
+  } finally {
+    if (autoToken === autoImportToken) {
+      autoImportPending.value = false
+    }
+  }
+}
+
+async function maybeAutoAdvance(album: StagedAlbum, token: number) {
+  if (!importStore.automationEnabled) return
+  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') return
+
+  autoAdvancePending.value = true
+  await delay(AUTO_ADVANCE_DELAY_MS)
+
+  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') {
+    autoAdvancePending.value = false
+    return
+  }
+
+  autoAdvancePending.value = false
+  importStore.advanceToNextPending(album.albumUri)
+}
+
+type IsrcLoadResult = 'imported' | 'in-library' | 'needs-manual' | 'inactive'
+
+async function loadRelease(
+  releaseId: string,
+  source: 'isrc' | 'manual',
+  album: StagedAlbum,
+  token: number,
+): Promise<IsrcLoadResult> {
+  if (!isActiveSuggestion(token, album)) return 'inactive'
+
   loadingEdition.value = true
   error.value = null
 
@@ -95,6 +184,8 @@ async function loadRelease(releaseId: string, source: 'isrc' | 'manual') {
       releaseCache.set(releaseId, release)
     }
 
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+
     selectedRelease.value = release
     suggestionSource.value = source
 
@@ -103,19 +194,52 @@ async function loadRelease(releaseId: string, source: 'isrc' | 'manual') {
     } else {
       libraryAlbum.value = null
     }
+
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+
+    if (libraryAlbum.value && album.status === 'pending' && source === 'isrc') {
+      importStore.markInLibrary(album.albumUri, libraryAlbum.value.id, importStore.automationEnabled)
+      return 'in-library'
+    }
+
+    if (!libraryAlbum.value && album.status === 'pending') {
+      const titleMatch = findLibraryMatch(album, importStore.libraryAlbums)
+      if (titleMatch) {
+        libraryAlbum.value = titleMatch
+        importStore.markInLibrary(
+          album.albumUri,
+          titleMatch.id,
+          source === 'isrc' && importStore.automationEnabled,
+        )
+        return source === 'isrc' ? 'in-library' : 'needs-manual'
+      }
+    }
+
+    if (source === 'isrc') {
+      const imported = await maybeAutoImportFromIsrc(release, album, token)
+      if (imported) return 'imported'
+      return 'needs-manual'
+    }
+
+    return 'needs-manual'
   } catch (err) {
+    if (!isActiveSuggestion(token, album)) return 'inactive'
     error.value =
       err instanceof MusicBrainzError
         ? `MusicBrainz error (${err.status})`
         : err instanceof Error
           ? err.message
           : 'Failed to load release'
+    return source === 'isrc' ? 'needs-manual' : 'inactive'
   } finally {
     loadingEdition.value = false
   }
 }
 
 async function loadSuggestion(album: StagedAlbum) {
+  const token = ++loadSuggestionToken
+  cancelAutoImport()
+  autoAdvancePending.value = false
   loading.value = true
   error.value = null
   selectedRelease.value = null
@@ -127,41 +251,72 @@ async function loadSuggestion(album: StagedAlbum) {
   manualQuery.value = buildDefaultSearchQuery(album)
 
   if (isStagedAlbumResolved(album) && album.libraryAlbumId) {
-    loading.value = false
+    if (isActiveSuggestion(token, album)) {
+      loading.value = false
+    }
     return
   }
 
   const isrc = getPrimaryIsrc(album)
   if (!isrc) {
-    loading.value = false
+    if (isActiveSuggestion(token, album)) {
+      loading.value = false
+      await maybeAutoAdvance(album, token)
+    }
     return
   }
 
+  let isrcResult: IsrcLoadResult = 'needs-manual'
+  let isrcNotFound = false
+
   try {
     const result = await lookupIsrc(isrc, userAgent.value)
+    if (!isActiveSuggestion(token, album)) return
+
     const recordings = result.recordings ?? []
 
     for (const recording of recordings.slice(0, 3)) {
+      if (!isActiveSuggestion(token, album)) return
+
       const detail = await getRecording(recording.id, userAgent.value)
+      if (!isActiveSuggestion(token, album)) return
+
       const best = pickBestRelease(detail.releases ?? [], album)
       if (best) {
-        await loadRelease(best.id, 'isrc')
-        return
+        isrcResult = await loadRelease(best.id, 'isrc', album, token)
+        break
       }
     }
   } catch (err) {
+    if (!isActiveSuggestion(token, album)) return
     if (err instanceof MusicBrainzError && err.status === 404) {
-      return
+      isrcNotFound = true
+    } else {
+      error.value =
+        err instanceof MusicBrainzError
+          ? `MusicBrainz error (${err.status})`
+          : err instanceof Error
+            ? err.message
+            : 'ISRC lookup failed'
     }
-    error.value =
-      err instanceof MusicBrainzError
-        ? `MusicBrainz error (${err.status})`
-        : err instanceof Error
-          ? err.message
-          : 'ISRC lookup failed'
   } finally {
-    loading.value = false
+    if (isActiveSuggestion(token, album)) {
+      loading.value = false
+    }
   }
+
+  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') return
+
+  if (isrcNotFound || isrcResult === 'needs-manual') {
+    await maybeAutoAdvance(album, token)
+  }
+}
+
+async function compareManualRelease(releaseId: string) {
+  if (!props.album) return
+  const token = ++loadSuggestionToken
+  cancelAutoImport()
+  await loadRelease(releaseId, 'manual', props.album, token)
 }
 
 async function runSearch() {
@@ -207,22 +362,22 @@ async function openReleaseGroup(result: MbReleaseGroupSearchResult) {
   }
 }
 
-async function importSelected() {
-  if (!auth.user || !selectedRelease.value || !props.album) return
+async function importSelected(album: StagedAlbum) {
+  if (!auth.user || !selectedRelease.value) return
 
   importing.value = true
   importError.value = null
 
   try {
-    const album = await importReleaseToLibrary(auth.user.uid, selectedRelease.value.id, userAgent.value)
-    libraryAlbum.value = album
-    emit('imported', { albumUri: props.album.albumUri, libraryAlbumId: album.id })
+    const imported = await importReleaseToLibrary(auth.user.uid, selectedRelease.value.id, userAgent.value)
+    libraryAlbum.value = imported
+    emit('imported', { albumUri: album.albumUri, libraryAlbumId: imported.id })
   } catch (err) {
     if (err instanceof AlbumAlreadyImportedError) {
       const existing = await findAlbumByReleaseMbid(auth.user.uid, selectedRelease.value.id)
       if (existing) {
         libraryAlbum.value = existing
-        emit('imported', { albumUri: props.album.albumUri, libraryAlbumId: existing.id })
+        emit('imported', { albumUri: album.albumUri, libraryAlbumId: existing.id })
       }
       importError.value = 'Already in your library.'
     } else {
@@ -234,14 +389,29 @@ async function importSelected() {
 }
 
 watch(
-  () => props.album,
-  (album) => {
-    if (!album) {
+  () => importStore.automationEnabled,
+  (enabled) => {
+    if (!enabled) {
+      cancelAutoImport()
+      autoAdvancePending.value = false
+      return
+    }
+    if (props.album?.status === 'pending') {
+      void loadSuggestion(props.album)
+    }
+  },
+)
+
+watch(
+  () => props.album?.id ?? null,
+  (albumId) => {
+    cancelAutoImport()
+    if (!albumId || !props.album) {
       selectedRelease.value = null
       error.value = null
       return
     }
-    void loadSuggestion(album)
+    void loadSuggestion(props.album)
   },
   { immediate: true },
 )
@@ -296,6 +466,13 @@ watch(
         <ExplorerLoading v-if="loading" />
         <ExplorerError v-else-if="error" :message="error" />
 
+        <p
+          v-if="autoAdvancePending"
+          class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-100"
+        >
+          No 100% ISRC match — moving to next album…
+        </p>
+
         <template v-else>
           <div
             v-if="album.status === 'in-library'"
@@ -315,7 +492,10 @@ watch(
             v-else-if="album.status === 'imported'"
             class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
           >
-            Imported this session.
+            Imported this session
+            <template v-if="suggestionSource === 'isrc' && matchPercent === 100">
+              — auto-imported from ISRC match
+            </template>.
             <RouterLink
               v-if="album.libraryAlbumId"
               :to="{ name: 'album-detail', params: { id: album.libraryAlbumId } }"
@@ -352,10 +532,10 @@ watch(
                   v-if="!libraryAlbum"
                   type="button"
                   class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
-                  :disabled="importing"
-                  @click="importSelected"
+                  :disabled="importing || autoImportPending"
+                  @click="props.album && importSelected(props.album)"
                 >
-                  {{ importing ? 'Importing…' : 'Import to library' }}
+                  {{ importing || autoImportPending ? 'Importing…' : 'Import to library' }}
                 </button>
                 <RouterLink
                   v-else
@@ -366,6 +546,13 @@ watch(
                 </RouterLink>
               </div>
             </div>
+
+            <p
+              v-if="autoImportPending"
+              class="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200"
+            >
+              100% aligned by position — importing…
+            </p>
 
             <p v-if="importError" class="mb-3 text-sm text-red-300">{{ importError }}</p>
 
@@ -407,7 +594,7 @@ watch(
                   <button
                     type="button"
                     class="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
-                    @click="loadRelease(release.id, 'manual')"
+                    @click="compareManualRelease(release.id)"
                   >
                     <span>
                       <span class="font-medium">{{ release.title }}</span>

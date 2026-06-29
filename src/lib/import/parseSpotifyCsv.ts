@@ -139,7 +139,7 @@ export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
     const existing = albumsByUri.get(albumUri)
 
     if (existing) {
-      existing.tracks = sortTracks(mergeTracks(existing.tracks, track))
+      existing.tracks = mergeTracks(existing.tracks, track)
       if (!existing.imageUrl && row['Album Image URL'].trim()) {
         existing.imageUrl = row['Album Image URL'].trim()
       }

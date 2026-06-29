@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 2 Specification
 
-**Status:** In progress (Phase 0 complete)  
+**Status:** In progress (Phase 1 complete)  
 **Prerequisite:** [Iteration 1](Tunicious_v2_Iteration1_Specification.md) complete (Phases 0–8).  
 **Scope:** Evaluation funnel (pipelines, stages, ratings). Custom pipeline editing and smart queue are **deferred** — see §1.2 and §12.
 
@@ -11,8 +11,8 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | Phase | Status | Summary |
 |-------|--------|---------|
 | 0 — Data model & services | Complete | Pipeline, Stage, StageMembership, Album rating fields |
-| 1 — Evaluation template bootstrap | Not started | Set up funnel; map stages to existing or new playlists |
-| 2 — Playlist grouping UI | Not started | Collapsible pipeline group on `/playlists` |
+| 1 — Evaluation template bootstrap | Complete | Set up funnel; map stages to existing or new playlists |
+| 2 — Playlist grouping UI | Partial | Collapsible group per named funnel; flat list for other playlists |
 | 3 — Pipeline workflow engine | Not started | Enter, move, yes/no, start, undo, playlist sync |
 | 4 — Rating & submission | Not started | Manual stars, submission, auto-rate, display states |
 | 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |
@@ -50,7 +50,7 @@ Iteration 2 builds on the iteration 1 player (library, playlists, YouTube playba
 5. **Rating submission** applies only when entering an **evaluation** pipeline. The user agrees the funnel may control `Album.rating` on rated exits.
 6. **Do not infer rating from playlist membership alone.** Only manual edits and explicit auto-rate on rated exits set stars.
 7. **At most one open stage** per `(userId, albumId, pipelineId)`. An album may be in **multiple pipelines** concurrently (data model); iteration 2 UI only ships the evaluation funnel.
-8. **At most one evaluation pipeline** per user at a time.
+8. **Multiple named evaluation pipelines** per user are allowed (e.g. Known Artists, New Artists). Names must be unique per user; `templateId: 'evaluation'` marks the graph shape.
 9. **Do not port** Spotify-era v1 behaviour: one global stage, playlist doc = stage, or closing all stage entries on any move.
 
 ---
@@ -128,7 +128,7 @@ Firestore: `users/{uid}/pipelines/{pipelineId}`
 
 **Evaluation detection:** Pipeline is **evaluation** if any linked `Stage` has `outcomeRating` set. Template creation always sets ratings on all sinks + terminal.
 
-**Constraint:** One evaluation pipeline per user (`templateId === 'evaluation'` or equivalent query).
+**Constraint:** Evaluation pipeline names unique per user (`templateId === 'evaluation'`). Multiple evaluation pipelines allowed.
 
 ### 4.3 `Stage`
 
@@ -217,7 +217,7 @@ Existing iteration 1 fields unchanged. Add:
 
 | Step | Creates / updates |
 |------|-------------------|
-| 1 | `Pipeline` (`name`: Evaluation, `templateId`: `evaluation`) |
+| 1 | `Pipeline` (`name`: user-provided, e.g. Known Artists, `templateId`: `evaluation`) |
 | 2 | Per stage: link an **existing** `Playlist` or create one; set `Playlist.pipelineId` |
 | 3 | Ten `Stage`s with `playlistId`, roles, edges, `outcomeRating` on sinks + terminal |
 
@@ -253,7 +253,9 @@ Setup UI lists the ten stages in graph order. For each stage the user either:
 - **Maps to an existing playlist** — typical for v1/Spotify-shaped libraries; existing `PlaylistMembership` rows are kept, or
 - **Creates a new playlist** — only for stages with no suitable existing list.
 
-**Auto-suggest:** Pre-select existing playlists whose names match the stage name (exact or normalized). User confirms or overrides per row.
+**Auto-suggest:** Pre-select unlinked playlists whose names match the stage name, or `{funnel name} - {stage name}` (e.g. `Known Artists - Queued`). User confirms or overrides per row.
+
+**New playlists:** Default name `{funnel name} - {stage name}` when created during setup.
 
 **Validation (setup must block confirm until satisfied):**
 
@@ -436,7 +438,7 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 | `stage_memberships` | `pipelineId`, `removedAt`, `albumId` | Open memberships per pipeline |
 | `stage_memberships` | `albumId`, `pipelineId`, `removedAt` | Album position lookup |
 | `stages` | `pipelineId` | Stages for pipeline / playlist grouping |
-| `pipelines` | `templateId` | Enforce one evaluation pipeline |
+| `pipelines` | `templateId` | List evaluation pipelines per user |
 
 ---
 
@@ -471,11 +473,11 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 
 ### Phase 1 — Evaluation template bootstrap
 
-- “Set up evaluation funnel” on `/playlists` (only if no evaluation pipeline exists)
+- “Set up evaluation funnel” on `/playlists` (repeatable; unique funnel name required)
 - **Mapping UI:** ten fixed stages → pick existing playlist or create new per stage; auto-suggest by name
 - **Template writer:** `Pipeline` + ten `Stage`s (edges, roles, `outcomeRating`) + `pipelineId` on linked playlists
 - Validation per §5.3; preserve existing playlist memberships
-- Enforce one evaluation pipeline per user
+- Enforce unique evaluation pipeline name per user
 
 **Done when:** User can complete setup with mapped playlists; linked playlists have `pipelineId`; graph matches §5.1. Albums on mapped playlists unchanged.
 

@@ -12,7 +12,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 
-import { getAlbumById } from '@/lib/album/firestore'
+import { getAlbumById, listAlbums } from '@/lib/album/firestore'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 import type {
@@ -247,4 +247,43 @@ export async function reorderPlaylistMember(
 export async function countPlaylistAlbums(uid: string, playlistId: string): Promise<number> {
   const snapshot = await getDocs(membersCollection(uid, playlistId))
   return snapshot.size
+}
+
+export interface PlaylistStats {
+  albumCount: number
+  trackCount: number
+}
+
+export async function getPlaylistStatsMap(
+  uid: string,
+  playlistIds: string[],
+): Promise<Map<string, PlaylistStats>> {
+  if (playlistIds.length === 0) return new Map()
+
+  const [albums, ...memberSnapshots] = await Promise.all([
+    listAlbums(uid),
+    ...playlistIds.map((playlistId) => getDocs(membersCollection(uid, playlistId))),
+  ])
+
+  const albumById = new Map(albums.map((album) => [album.id, album]))
+  const stats = new Map<string, PlaylistStats>()
+
+  for (let index = 0; index < playlistIds.length; index++) {
+    const playlistId = playlistIds[index]
+    const snapshot = memberSnapshots[index]
+    let albumCount = 0
+    let trackCount = 0
+
+    for (const docSnap of snapshot.docs) {
+      const albumId = (docSnap.data() as PlaylistMembershipDocument).albumId
+      const album = albumById.get(albumId)
+      if (!album) continue
+      albumCount++
+      trackCount += album.tracks.length
+    }
+
+    stats.set(playlistId, { albumCount, trackCount })
+  }
+
+  return stats
 }
