@@ -2,22 +2,23 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import {
-  EVALUATION_FUNNEL_DISPLAY_ORDER,
-  EVALUATION_TEMPLATE_STAGES,
-  getEvaluationTemplateStage,
-  type EvaluationStageKey,
-} from '@/lib/pipeline/evaluationTemplate'
-import { setupEvaluationFunnel } from '@/lib/pipeline/setupEvaluationFunnel'
+  buildFunnelDisplayOrder,
+  FUNNEL_TEMPLATES,
+  getFunnelTemplate,
+  getTemplateStage,
+} from '@/lib/pipeline/funnelTemplates'
+import { setupFunnel } from '@/lib/pipeline/setupEvaluationFunnel'
 import {
   buildDefaultStageMappings,
   formatStagePlaylistName,
   validatePipelineName,
 } from '@/lib/pipeline/suggestPlaylist'
 import {
-  validateEvaluationFunnelMappings,
-  type EvaluationFunnelMappings,
+  validateFunnelMappings,
+  type FunnelStageMappings,
 } from '@/lib/pipeline/validateFunnelMappings'
 import type { Playlist } from '@/types/library'
+import type { PipelineTemplateId } from '@/types/pipeline'
 
 const props = defineProps<{
   uid: string
@@ -30,10 +31,15 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const templateId = ref<PipelineTemplateId>('filter')
 const funnelName = ref('')
-const selections = ref<Record<EvaluationStageKey, string>>({} as Record<EvaluationStageKey, string>)
+const selections = ref<Record<string, string>>({})
 const submitting = ref(false)
 const error = ref<string | null>(null)
+
+const activeTemplate = computed(() => getFunnelTemplate(templateId.value))
+
+const displayOrder = computed(() => buildFunnelDisplayOrder(activeTemplate.value.stages))
 
 const availablePlaylists = computed(() =>
   props.playlists.filter((playlist) => !playlist.pipelineId),
@@ -41,16 +47,16 @@ const availablePlaylists = computed(() =>
 
 function initializeSelections() {
   selections.value = buildDefaultStageMappings(
-    EVALUATION_TEMPLATE_STAGES,
+    activeTemplate.value.stages,
     props.playlists,
     funnelName.value,
-  ) as Record<EvaluationStageKey, string>
+  )
 }
 
-const mappings = computed((): EvaluationFunnelMappings => {
-  const result = {} as EvaluationFunnelMappings
+const mappings = computed((): FunnelStageMappings => {
+  const result: FunnelStageMappings = {}
 
-  for (const stage of EVALUATION_TEMPLATE_STAGES) {
+  for (const stage of activeTemplate.value.stages) {
     const value = selections.value[stage.key]
     result[stage.key] =
       value === 'create' ? { mode: 'create' } : { mode: 'existing', playlistId: value }
@@ -64,7 +70,7 @@ const nameError = computed(() =>
 )
 
 const mappingError = computed(() =>
-  validateEvaluationFunnelMappings(mappings.value, props.playlists),
+  validateFunnelMappings(templateId.value, mappings.value, props.playlists),
 )
 
 const canSubmit = computed(
@@ -86,19 +92,26 @@ async function handleSubmit() {
   error.value = null
 
   try {
-    await setupEvaluationFunnel(props.uid, {
+    await setupFunnel(props.uid, {
       name: funnelName.value.trim(),
+      templateId: templateId.value,
       mappings: mappings.value,
     })
     emit('complete')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to set up evaluation funnel'
+    error.value = err instanceof Error ? err.message : 'Failed to set up funnel'
   } finally {
     submitting.value = false
   }
 }
 
 onMounted(initializeSelections)
+
+watch(templateId, () => {
+  if (!submitting.value) {
+    initializeSelections()
+  }
+})
 
 watch(
   () => [props.playlists, funnelName.value] as const,
@@ -114,10 +127,10 @@ watch(
   <div class="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-5">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 class="text-lg font-semibold">Set up evaluation funnel</h3>
+        <h3 class="text-lg font-semibold">Set up funnel</h3>
         <p class="mt-1 max-w-2xl text-sm text-text-muted">
-          Name this funnel (e.g. Known Artists, New Artists), then map each stage to an existing
-          playlist or create a new one. Albums already on mapped playlists are kept.
+          Choose a template, name the funnel, then map each stage to an existing playlist or create
+          a new one. Albums already on mapped playlists are kept.
         </p>
       </div>
       <button
@@ -130,13 +143,41 @@ watch(
       </button>
     </div>
 
+    <fieldset class="mb-4">
+      <legend class="mb-2 text-sm font-medium">Template</legend>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <label
+          v-for="template in FUNNEL_TEMPLATES"
+          :key="template.id"
+          class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors"
+          :class="
+            templateId === template.id
+              ? 'border-accent/50 bg-accent/10'
+              : 'border-border bg-surface hover:border-accent/30'
+          "
+        >
+          <input
+            v-model="templateId"
+            type="radio"
+            class="mt-1"
+            :value="template.id"
+            :disabled="submitting"
+          />
+          <span>
+            <span class="font-medium">{{ template.label }}</span>
+            <span class="mt-0.5 block text-xs text-text-muted">{{ template.description }}</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
     <label class="mb-4 block">
       <span class="mb-1.5 block text-sm font-medium">Funnel name</span>
       <input
         v-model="funnelName"
         type="text"
         required
-        placeholder="Known Artists"
+        :placeholder="templateId === 'filter' ? 'First Pass' : 'Known Artists'"
         class="w-full max-w-md rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
         :disabled="submitting"
       />
@@ -144,14 +185,17 @@ watch(
 
     <ul class="space-y-3">
       <li
-        v-for="stageKey in EVALUATION_FUNNEL_DISPLAY_ORDER"
+        v-for="stageKey in displayOrder"
         :key="stageKey"
         class="grid gap-2 rounded-lg border border-border bg-surface px-3 py-3 sm:grid-cols-[8rem_1fr]"
       >
         <div>
-          <p class="font-medium">{{ getEvaluationTemplateStage(stageKey).name }}</p>
+          <p class="font-medium">{{ getTemplateStage(activeTemplate, stageKey).name }}</p>
           <p class="text-xs capitalize text-text-muted">
-            {{ getEvaluationTemplateStage(stageKey).pipelineRole }}
+            {{ getTemplateStage(activeTemplate, stageKey).pipelineRole }}
+            <template v-if="getTemplateStage(activeTemplate, stageKey).outcomeRating">
+              · {{ getTemplateStage(activeTemplate, stageKey).outcomeRating }}★
+            </template>
           </p>
         </div>
 
@@ -160,7 +204,9 @@ watch(
           class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           :disabled="submitting"
         >
-          <option value="create">{{ createOptionLabel(getEvaluationTemplateStage(stageKey).name) }}</option>
+          <option value="create">
+            {{ createOptionLabel(getTemplateStage(activeTemplate, stageKey).name) }}
+          </option>
           <option
             v-for="playlist in availablePlaylists"
             :key="playlist.id"

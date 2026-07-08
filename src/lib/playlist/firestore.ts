@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -116,6 +117,18 @@ export async function updatePlaylist(
       updatedAt: serverTimestamp(),
     }),
   )
+}
+
+/** Detach playlist from a deleted pipeline; keep albums and memberships. */
+export async function clearPlaylistPipelineLink(
+  uid: string,
+  playlistId: string,
+): Promise<void> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId)
+  await updateDoc(ref, {
+    pipelineId: deleteField(),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function deletePlaylist(uid: string, playlistId: string): Promise<void> {

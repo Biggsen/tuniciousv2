@@ -45,7 +45,7 @@ export async function getPipelineById(uid: string, pipelineId: string): Promise<
 
 export async function listEvaluationPipelines(uid: string): Promise<Pipeline[]> {
   const snapshot = await getDocs(
-    query(pipelinesCollection(uid), where('templateId', '==', 'evaluation')),
+    query(pipelinesCollection(uid), where('templateId', 'in', ['evaluation', 'filter'])),
   )
   return snapshot.docs
     .map((docSnap) => toPipeline(docSnap.id, docSnap.data() as PipelineDocument))

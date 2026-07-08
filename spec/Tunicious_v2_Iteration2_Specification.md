@@ -11,8 +11,8 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | Phase | Status | Summary |
 |-------|--------|---------|
 | 0 — Data model & services | Complete | Pipeline, Stage, StageMembership, Album rating fields |
-| 1 — Evaluation template bootstrap | Complete | Set up funnel; map stages to existing or new playlists |
-| 2 — Playlist grouping UI | Partial | Collapsible group per named funnel; flat list for other playlists |
+| 1 — Evaluation template bootstrap | Complete | Set up funnel; Evaluation + Filter templates; map stages to existing or new playlists |
+| 2 — Playlist grouping UI | Complete | Collapsible groups; delete funnel with confirm; flat list for other playlists |
 | 3 — Pipeline workflow engine | Not started | Enter, move, yes/no, start, undo, playlist sync |
 | 4 — Rating & submission | Not started | Manual stars, submission, auto-rate, display states |
 | 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |

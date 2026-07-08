@@ -9,7 +9,14 @@ import {
   buildEvaluationFunnelDisplayOrder,
   EVALUATION_TEMPLATE_STAGES,
 } from '@/lib/pipeline/evaluationTemplate'
-import { validateEvaluationFunnelMappings } from '@/lib/pipeline/validateFunnelMappings'
+import {
+  buildFunnelDisplayOrder,
+  FILTER_FUNNEL_TEMPLATE,
+} from '@/lib/pipeline/funnelTemplates'
+import {
+  validateEvaluationFunnelMappings,
+  validateFunnelMappings,
+} from '@/lib/pipeline/validateFunnelMappings'
 import type { Playlist } from '@/types/library'
 
 function makePlaylist(overrides: Partial<Playlist> & Pick<Playlist, 'id' | 'name'>): Playlist {
@@ -62,6 +69,28 @@ describe('buildEvaluationFunnelDisplayOrder', () => {
       'sink-4',
       'wonderful',
     ])
+  })
+})
+
+describe('filter funnel template', () => {
+  it('orders Inbox, Check, Culled, Ready', () => {
+    expect(buildFunnelDisplayOrder(FILTER_FUNNEL_TEMPLATE.stages)).toEqual([
+      'inbox',
+      'check',
+      'culled',
+      'ready',
+    ])
+  })
+
+  it('has no outcome ratings', () => {
+    expect(FILTER_FUNNEL_TEMPLATE.stages.every((stage) => !stage.outcomeRating)).toBe(true)
+  })
+
+  it('accepts create-only mappings', () => {
+    const mappings = Object.fromEntries(
+      FILTER_FUNNEL_TEMPLATE.stages.map((stage) => [stage.key, { mode: 'create' as const }]),
+    )
+    expect(validateFunnelMappings('filter', mappings, [])).toBeNull()
   })
 })
 

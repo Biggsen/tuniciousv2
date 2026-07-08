@@ -4,7 +4,7 @@ import type { Playlist } from '@/types/library'
 
 export type PipelineRole = 'source' | 'transient' | 'terminal' | 'sink'
 
-export type PipelineTemplateId = 'evaluation'
+export type PipelineTemplateId = 'evaluation' | 'filter'
 
 export type StarRating = 1 | 2 | 3 | 4 | 5
 

@@ -1,4 +1,4 @@
-import type { EvaluationTemplateStage } from '@/lib/pipeline/evaluationTemplate'
+import type { FunnelTemplateStage } from '@/lib/pipeline/funnelTemplates'
 import type { Playlist } from '@/types/library'
 
 export function normalizePlaylistName(name: string): string {
@@ -10,7 +10,7 @@ export function formatStagePlaylistName(pipelineName: string, stageName: string)
 }
 
 export function suggestPlaylistForStage(
-  stage: Pick<EvaluationTemplateStage, 'name'>,
+  stage: Pick<FunnelTemplateStage, 'name'>,
   playlists: Playlist[],
   pipelineName?: string,
 ): Playlist | undefined {
@@ -34,7 +34,7 @@ export function suggestPlaylistForStage(
 }
 
 export function buildDefaultStageMappings(
-  stages: EvaluationTemplateStage[],
+  stages: FunnelTemplateStage[],
   playlists: Playlist[],
   pipelineName?: string,
 ): Record<string, string | 'create'> {

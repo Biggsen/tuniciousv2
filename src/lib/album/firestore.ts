@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  deleteField,
   getDoc,
   getDocs,
   query,
@@ -164,14 +165,11 @@ export async function updateAlbumRating(
   const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
 
   if (rating === null) {
-    await updateDoc(
-      ref,
-      omitUndefined({
-        rating: null,
-        ratingSource: null,
-        ratedAt: null,
-      }),
-    )
+    await updateDoc(ref, {
+      rating: deleteField(),
+      ratingSource: deleteField(),
+      ratedAt: deleteField(),
+    })
   } else {
     await updateDoc(
       ref,
@@ -200,13 +198,21 @@ export async function updateAlbumSubmissionState(
   },
 ): Promise<Album> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'albums', albumId)
-  await updateDoc(
-    ref,
-    omitUndefined({
-      ratingSubmittedPipelineId: updates.ratingSubmittedPipelineId,
-      ratingBeforeSubmission: updates.ratingBeforeSubmission,
-    }),
-  )
+  const payload: Record<string, unknown> = {}
+
+  if (updates.ratingSubmittedPipelineId === null) {
+    payload.ratingSubmittedPipelineId = deleteField()
+  } else if (updates.ratingSubmittedPipelineId !== undefined) {
+    payload.ratingSubmittedPipelineId = updates.ratingSubmittedPipelineId
+  }
+
+  if (updates.ratingBeforeSubmission === null) {
+    payload.ratingBeforeSubmission = deleteField()
+  } else if (updates.ratingBeforeSubmission !== undefined) {
+    payload.ratingBeforeSubmission = updates.ratingBeforeSubmission
+  }
+
+  await updateDoc(ref, payload)
 
   const updated = await getDoc(ref)
   if (!updated.exists()) {

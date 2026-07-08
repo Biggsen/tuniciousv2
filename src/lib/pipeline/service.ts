@@ -59,3 +59,4 @@ export function getStagePlaylistIds(stages: Stage[]): string[] {
 }
 
 export { isEvaluationPipeline } from '@/lib/pipeline/workflow'
+export { deletePipelineCompletely } from '@/lib/pipeline/deletePipeline'
