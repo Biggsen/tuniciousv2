@@ -78,7 +78,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <ExplorerLoading v-if="loading" message="Loading history…" />
+    <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error" :message="error" />
 
     <p

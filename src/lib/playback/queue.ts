@@ -34,3 +34,17 @@ export function buildQueueFromPlaylist(
 
   return queue
 }
+
+export function shuffleResolvedQueueItems(items: PlaybackQueueItem[]): PlaybackQueueItem[] {
+  const resolved = items.filter((item) => item.videoId)
+  const shuffled = [...resolved]
+
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[swapIndex]
+    shuffled[swapIndex] = current
+  }
+
+  return shuffled
+}

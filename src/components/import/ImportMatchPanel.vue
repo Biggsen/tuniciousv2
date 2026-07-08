@@ -10,6 +10,10 @@ import { compareTracklists, isTracklistFullyAlignedByPosition, tracklistMatchPer
 import { findLibraryMatch, isStagedAlbumResolved } from '@/lib/import/matchLibrary'
 import { getPrimaryIsrc } from '@/lib/import/parseSpotifyCsv'
 import { pickBestRelease } from '@/lib/import/suggestRelease'
+import {
+  editionsToTry,
+  isReleaseAlignedWithAlbum,
+} from '@/lib/import/tryEditionsInOrder'
 import type { StagedAlbum } from '@/lib/import/types'
 import {
   AlbumAlreadyImportedError,
@@ -50,7 +54,7 @@ const { userAgent } = useMusicBrainzUserAgent()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
-const suggestionSource = ref<'isrc' | 'manual' | null>(null)
+const suggestionSource = ref<'isrc' | 'search' | 'manual' | null>(null)
 const selectedRelease = ref<MbReleaseDetail | null>(null)
 const libraryAlbum = ref<Album | null>(null)
 const importing = ref(false)
@@ -103,17 +107,44 @@ const matchPercent = computed(() => tracklistMatchPercent(compareRows.value))
 
 const primaryIsrc = computed(() => (props.album ? getPrimaryIsrc(props.album) : undefined))
 
+type SuggestionSource = 'isrc' | 'search' | 'manual'
+
+function isAutomatedSource(source: SuggestionSource): boolean {
+  return source === 'isrc' || source === 'search'
+}
+
+const suggestionSourceLabel = computed(() => {
+  switch (suggestionSource.value) {
+    case 'isrc':
+      return 'Suggested from ISRC'
+    case 'search':
+      return 'Suggested from title search'
+    default:
+      return 'Selected release'
+  }
+})
+
+const autoImportedLabel = computed(() => {
+  if (matchPercent.value !== 100) return null
+  if (suggestionSource.value === 'isrc') return 'auto-imported from ISRC match'
+  if (suggestionSource.value === 'search') return 'auto-imported from title search match'
+  return null
+})
+
 function buildDefaultSearchQuery(album: StagedAlbum): string {
   const artist = album.albumArtist.replace(/"/g, '\\"')
   const release = album.albumName.replace(/"/g, '\\"')
   return `artist:"${artist}" AND release:"${release}"`
 }
 
-async function maybeAutoImportFromIsrc(release: MbReleaseDetail, album: StagedAlbum, token: number): Promise<boolean> {
+async function maybeAutoImportIfAligned(
+  release: MbReleaseDetail,
+  album: StagedAlbum,
+  token: number,
+): Promise<boolean> {
   if (!importStore.automationEnabled) return false
-  if (!isActiveSuggestion(token, album) || album.status !== 'pending' || suggestionSource.value !== 'isrc') {
-    return false
-  }
+  if (!isActiveSuggestion(token, album) || album.status !== 'pending') return false
+  if (!suggestionSource.value || !isAutomatedSource(suggestionSource.value)) return false
   if (libraryAlbum.value || importing.value) return false
 
   const mbTracks = release.media?.flatMap((medium) => medium.tracks ?? []) ?? []
@@ -164,14 +195,14 @@ async function maybeAutoAdvance(album: StagedAlbum, token: number) {
   importStore.advanceToNextPending(album.albumUri)
 }
 
-type IsrcLoadResult = 'imported' | 'in-library' | 'needs-manual' | 'inactive'
+type ReleaseLoadResult = 'imported' | 'in-library' | 'needs-manual' | 'inactive'
 
 async function loadRelease(
   releaseId: string,
-  source: 'isrc' | 'manual',
+  source: SuggestionSource,
   album: StagedAlbum,
   token: number,
-): Promise<IsrcLoadResult> {
+): Promise<ReleaseLoadResult> {
   if (!isActiveSuggestion(token, album)) return 'inactive'
 
   loadingEdition.value = true
@@ -197,7 +228,7 @@ async function loadRelease(
 
     if (!isActiveSuggestion(token, album)) return 'inactive'
 
-    if (libraryAlbum.value && album.status === 'pending' && source === 'isrc') {
+    if (libraryAlbum.value && album.status === 'pending' && isAutomatedSource(source)) {
       importStore.markInLibrary(album.albumUri, libraryAlbum.value.id, importStore.automationEnabled)
       return 'in-library'
     }
@@ -209,14 +240,14 @@ async function loadRelease(
         importStore.markInLibrary(
           album.albumUri,
           titleMatch.id,
-          source === 'isrc' && importStore.automationEnabled,
+          isAutomatedSource(source) && importStore.automationEnabled,
         )
-        return source === 'isrc' ? 'in-library' : 'needs-manual'
+        return isAutomatedSource(source) ? 'in-library' : 'needs-manual'
       }
     }
 
-    if (source === 'isrc') {
-      const imported = await maybeAutoImportFromIsrc(release, album, token)
+    if (isAutomatedSource(source)) {
+      const imported = await maybeAutoImportIfAligned(release, album, token)
       if (imported) return 'imported'
       return 'needs-manual'
     }
@@ -230,9 +261,66 @@ async function loadRelease(
         : err instanceof Error
           ? err.message
           : 'Failed to load release'
-    return source === 'isrc' ? 'needs-manual' : 'inactive'
+    return isAutomatedSource(source) ? 'needs-manual' : 'inactive'
   } finally {
     loadingEdition.value = false
+  }
+}
+
+async function tryAutomatedEditions(
+  releases: MbReleaseRef[],
+  album: StagedAlbum,
+  source: 'isrc' | 'search',
+  token: number,
+): Promise<ReleaseLoadResult> {
+  if (!isActiveSuggestion(token, album)) return 'inactive'
+
+  const candidates = editionsToTry(releases, album)
+  if (!candidates.length) return 'needs-manual'
+
+  for (const candidate of candidates) {
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+
+    let release = releaseCache.get(candidate.id)
+    if (!release) {
+      release = await getRelease(candidate.id, userAgent.value)
+      releaseCache.set(candidate.id, release)
+    }
+
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+    if (!isReleaseAlignedWithAlbum(album, release)) continue
+
+    return loadRelease(candidate.id, source, album, token)
+  }
+
+  return 'needs-manual'
+}
+
+async function trySearchFallback(album: StagedAlbum, token: number): Promise<ReleaseLoadResult> {
+  if (!importStore.automationEnabled) return 'needs-manual'
+  if (!isActiveSuggestion(token, album)) return 'inactive'
+
+  try {
+    const results = await searchReleaseGroups(buildDefaultSearchQuery(album), userAgent.value)
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+
+    const firstGroup = results[0]
+    if (!firstGroup) return 'needs-manual'
+
+    const group = await getReleaseGroup(firstGroup.id, userAgent.value)
+    if (!isActiveSuggestion(token, album)) return 'inactive'
+
+    return tryAutomatedEditions(group.releases ?? [], album, 'search', token)
+  } catch {
+    return 'needs-manual'
+  }
+}
+
+async function runSearchTierThenAdvance(album: StagedAlbum, token: number) {
+  const searchResult = await trySearchFallback(album, token)
+  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') return
+  if (searchResult === 'needs-manual') {
+    await maybeAutoAdvance(album, token)
   }
 }
 
@@ -261,12 +349,12 @@ async function loadSuggestion(album: StagedAlbum) {
   if (!isrc) {
     if (isActiveSuggestion(token, album)) {
       loading.value = false
-      await maybeAutoAdvance(album, token)
+      await runSearchTierThenAdvance(album, token)
     }
     return
   }
 
-  let isrcResult: IsrcLoadResult = 'needs-manual'
+  let isrcResult: ReleaseLoadResult = 'needs-manual'
   let isrcNotFound = false
 
   try {
@@ -281,11 +369,17 @@ async function loadSuggestion(album: StagedAlbum) {
       const detail = await getRecording(recording.id, userAgent.value)
       if (!isActiveSuggestion(token, album)) return
 
-      const best = pickBestRelease(detail.releases ?? [], album)
-      if (best) {
-        isrcResult = await loadRelease(best.id, 'isrc', album, token)
-        break
+      const releases = detail.releases ?? []
+      if (importStore.automationEnabled) {
+        isrcResult = await tryAutomatedEditions(releases, album, 'isrc', token)
+      } else {
+        const best = pickBestRelease(releases, album)
+        if (best) {
+          isrcResult = await loadRelease(best.id, 'isrc', album, token)
+        }
       }
+
+      if (isrcResult !== 'needs-manual') break
     }
   } catch (err) {
     if (!isActiveSuggestion(token, album)) return
@@ -308,7 +402,7 @@ async function loadSuggestion(album: StagedAlbum) {
   if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') return
 
   if (isrcNotFound || isrcResult === 'needs-manual') {
-    await maybeAutoAdvance(album, token)
+    await runSearchTierThenAdvance(album, token)
   }
 }
 
@@ -463,14 +557,14 @@ watch(
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto p-4">
-        <ExplorerLoading v-if="loading" />
+        <ExplorerLoading v-if="loading" message="Loading from MusicBrainz…" />
         <ExplorerError v-else-if="error" :message="error" />
 
         <p
           v-if="autoAdvancePending"
           class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-100"
         >
-          No 100% ISRC match — moving to next album…
+          No 100% match — moving to next album…
         </p>
 
         <template v-else>
@@ -493,8 +587,8 @@ watch(
             class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
           >
             Imported this session
-            <template v-if="suggestionSource === 'isrc' && matchPercent === 100">
-              — auto-imported from ISRC match
+            <template v-if="autoImportedLabel">
+              — {{ autoImportedLabel }}
             </template>.
             <RouterLink
               v-if="album.libraryAlbumId"
@@ -510,7 +604,7 @@ watch(
             <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p class="text-xs font-medium uppercase tracking-wider text-accent">
-                  {{ suggestionSource === 'isrc' ? 'Suggested from ISRC' : 'Selected release' }}
+                  {{ suggestionSourceLabel }}
                 </p>
                 <h3 class="mt-1 font-medium">{{ selectedRelease.title }}</h3>
                 <p class="mt-1 text-sm text-text-muted">
@@ -585,7 +679,10 @@ watch(
             </form>
 
             <ExplorerError v-if="searchError" :message="searchError" />
-            <ExplorerLoading v-else-if="loadingEdition && !selectedRelease" />
+            <ExplorerLoading
+              v-else-if="loadingEdition && !selectedRelease"
+              message="Loading from MusicBrainz…"
+            />
 
             <div v-if="browsingReleases" class="mb-4">
               <p class="mb-2 text-xs text-text-muted">Editions for {{ browsingGroupTitle }}</p>

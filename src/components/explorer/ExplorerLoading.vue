@@ -9,6 +9,6 @@ defineProps<{
     <span
       class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent"
     />
-    {{ message ?? 'Loading from MusicBrainz…' }}
+    {{ message ?? 'Loading from Tunicious DB…' }}
   </div>
 </template>

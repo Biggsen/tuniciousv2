@@ -69,7 +69,7 @@ watch(() => route.params.mbid, load)
   <div>
     <ExplorerBreadcrumb :items="breadcrumbItems" />
 
-    <ExplorerLoading v-if="loading" />
+    <ExplorerLoading v-if="loading" message="Loading from MusicBrainz…" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="releaseGroup">
       <header class="mb-6">

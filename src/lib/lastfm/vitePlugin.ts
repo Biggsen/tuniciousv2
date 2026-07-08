@@ -4,6 +4,7 @@ import type { Plugin } from 'vite'
 import {
   buildLastfmAuthUrl,
   callLastfmApi,
+  callLastfmPublicApi,
   type LastfmServerConfig,
 } from './serverApi'
 
@@ -82,7 +83,7 @@ async function handleRequest(
       return
     }
 
-    const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo'])
+    const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo', 'track.getInfo'])
 
     if (subpath === 'public') {
       const method = body.method
@@ -99,8 +100,6 @@ async function handleRequest(
 
       const params: Record<string, string> = {
         method: trimmedMethod,
-        api_key: config.apiKey,
-        format: 'json',
       }
 
       for (const [key, value] of Object.entries(body)) {
@@ -108,7 +107,7 @@ async function handleRequest(
         params[key] = String(value)
       }
 
-      const data = await callLastfmApi(config, params)
+      const data = await callLastfmPublicApi(config, params)
       sendJson(res, 200, data)
       return
     }

@@ -7,7 +7,7 @@ import {
   loadPlaybackState,
   savePlaybackState,
 } from '@/lib/playback/persist'
-import { buildQueueFromAlbum, buildQueueFromPlaylist } from '@/lib/playback/queue'
+import { buildQueueFromAlbum, buildQueueFromPlaylist, shuffleResolvedQueueItems } from '@/lib/playback/queue'
 import { listPlaylistMembers } from '@/lib/playlist/firestore'
 import {
   onPaused,
@@ -162,6 +162,16 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   async function playFromPlaylist(members: PlaylistMember[], playlistId: string, uid: string) {
     await setQueueFromPlaylist(members, playlistId, uid)
+    return startPlayback(0)
+  }
+
+  async function playRandomFromPlaylist(
+    members: PlaylistMember[],
+    playlistId: string,
+    uid: string,
+  ) {
+    await setQueueFromPlaylist(members, playlistId, uid)
+    queue.value = shuffleResolvedQueueItems(queue.value)
     return startPlayback(0)
   }
 
@@ -376,6 +386,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     setQueueFromAlbum,
     startPlayback,
     playFromPlaylist,
+    playRandomFromPlaylist,
     playFromAlbum,
     playFromAlbumAtTrack,
     play,

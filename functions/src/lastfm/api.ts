@@ -39,6 +39,38 @@ export async function callLastfmApi(
   throw new Error('Last.fm API request failed')
 }
 
+export async function callLastfmPublicApi(
+  config: LastfmConfig,
+  params: Record<string, string>,
+  retries = 3,
+): Promise<Record<string, unknown>> {
+  const query = new URLSearchParams({
+    ...params,
+    api_key: config.apiKey,
+    format: 'json',
+  })
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const response = await fetch(`${LASTFM_API_URL}?${query}`)
+
+    if (response.status === 502 && attempt < retries - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+      continue
+    }
+
+    const data = (await response.json()) as Record<string, unknown>
+    if (!response.ok || data.error) {
+      throw new Error(
+        typeof data.message === 'string' ? data.message : `Last.fm API error (${data.error})`,
+      )
+    }
+
+    return data
+  }
+
+  throw new Error('Last.fm API request failed')
+}
+
 export async function getAuthToken(config: LastfmConfig): Promise<string> {
   const data = await callLastfmApi(config, {
     method: 'auth.getToken',

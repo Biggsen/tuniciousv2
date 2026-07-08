@@ -40,4 +40,22 @@ describe('isTracklistFullyAlignedByPosition', () => {
   it('returns false for empty comparison', () => {
     expect(isTracklistFullyAlignedByPosition([])).toBe(false)
   })
+
+  it('treats minor spelling drift as aligned', () => {
+    const rows = compareTracklists(
+      [csvTrack('Empatheivery', 1)],
+      [mbTrack('Empathievery')],
+    )
+    expect(rows[0]?.match).toBe('partial')
+    expect(isTracklistFullyAlignedByPosition(rows)).toBe(true)
+  })
+
+  it('treats bonus track suffix differences as aligned', () => {
+    const rows = compareTracklists(
+      [csvTrack('Kalimba - Bonus Track', 1)],
+      [mbTrack('Kalimba')],
+    )
+    expect(rows[0]?.match).toBe('exact')
+    expect(isTracklistFullyAlignedByPosition(rows)).toBe(true)
+  })
 })

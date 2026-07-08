@@ -1,15 +1,36 @@
 import {
+  collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
+  where,
+  writeBatch,
   type Timestamp,
 } from 'firebase/firestore'
 
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 import type { TrackYouTubeMapping, TrackYouTubeMappingDocument } from '@/types/youtube'
+
+const FIRESTORE_IN_QUERY_LIMIT = 30
+const FIRESTORE_BATCH_LIMIT = 500
+
+function youtubeMappingsCollection(uid: string) {
+  return collection(getFirestoreDb(), 'users', uid, 'youtube_mappings')
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
 
 function toMapping(trackId: string, data: TrackYouTubeMappingDocument): TrackYouTubeMapping {
   return {
@@ -40,15 +61,17 @@ export async function getMappingsForTrackIds(
   trackIds: string[],
 ): Promise<Map<string, TrackYouTubeMapping>> {
   const map = new Map<string, TrackYouTubeMapping>()
+  const uniqueIds = [...new Set(trackIds)]
+  if (uniqueIds.length === 0) return map
 
-  await Promise.all(
-    trackIds.map(async (trackId) => {
-      const mapping = await getTrackMapping(uid, trackId)
-      if (mapping) {
-        map.set(trackId, mapping)
-      }
-    }),
-  )
+  const col = youtubeMappingsCollection(uid)
+
+  for (const chunk of chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)) {
+    const snapshot = await getDocs(query(col, where(documentId(), 'in', chunk)))
+    for (const docSnap of snapshot.docs) {
+      map.set(docSnap.id, toMapping(docSnap.id, docSnap.data() as TrackYouTubeMappingDocument))
+    }
+  }
 
   return map
 }
@@ -89,7 +112,18 @@ export async function deleteTrackMapping(uid: string, trackId: string): Promise<
 }
 
 export async function deleteMappingsForTrackIds(uid: string, trackIds: string[]): Promise<void> {
-  await Promise.all(trackIds.map((trackId) => deleteTrackMapping(uid, trackId)))
+  const uniqueIds = [...new Set(trackIds)]
+  if (uniqueIds.length === 0) return
+
+  const db = getFirestoreDb()
+
+  for (const chunk of chunkArray(uniqueIds, FIRESTORE_BATCH_LIMIT)) {
+    const batch = writeBatch(db)
+    for (const trackId of chunk) {
+      batch.delete(doc(db, 'users', uid, 'youtube_mappings', trackId))
+    }
+    await batch.commit()
+  }
 }
 
 export async function countResolvedTracks(

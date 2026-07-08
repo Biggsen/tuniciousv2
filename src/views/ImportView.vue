@@ -179,7 +179,7 @@ function handleFiles(event: Event) {
         v-if="automationEnabled"
         class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
       >
-        Automation running — 100% ISRC matches are imported automatically; otherwise the queue advances to the next album.
+        Automation running — 100% ISRC or title-search matches are imported automatically; otherwise the queue advances to the next album.
       </p>
 
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

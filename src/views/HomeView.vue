@@ -205,7 +205,7 @@ onMounted(async () => {
         </RouterLink>
       </div>
 
-      <ExplorerLoading v-if="loading" message="Loading recent listens…" />
+      <ExplorerLoading v-if="loading" />
       <ExplorerError v-else-if="error" :message="error" />
 
       <p v-else-if="!listens.length" class="text-sm text-text-muted">

@@ -56,7 +56,7 @@ watch(() => route.params.mbid, load)
       ]"
     />
 
-    <ExplorerLoading v-if="loading" />
+    <ExplorerLoading v-if="loading" message="Loading from MusicBrainz…" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="artist">
       <header class="mb-6">

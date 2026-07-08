@@ -7,12 +7,13 @@ import {
   buildAuthUrl,
   callAuthenticatedLastfm,
   callLastfmApi,
+  callLastfmPublicApi,
   getAuthSession,
   getAuthToken,
   type LastfmConfig,
 } from './lastfm/api'
 
-const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo'])
+const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo', 'track.getInfo'])
 
 initializeApp()
 
@@ -109,18 +110,14 @@ export const lastfmProxy = onRequest({ cors: true }, async (req, res) => {
         return
       }
 
-      const params: Record<string, string> = {
-        method: trimmedMethod,
-        api_key: config.apiKey,
-        format: 'json',
-      }
+      const params: Record<string, string> = { method: trimmedMethod }
       const body = req.body as Record<string, unknown>
       for (const [key, value] of Object.entries(body)) {
         if (key === 'method' || value === undefined || value === null) continue
         params[key] = String(value)
       }
 
-      const data = await callLastfmApi(config, params)
+      const data = await callLastfmPublicApi(config, params)
       sendJson(res, 200, data)
       return
     }

@@ -29,6 +29,20 @@ const route = useRoute()
 const auth = useAuthStore()
 const playback = usePlaybackStore()
 
+const backLink = computed(() => {
+  const playlistId = route.query.playlistId
+  if (typeof playlistId === 'string' && playlistId) {
+    return {
+      to: { name: 'playlist-detail', params: { id: playlistId } },
+      label: 'Playlist',
+    }
+  }
+  return {
+    to: { name: 'library' },
+    label: 'Library',
+  }
+})
+
 const album = ref<Album | null>(null)
 const primaryArtist = ref<Artist | null>(null)
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
@@ -292,10 +306,10 @@ onMounted(load)
     <ExplorerError v-else-if="error && !album" :message="error" />
     <template v-else-if="album && resolveContext">
       <RouterLink
-        :to="{ name: 'library' }"
+        :to="backLink.to"
         class="mb-4 inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-text"
       >
-        ← Library
+        ← {{ backLink.label }}
       </RouterLink>
 
       <header class="mb-6 flex gap-6">

@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  documentId,
   getDoc,
   getDocs,
   increment,
@@ -10,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 
 import { getFirestoreDb } from '@/lib/firebase'
@@ -35,6 +37,20 @@ function trackListensCollection(uid: string) {
 
 function trackStatsDoc(uid: string, trackId: string) {
   return doc(getFirestoreDb(), 'users', uid, 'track_stats', trackId)
+}
+
+function trackStatsCollection(uid: string) {
+  return collection(getFirestoreDb(), 'users', uid, 'track_stats')
+}
+
+const FIRESTORE_IN_QUERY_LIMIT = 30
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+  return chunks
 }
 
 function toPlaybackSession(id: string, data: PlaybackSessionDocument): PlaybackSession {
@@ -265,4 +281,24 @@ export async function getTrackPlayStats(
   const snapshot = await getDoc(trackStatsDoc(uid, trackId))
   if (!snapshot.exists()) return null
   return toTrackPlayStats(trackId, snapshot.data() as TrackPlayStatsDocument)
+}
+
+export async function getTrackPlayStatsMap(
+  uid: string,
+  trackIds: string[],
+): Promise<Map<string, TrackPlayStats>> {
+  const map = new Map<string, TrackPlayStats>()
+  const uniqueIds = [...new Set(trackIds)]
+  if (uniqueIds.length === 0) return map
+
+  const col = trackStatsCollection(uid)
+
+  for (const chunk of chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)) {
+    const snapshot = await getDocs(query(col, where(documentId(), 'in', chunk)))
+    for (const docSnap of snapshot.docs) {
+      map.set(docSnap.id, toTrackPlayStats(docSnap.id, docSnap.data() as TrackPlayStatsDocument))
+    }
+  }
+
+  return map
 }

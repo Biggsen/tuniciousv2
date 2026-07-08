@@ -141,16 +141,25 @@ export async function scrobbleTrack(
   )
 }
 
+export function parseUserTrackPlaycount(data: Record<string, unknown>): number {
+  const trackData = data.track as { userplaycount?: string | number } | undefined
+  const userPlaycount = trackData?.userplaycount
+  if (userPlaycount === undefined || userPlaycount === null || userPlaycount === '') {
+    return 0
+  }
+  return Number(userPlaycount)
+}
+
 export async function fetchTrackPlaycount(
-  sessionKey: string | undefined,
   artist: string,
   track: string,
+  username: string,
 ): Promise<number> {
-  const data = await callLastfmMethod(
-    'track.getInfo',
-    { artist, track },
-    sessionKey,
-  )
-  const playcount = (data.track as { playcount?: string | number } | undefined)?.playcount
-  return Number(playcount ?? 0)
+  const data = await callLastfmPublicMethod('track.getInfo', {
+    artist,
+    track,
+    username,
+    autocorrect: 1,
+  })
+  return parseUserTrackPlaycount(data)
 }

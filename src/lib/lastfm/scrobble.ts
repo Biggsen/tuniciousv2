@@ -12,12 +12,17 @@ import {
   syncTrackPlaycountFromLastfm,
 } from '@/lib/sessions/firestore'
 import { getUserProfile } from '@/lib/userProfile'
+import type { PlaylistMember } from '@/types/library'
 import type { PlaybackQueueItem } from '@/types/playback'
 
-async function getLastfmSession(uid: string): Promise<string | null> {
+async function getLastfmConnection(uid: string) {
   const profile = await getUserProfile(uid)
   if (!profile?.lastfm?.sessionKey) return null
-  return profile.lastfm.sessionKey
+  return profile.lastfm
+}
+
+async function getLastfmSession(uid: string): Promise<string | null> {
+  return (await getLastfmConnection(uid))?.sessionKey ?? null
 }
 
 export async function isLastfmConnected(uid: string): Promise<boolean> {
@@ -83,7 +88,16 @@ export async function handleListenFinalized(uid: string, listenId: string): Prom
       listen.trackLengthMs,
     )
     await markListenScrobbled(uid, listenId)
-    await syncPlaycountForTrack(uid, sessionKey, listen.trackId, artist, track)
+    const connection = await getLastfmConnection(uid)
+    if (connection?.username) {
+      await syncPlaycountForTrack(
+        uid,
+        connection.username,
+        listen.trackId,
+        artist,
+        track,
+      )
+    }
   } catch (error) {
     console.error('Last.fm scrobble failed', error)
   }
@@ -91,13 +105,13 @@ export async function handleListenFinalized(uid: string, listenId: string): Prom
 
 async function syncPlaycountForTrack(
   uid: string,
-  sessionKey: string,
+  username: string,
   trackId: string,
   artist: string,
   track: string,
 ): Promise<void> {
   try {
-    const playcount = await fetchTrackPlaycount(sessionKey, artist, track)
+    const playcount = await fetchTrackPlaycount(artist, track, username)
     await syncTrackPlaycountFromLastfm(uid, trackId, playcount)
   } catch (error) {
     console.error('Last.fm playcount sync failed', error)
@@ -105,8 +119,8 @@ async function syncPlaycountForTrack(
 }
 
 export async function refreshLibraryPlaycounts(uid: string): Promise<number> {
-  const sessionKey = await getLastfmSession(uid)
-  if (!sessionKey) return 0
+  const connection = await getLastfmConnection(uid)
+  if (!connection?.username) return 0
 
   const albums = await listAlbums(uid)
   let synced = 0
@@ -117,7 +131,34 @@ export async function refreshLibraryPlaycounts(uid: string): Promise<number> {
     for (const libraryTrack of album.tracks) {
       try {
         const track = normalizeForLastfm(libraryTrack.title)
-        const playcount = await fetchTrackPlaycount(sessionKey, artist, track)
+        const playcount = await fetchTrackPlaycount(artist, track, connection.username)
+        await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, playcount)
+        synced++
+      } catch {
+        // Skip tracks Last.fm cannot match.
+      }
+    }
+  }
+
+  return synced
+}
+
+export async function refreshPlaylistPlaycounts(
+  uid: string,
+  members: PlaylistMember[],
+): Promise<number> {
+  const connection = await getLastfmConnection(uid)
+  if (!connection?.username) return 0
+
+  let synced = 0
+
+  for (const member of members) {
+    const artist = await resolveScrobbleArtist(uid, member.album.id, member.album.artist)
+
+    for (const libraryTrack of member.album.tracks) {
+      try {
+        const track = normalizeForLastfm(libraryTrack.title)
+        const playcount = await fetchTrackPlaycount(artist, track, connection.username)
         await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, playcount)
         synced++
       } catch {
