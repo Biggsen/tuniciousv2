@@ -11,7 +11,7 @@ function release(id: string, country?: string, date?: string): MbReleaseRef {
     status: 'Official',
     country,
     date,
-    'artist-credit': [{ name: "'68" }],
+    'artist-credit': [{ name: "'68", artist: { id: 'artist-68', name: "'68" } }],
     'release-group': {
       id: 'rg-1',
       title: 'Two Parts Viper',

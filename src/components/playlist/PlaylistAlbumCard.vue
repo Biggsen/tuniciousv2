@@ -6,6 +6,7 @@ import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import type { PlaylistMember } from '@/types/library'
+import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
@@ -17,12 +18,17 @@ const props = defineProps<{
   showTracklist: boolean
   canMoveUp: boolean
   canMoveDown: boolean
+  workflowActions?: WorkflowAction[]
+  canUndoWorkflow?: boolean
+  workflowBlockedReason?: string
 }>()
 
 const emit = defineEmits<{
   remove: []
   moveUp: []
   moveDown: []
+  workflowAction: [action: WorkflowAction]
+  undoWorkflow: []
 }>()
 
 const menuOpen = ref(false)
@@ -48,6 +54,12 @@ function isTrackResolved(trackId: string): boolean {
 
 function closeMenu() {
   menuOpen.value = false
+}
+
+function actionLabel(action: WorkflowAction): string {
+  if (action === 'start') return 'Start'
+  if (action === 'yes') return 'Yes'
+  return 'No'
 }
 </script>
 
@@ -160,6 +172,35 @@ function closeMenu() {
       </div>
 
       <div class="mt-auto">
+        <div
+          v-if="workflowActions?.length || canUndoWorkflow || workflowBlockedReason"
+          class="mb-3 rounded-lg border border-border bg-surface px-3 py-2"
+        >
+          <p class="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">Workflow</p>
+          <p v-if="workflowBlockedReason" class="mb-2 text-xs text-amber-300">
+            {{ workflowBlockedReason }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="action in workflowActions"
+              :key="action"
+              type="button"
+              class="rounded-md border border-border px-2.5 py-1 text-xs transition-colors hover:bg-white/5"
+              @click="emit('workflowAction', action)"
+            >
+              {{ actionLabel(action) }}
+            </button>
+            <button
+              v-if="canUndoWorkflow"
+              type="button"
+              class="rounded-md border border-border px-2.5 py-1 text-xs transition-colors hover:bg-white/5"
+              @click="emit('undoWorkflow')"
+            >
+              Undo
+            </button>
+          </div>
+        </div>
+
         <div class="mb-1 flex items-center justify-between text-xs text-text-muted">
           <span>Resolved tracks</span>
           <span>{{ resolvedPercent }}%</span>

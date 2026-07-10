@@ -8,19 +8,26 @@ import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { isLastfmConnected, refreshPlaylistPlaycounts } from '@/lib/lastfm/scrobble'
 import {
-  addAlbumToPlaylist,
   getPlaylistById,
   listPlaylistMembers,
-  removeAlbumFromPlaylist,
   reorderPlaylistMember,
   updatePlaylist,
 } from '@/lib/playlist/firestore'
+import {
+  applyWorkflowAction,
+  handleStagePlaylistAdd,
+  handleStagePlaylistRemoval,
+  listPlaylistWorkflowStates,
+  undoLastWorkflowStep,
+  type PlaylistWorkflowRowState,
+} from '@/lib/pipeline/service'
 import { sortPlaylistMembers, type PlaylistSortField } from '@/lib/playlist/sortMembers'
 import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { useAuthStore } from '@/stores/auth'
 import { usePlaybackStore } from '@/stores/playback'
 import type { Playlist, PlaylistMember } from '@/types/library'
+import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
@@ -47,6 +54,9 @@ const showTracklist = ref(true)
 const sortField = ref<PlaylistSortField>('date-added')
 const sortAscending = ref(false)
 const lastfmConnected = ref(false)
+const workflowEnabled = ref(false)
+const workflowBlockedReason = ref<string | null>(null)
+const workflowByAlbumId = ref<Map<string, PlaylistWorkflowRowState>>(new Map())
 
 const playlistId = () => String(route.params.id)
 
@@ -80,6 +90,10 @@ async function loadTrackData() {
   playStats.value = loadedStats
 }
 
+function workflowStateForAlbum(albumId: string): PlaylistWorkflowRowState | undefined {
+  return workflowByAlbumId.value.get(albumId)
+}
+
 async function load({ showFullPageLoader = true } = {}) {
   if (!auth.user) return
 
@@ -101,6 +115,14 @@ async function load({ showFullPageLoader = true } = {}) {
     }
     editingName.value = false
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    const workflowState = await listPlaylistWorkflowStates(
+      auth.user.uid,
+      playlistId(),
+      members.value.map((member) => member.album.id),
+    )
+    workflowEnabled.value = workflowState.enabled
+    workflowBlockedReason.value = workflowState.blockedReason ?? null
+    workflowByAlbumId.value = workflowState.byAlbumId
     await loadTrackData()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load playlist'
@@ -114,8 +136,16 @@ async function handleAdd(albumId: string) {
   if (!auth.user) return
 
   try {
-    await addAlbumToPlaylist(auth.user.uid, playlistId(), albumId)
+    await handleStagePlaylistAdd(auth.user.uid, { playlistId: playlistId(), albumId })
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    const workflowState = await listPlaylistWorkflowStates(
+      auth.user.uid,
+      playlistId(),
+      members.value.map((member) => member.album.id),
+    )
+    workflowEnabled.value = workflowState.enabled
+    workflowBlockedReason.value = workflowState.blockedReason ?? null
+    workflowByAlbumId.value = workflowState.byAlbumId
     await loadTrackData()
     playlist.value = await getPlaylistById(auth.user.uid, playlistId())
   } catch (err) {
@@ -127,11 +157,48 @@ async function handleRemove(albumId: string) {
   if (!auth.user) return
 
   try {
-    await removeAlbumFromPlaylist(auth.user.uid, playlistId(), albumId)
+    await handleStagePlaylistRemoval(auth.user.uid, { playlistId: playlistId(), albumId })
     members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    const workflowState = await listPlaylistWorkflowStates(
+      auth.user.uid,
+      playlistId(),
+      members.value.map((member) => member.album.id),
+    )
+    workflowEnabled.value = workflowState.enabled
+    workflowBlockedReason.value = workflowState.blockedReason ?? null
+    workflowByAlbumId.value = workflowState.byAlbumId
     await loadTrackData()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to remove album'
+  }
+}
+
+async function handleWorkflowAction(albumId: string, action: WorkflowAction) {
+  if (!auth.user) return
+  error.value = null
+  try {
+    await applyWorkflowAction(auth.user.uid, {
+      playlistId: playlistId(),
+      albumId,
+      action,
+    })
+    await load({ showFullPageLoader: false })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to apply workflow action'
+  }
+}
+
+async function handleUndoWorkflow(albumId: string) {
+  if (!auth.user) return
+  error.value = null
+  try {
+    await undoLastWorkflowStep(auth.user.uid, {
+      playlistId: playlistId(),
+      albumId,
+    })
+    await load({ showFullPageLoader: false })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to undo workflow step'
   }
 }
 
@@ -393,6 +460,9 @@ watch(() => route.params.id, () => load())
       <p v-if="refreshMessage" class="mb-4 text-sm text-emerald-300">{{ refreshMessage }}</p>
       <p v-if="playError" class="mb-4 text-sm text-red-300">{{ playError }}</p>
       <p v-if="error" class="mb-4 text-sm text-red-300">{{ error }}</p>
+      <p v-if="workflowEnabled && workflowBlockedReason" class="mb-4 text-sm text-amber-300">
+        {{ workflowBlockedReason }}
+      </p>
 
       <p v-if="!members.length" class="text-sm text-text-muted">
         This playlist is empty. Add albums from your
@@ -413,9 +483,14 @@ watch(() => route.params.id, () => load())
             :show-tracklist="showTracklist"
             :can-move-up="memberPosition(member.album.id) > 0"
             :can-move-down="memberPosition(member.album.id) < members.length - 1"
+            :workflow-actions="workflowStateForAlbum(member.album.id)?.actions ?? []"
+            :can-undo-workflow="workflowStateForAlbum(member.album.id)?.canUndo ?? false"
+            :workflow-blocked-reason="workflowStateForAlbum(member.album.id)?.blockedReason"
             @remove="handleRemove(member.album.id)"
             @move-up="handleReorder(member.album.id, 'up')"
             @move-down="handleReorder(member.album.id, 'down')"
+            @workflow-action="handleWorkflowAction(member.album.id, $event)"
+            @undo-workflow="handleUndoWorkflow(member.album.id)"
           />
         </li>
       </ul>

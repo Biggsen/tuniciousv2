@@ -9,6 +9,7 @@ function libraryAlbum(title: string, artist: string): Album {
     id: `${title}-id`,
     title,
     artist,
+    artistId: 'artist-1',
     artistIds: [],
     tracks: [],
     releaseMbid: 'mbid',

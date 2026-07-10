@@ -9,7 +9,8 @@ export async function setArtistImageUrls(
   artistId: string,
   urls: ArtistImageUrls,
 ): Promise<void> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  void uid
+  const ref = doc(getFirestoreDb(), 'artists', artistId)
   await updateDoc(
     ref,
     omitUndefined({
@@ -20,7 +21,8 @@ export async function setArtistImageUrls(
 }
 
 export async function clearArtistImageUrls(uid: string, artistId: string): Promise<void> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  void uid
+  const ref = doc(getFirestoreDb(), 'artists', artistId)
   await updateDoc(ref, {
     imageUrlSmall: deleteField(),
     imageUrlLarge: deleteField(),

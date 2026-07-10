@@ -21,8 +21,16 @@ import {
 import { normalizeArtistName } from '@/lib/artist/normalize'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
-import type { Artist, ArtistDocument } from '@/types/library'
+import type { Artist, ArtistDocument, ArtistPrefsDocument } from '@/types/library'
 import type { MbArtistCredit } from '@/lib/musicbrainz/types'
+
+function artistsCollection() {
+  return collection(getFirestoreDb(), 'artists')
+}
+
+function artistPrefsCollection(uid: string) {
+  return collection(getFirestoreDb(), 'users', uid, 'artist_prefs')
+}
 
 function toArtist(id: string, data: ArtistDocument): Artist {
   return {
@@ -30,46 +38,51 @@ function toArtist(id: string, data: ArtistDocument): Artist {
     name: data.name,
     sortName: data.sortName,
     artistMbid: data.artistMbid,
-    scrobbleName: data.scrobbleName,
     nameLower: data.nameLower,
     imageUrlSmall: data.imageUrlSmall,
     imageUrlLarge: data.imageUrlLarge,
-    preferredYouTubeChannelId: data.preferredYouTubeChannelId,
-    preferredYouTubeChannelTitle: data.preferredYouTubeChannelTitle,
     importedAt: data.importedAt.toDate(),
   }
 }
 
-function artistsCollection(uid: string) {
-  return collection(getFirestoreDb(), 'users', uid, 'artists')
+async function getArtistPrefs(uid: string, artistId: string): Promise<ArtistPrefsDocument | null> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artist_prefs', artistId)
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) return null
+  return snapshot.data() as ArtistPrefsDocument
 }
 
-async function findArtistByMbid(uid: string, artistMbid: string): Promise<Artist | null> {
-  const snapshot = await getDocs(
-    query(artistsCollection(uid), where('artistMbid', '==', artistMbid)),
-  )
+function withPrefs(artist: Artist, prefs: ArtistPrefsDocument | null): Artist {
+  return {
+    ...artist,
+    scrobbleName: prefs?.scrobbleName,
+    preferredYouTubeChannelId: prefs?.preferredYouTubeChannelId,
+    preferredYouTubeChannelTitle: prefs?.preferredYouTubeChannelTitle,
+  }
+}
+
+async function findArtistByMbid(artistMbid: string): Promise<Artist | null> {
+  const snapshot = await getDocs(query(artistsCollection(), where('artistMbid', '==', artistMbid)))
   if (snapshot.empty) return null
   const docSnap = snapshot.docs[0]
   return toArtist(docSnap.id, docSnap.data() as ArtistDocument)
 }
 
-async function findArtistByNameLower(uid: string, nameLower: string): Promise<Artist | null> {
-  const snapshot = await getDocs(
-    query(artistsCollection(uid), where('nameLower', '==', nameLower)),
-  )
+async function findArtistByNameLower(nameLower: string): Promise<Artist | null> {
+  const snapshot = await getDocs(query(artistsCollection(), where('nameLower', '==', nameLower)))
   if (snapshot.empty) return null
   const docSnap = snapshot.docs[0]
   return toArtist(docSnap.id, docSnap.data() as ArtistDocument)
 }
 
-async function findOrCreateArtist(uid: string, seed: ArtistSeedInput): Promise<Artist> {
+async function findOrCreateArtist(seed: ArtistSeedInput): Promise<Artist> {
   if (seed.artistMbid) {
-    const byMbid = await findArtistByMbid(uid, seed.artistMbid)
+    const byMbid = await findArtistByMbid(seed.artistMbid)
     if (byMbid) return byMbid
   }
 
   const nameLower = normalizeArtistName(seed.name)
-  const byName = await findArtistByNameLower(uid, nameLower)
+  const byName = await findArtistByNameLower(nameLower)
   if (byName) return byName
 
   const id = crypto.randomUUID()
@@ -81,7 +94,7 @@ async function findOrCreateArtist(uid: string, seed: ArtistSeedInput): Promise<A
     nameLower,
   }
 
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', id)
+  const ref = doc(getFirestoreDb(), 'artists', id)
   await setDoc(
     ref,
     omitUndefined({
@@ -103,6 +116,7 @@ export async function findOrCreateArtistsFromCredits(
   uid: string,
   credits: MbArtistCredit[] | undefined,
 ): Promise<Artist[]> {
+  void uid
   const seeds = artistSeedsFromCredits(credits)
   const seen = new Set<string>()
   const artists: Artist[] = []
@@ -111,24 +125,33 @@ export async function findOrCreateArtistsFromCredits(
     const key = artistDedupeKey(seed)
     if (seen.has(key)) continue
     seen.add(key)
-    artists.push(await findOrCreateArtist(uid, seed))
+    artists.push(await findOrCreateArtist(seed))
   }
 
   return artists
 }
 
 export async function getArtistById(uid: string, artistId: string): Promise<Artist | null> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  const ref = doc(getFirestoreDb(), 'artists', artistId)
   const snapshot = await getDoc(ref)
   if (!snapshot.exists()) return null
-  return toArtist(snapshot.id, snapshot.data() as ArtistDocument)
+  const artist = toArtist(snapshot.id, snapshot.data() as ArtistDocument)
+  const prefs = await getArtistPrefs(uid, artistId)
+  return withPrefs(artist, prefs)
 }
 
 export async function listArtists(uid: string): Promise<Artist[]> {
-  const snapshot = await getDocs(artistsCollection(uid))
-  return snapshot.docs
+  const snapshot = await getDocs(artistsCollection())
+  const base = snapshot.docs
     .map((docSnap) => toArtist(docSnap.id, docSnap.data() as ArtistDocument))
     .sort((a, b) => a.name.localeCompare(b.name))
+
+  const prefsSnapshot = await getDocs(artistPrefsCollection(uid))
+  const prefsByArtistId = new Map(
+    prefsSnapshot.docs.map((docSnap) => [docSnap.id, docSnap.data() as ArtistPrefsDocument]),
+  )
+
+  return base.map((artist) => withPrefs(artist, prefsByArtistId.get(artist.id) ?? null))
 }
 
 export async function setArtistPreferredYouTubeChannel(
@@ -136,21 +159,22 @@ export async function setArtistPreferredYouTubeChannel(
   artistId: string,
   channel: { channelId: string; channelTitle: string },
 ): Promise<Artist> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
-  await updateDoc(
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artist_prefs', artistId)
+  await setDoc(
     ref,
     omitUndefined({
+      artistId,
       preferredYouTubeChannelId: channel.channelId,
       preferredYouTubeChannelTitle: channel.channelTitle,
     }),
+    { merge: true },
   )
 
-  const updated = await getDoc(ref)
-  if (!updated.exists()) {
+  const updated = await getArtistById(uid, artistId)
+  if (!updated) {
     throw new Error('Artist not found')
   }
-
-  return toArtist(updated.id, updated.data() as ArtistDocument)
+  return updated
 }
 
 export async function setArtistScrobbleName(
@@ -158,32 +182,33 @@ export async function setArtistScrobbleName(
   artistId: string,
   scrobbleName: string,
 ): Promise<Artist> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artist_prefs', artistId)
   const trimmed = scrobbleName.trim()
-  await updateDoc(
+  await setDoc(
     ref,
-    trimmed ? { scrobbleName: trimmed } : { scrobbleName: deleteField() },
+    trimmed
+      ? { artistId, scrobbleName: trimmed }
+      : { artistId, scrobbleName: deleteField() },
+    { merge: true },
   )
 
-  const updated = await getDoc(ref)
-  if (!updated.exists()) {
+  const updated = await getArtistById(uid, artistId)
+  if (!updated) {
     throw new Error('Artist not found')
   }
-
-  return toArtist(updated.id, updated.data() as ArtistDocument)
+  return updated
 }
 
 export async function clearArtistPreferredYouTubeChannel(uid: string, artistId: string): Promise<Artist> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'artists', artistId)
+  const ref = doc(getFirestoreDb(), 'users', uid, 'artist_prefs', artistId)
   await updateDoc(ref, {
     preferredYouTubeChannelId: deleteField(),
     preferredYouTubeChannelTitle: deleteField(),
   })
 
-  const updated = await getDoc(ref)
-  if (!updated.exists()) {
+  const updated = await getArtistById(uid, artistId)
+  if (!updated) {
     throw new Error('Artist not found')
   }
-
-  return toArtist(updated.id, updated.data() as ArtistDocument)
+  return updated
 }

@@ -83,6 +83,46 @@ export interface AlbumDocument {
   importedAt: Timestamp
 }
 
+/** Per-user relationship and state for a canonical album. */
+export interface AlbumEntry {
+  albumId: string
+  createdAt: Date
+  updatedAt: Date
+  excludedTrackIds?: string[]
+  rating?: StarRating
+  ratingSource?: RatingSource
+  ratingSubmittedPipelineId?: string
+  ratingBeforeSubmission?: StarRating
+  ratedAt?: Date
+}
+
+export interface AlbumEntryDocument {
+  albumId: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  excludedTrackIds?: string[]
+  rating?: StarRating
+  ratingSource?: RatingSource
+  ratingSubmittedPipelineId?: string
+  ratingBeforeSubmission?: StarRating
+  ratedAt?: Timestamp
+}
+
+/** Per-user preferences for a canonical artist. */
+export interface ArtistPrefs {
+  artistId: string
+  scrobbleName?: string
+  preferredYouTubeChannelId?: string
+  preferredYouTubeChannelTitle?: string
+}
+
+export interface ArtistPrefsDocument {
+  artistId: string
+  scrobbleName?: string
+  preferredYouTubeChannelId?: string
+  preferredYouTubeChannelTitle?: string
+}
+
 export interface AlbumImportInput {
   album: Omit<Album, 'importedAt'>
   artists: Omit<Artist, 'importedAt'>[]

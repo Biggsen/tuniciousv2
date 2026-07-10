@@ -19,7 +19,7 @@ function csvTrack(title: string, trackNumber: number): StagedTrack {
 }
 
 function mbTrack(title: string): MbTrack {
-  return { id: title, title, length: 180000 }
+  return { id: title, number: '1', title, length: 180000 }
 }
 
 describe('isTracklistFullyAlignedByPosition', () => {

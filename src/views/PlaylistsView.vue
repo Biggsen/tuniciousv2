@@ -33,12 +33,14 @@ const error = ref<string | null>(null)
 const creating = ref(false)
 const newName = ref('')
 const showSetup = ref(false)
+const funnelOpenState = ref<Record<string, boolean>>({})
 const deletingPipelineId = ref<string | null>(null)
 const deletingPlaylistId = ref<string | null>(null)
 const deleteStagePlaylists = ref(false)
 
 const pipelinePendingDelete = ref<Pipeline | null>(null)
 const playlistPendingDelete = ref<Playlist | null>(null)
+const FUNNEL_OPEN_STATE_STORAGE_KEY = 'tunicious.playlists.funnelOpenState.v1'
 
 const pipelineDeleteStageCount = computed(() => {
   if (!pipelinePendingDelete.value) return 0
@@ -85,6 +87,63 @@ function formatPlaylistStats(playlistId: string): string {
   return `${stats.albumCount} ${albumLabel} · ${stats.trackCount} ${trackLabel}`
 }
 
+function loadFunnelOpenStateFromStorage(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(FUNNEL_OPEN_STATE_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return {}
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, boolean] =>
+          typeof entry[0] === 'string' && typeof entry[1] === 'boolean',
+      ),
+    )
+  } catch {
+    return {}
+  }
+}
+
+function persistFunnelOpenState() {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(FUNNEL_OPEN_STATE_STORAGE_KEY, JSON.stringify(funnelOpenState.value))
+}
+
+function hydrateFunnelOpenStateForPipelines(pipelines: Pipeline[]) {
+  const previous = funnelOpenState.value
+  const next: Record<string, boolean> = {}
+  for (const pipeline of pipelines) {
+    // Default closed unless user has explicitly opened it before.
+    next[pipeline.id] = previous[pipeline.id] ?? false
+  }
+  funnelOpenState.value = next
+  persistFunnelOpenState()
+}
+
+function isFunnelOpen(pipelineId: string): boolean {
+  return funnelOpenState.value[pipelineId] ?? false
+}
+
+function handleFunnelToggle(pipelineId: string, event: Event) {
+  const details = event.currentTarget as HTMLDetailsElement | null
+  if (!details) return
+  funnelOpenState.value = {
+    ...funnelOpenState.value,
+    [pipelineId]: details.open,
+  }
+  persistFunnelOpenState()
+}
+
+function setAllFunnelsOpen(open: boolean) {
+  const next: Record<string, boolean> = {}
+  for (const pipeline of evaluationPipelines.value) {
+    next[pipeline.id] = open
+  }
+  funnelOpenState.value = next
+  persistFunnelOpenState()
+}
+
 async function load() {
   if (!auth.user) return
 
@@ -105,6 +164,7 @@ async function load() {
     playlists.value = loadedPlaylists
     evaluationPipelines.value = pipelines
     pipelineStages.value = new Map(stagesEntries)
+    hydrateFunnelOpenStateForPipelines(pipelines)
     playlistStats.value = await getPlaylistStatsMap(
       auth.user.uid,
       loadedPlaylists.map((playlist) => playlist.id),
@@ -197,7 +257,10 @@ async function handleSetupComplete() {
   await load()
 }
 
-onMounted(load)
+onMounted(() => {
+  funnelOpenState.value = loadFunnelOpenStateFromStorage()
+  load()
+})
 </script>
 
 <template>
@@ -245,8 +308,29 @@ onMounted(load)
     <ExplorerError v-else-if="error" :message="error" class="mb-4" />
 
     <template v-else>
+      <div v-if="pipelineGroups.length" class="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+          @click="setAllFunnelsOpen(true)"
+        >
+          Expand all
+        </button>
+        <button
+          type="button"
+          class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+          @click="setAllFunnelsOpen(false)"
+        >
+          Collapse all
+        </button>
+      </div>
+
       <section v-for="group in pipelineGroups" :key="group.pipeline.id" class="mb-6">
-        <details open class="rounded-xl border border-emerald-500/25 bg-emerald-500/5">
+        <details
+          :open="isFunnelOpen(group.pipeline.id)"
+          class="rounded-xl border border-emerald-500/25 bg-emerald-500/5"
+          @toggle="handleFunnelToggle(group.pipeline.id, $event)"
+        >
           <summary
             class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-medium text-emerald-100 marker:content-none [&::-webkit-details-marker]:hidden"
           >

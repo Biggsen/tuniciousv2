@@ -9,20 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "track_listens",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "startedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "playback_sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "startedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "stage_memberships",
       "queryScope": "COLLECTION",
       "fields": [
@@ -48,31 +34,19 @@
       ]
     },
     {
-      "collectionGroup": "stages",
+      "collectionGroup": "album_picker",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "pipelineId", "order": "ASCENDING" }
+        { "fieldPath": "titleLower", "order": "ASCENDING" },
+        { "fieldPath": "id", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "stages",
+      "collectionGroup": "album_picker",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "playlistId", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "pipelines",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "templateId", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "playlists",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pipelineId", "order": "ASCENDING" }
+        { "fieldPath": "artistLower", "order": "ASCENDING" },
+        { "fieldPath": "id", "order": "ASCENDING" }
       ]
     }
   ],

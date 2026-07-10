@@ -72,6 +72,10 @@ const router = createRouter({
         },
         {
           path: 'library/:id',
+          redirect: (to) => ({ name: 'album-detail', params: { id: to.params.id } }),
+        },
+        {
+          path: 'album/:id',
           name: 'album-detail',
           component: () => import('@/views/AlbumDetailView.vue'),
           meta: { title: 'Album' },

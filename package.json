@@ -8,7 +8,9 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "backup:firestore": "node scripts/backup-firestore.mjs",
+    "migrate:catalog": "node scripts/migrate-catalog.mjs"
   },
   "dependencies": {
     "firebase": "^11.6.0",

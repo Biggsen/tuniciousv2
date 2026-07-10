@@ -1,7 +1,7 @@
 import { deleteField, doc, updateDoc } from 'firebase/firestore'
 
 import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
-import { listAlbums } from '@/lib/album/firestore'
+import { listAlbums, upsertAlbumPickerItem } from '@/lib/album/firestore'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 
@@ -50,7 +50,7 @@ export async function refreshAlbumCoverUrls(uid: string): Promise<RefreshCoverUr
       } else if (coversMatch(album, covers)) {
         result.unchanged++
       } else {
-        const ref = doc(getFirestoreDb(), 'users', uid, 'albums', album.id)
+        const ref = doc(getFirestoreDb(), 'albums', album.id)
         await updateDoc(
           ref,
           omitUndefined({
@@ -59,6 +59,10 @@ export async function refreshAlbumCoverUrls(uid: string): Promise<RefreshCoverUr
             coverUrl: deleteField(),
           }),
         )
+        await upsertAlbumPickerItem(uid, {
+          ...album,
+          coverUrlSmall: covers.small,
+        })
         result.updated++
       }
     } catch {

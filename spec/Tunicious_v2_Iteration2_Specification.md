@@ -6,6 +6,8 @@
 
 This document is **self-contained** for iteration 2 implementation. Pipeline concepts were sketched in iteration 1 Appendix A; this spec supersedes that appendix for build purposes.
 
+> Note: Catalog architecture has since moved toward global lbums/rtists with per-user lbum_entries overlays and /album/:id routing.
+
 ### Build progress
 
 | Phase | Status | Summary |
@@ -13,7 +15,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | 0 — Data model & services | Complete | Pipeline, Stage, StageMembership, Album rating fields |
 | 1 — Evaluation template bootstrap | Complete | Set up funnel; Evaluation + Filter templates; map stages to existing or new playlists |
 | 2 — Playlist grouping UI | Complete | Collapsible groups; delete funnel with confirm; flat list for other playlists |
-| 3 — Pipeline workflow engine | Not started | Enter, move, yes/no, start, undo, playlist sync |
+| 3 — Pipeline workflow engine | Complete | Stage playlist Start/Yes/No/Undo with membership + playlist sync; evaluation legacy rows guarded until migration |
 | 4 — Rating & submission | Not started | Manual stars, submission, auto-rate, display states |
 | 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |
 

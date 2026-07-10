@@ -21,7 +21,8 @@ const FIRESTORE_IN_QUERY_LIMIT = 30
 const FIRESTORE_BATCH_LIMIT = 500
 
 function youtubeMappingsCollection(uid: string) {
-  return collection(getFirestoreDb(), 'users', uid, 'youtube_mappings')
+  void uid
+  return collection(getFirestoreDb(), 'youtube_mappings')
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -50,7 +51,8 @@ export async function getTrackMapping(
   uid: string,
   trackId: string,
 ): Promise<TrackYouTubeMapping | null> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'youtube_mappings', trackId)
+  void uid
+  const ref = doc(getFirestoreDb(), 'youtube_mappings', trackId)
   const snapshot = await getDoc(ref)
   if (!snapshot.exists()) return null
   return toMapping(trackId, snapshot.data() as TrackYouTubeMappingDocument)
@@ -80,7 +82,8 @@ export async function saveTrackMapping(
   uid: string,
   mapping: Omit<TrackYouTubeMapping, 'resolvedAt'> & { resolvedAt?: Date },
 ): Promise<TrackYouTubeMapping> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'youtube_mappings', mapping.trackId)
+  void uid
+  const ref = doc(getFirestoreDb(), 'youtube_mappings', mapping.trackId)
 
   await setDoc(
     ref,
@@ -107,11 +110,13 @@ export async function saveTrackMapping(
 }
 
 export async function deleteTrackMapping(uid: string, trackId: string): Promise<void> {
-  const ref = doc(getFirestoreDb(), 'users', uid, 'youtube_mappings', trackId)
+  void uid
+  const ref = doc(getFirestoreDb(), 'youtube_mappings', trackId)
   await deleteDoc(ref)
 }
 
 export async function deleteMappingsForTrackIds(uid: string, trackIds: string[]): Promise<void> {
+  void uid
   const uniqueIds = [...new Set(trackIds)]
   if (uniqueIds.length === 0) return
 
@@ -120,7 +125,7 @@ export async function deleteMappingsForTrackIds(uid: string, trackIds: string[])
   for (const chunk of chunkArray(uniqueIds, FIRESTORE_BATCH_LIMIT)) {
     const batch = writeBatch(db)
     for (const trackId of chunk) {
-      batch.delete(doc(db, 'users', uid, 'youtube_mappings', trackId))
+      batch.delete(doc(db, 'youtube_mappings', trackId))
     }
     await batch.commit()
   }

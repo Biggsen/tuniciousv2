@@ -1,16 +1,39 @@
 rules_version = '2';
 
-// All user data is scoped under users/{uid}. Clients may only access their own subtree.
-// Note: Last.fm session keys live on the user profile document in v1; only the
-// authenticated owner can read them. Signed API calls go through Cloud Functions.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthed() && request.auth.uid == userId;
+    }
+
+    // Shared canonical catalog.
+    match /albums/{albumId} {
+      allow read, write: if isAuthed();
+    }
+
+    match /artists/{artistId} {
+      allow read, write: if isAuthed();
+    }
+
+    match /youtube_mappings/{trackId} {
+      allow read, write: if isAuthed();
+    }
+
+    match /album_picker/{albumId} {
+      allow read, write: if isAuthed();
+    }
+
+    // Personal overlays and user-scoped data.
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
   }
 }
