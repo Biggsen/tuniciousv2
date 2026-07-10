@@ -117,7 +117,7 @@ async function loadGlobalCaches(db, artistByMbid, artistByNameLower, albumByRele
   }
 }
 
-async function ensureCanonicalArtist(db, artist, artistDocId, artistByMbid, artistByNameLower) {
+async function ensureCanonicalArtist(db, artist, importedBy, artistByMbid, artistByNameLower) {
   if (artist.artistMbid && artistByMbid.has(artist.artistMbid)) {
     return { canonicalArtistId: artistByMbid.get(artist.artistMbid), created: false }
   }
@@ -131,6 +131,7 @@ async function ensureCanonicalArtist(db, artist, artistDocId, artistByMbid, arti
     ...stripArtistPersonalFields(artist),
     id: canonicalArtistId,
     importedAt: artist.importedAt ?? FieldValue.serverTimestamp(),
+    importedBy,
   })
   if (artist.artistMbid) artistByMbid.set(artist.artistMbid, canonicalArtistId)
   artistByNameLower.set(nameKey, canonicalArtistId)
@@ -140,6 +141,7 @@ async function ensureCanonicalArtist(db, artist, artistDocId, artistByMbid, arti
 async function ensureCanonicalAlbum(
   db,
   album,
+  importedBy,
   artistIdMap,
   albumByReleaseMbid,
 ) {
@@ -162,6 +164,7 @@ async function ensureCanonicalAlbum(
     artistIds: canonicalArtistIds,
     artistId: canonicalArtistId,
     importedAt: album.importedAt ?? FieldValue.serverTimestamp(),
+    importedBy,
   })
 
   await db.collection('albums').doc(canonicalAlbumId).set(canonicalAlbum)
@@ -183,7 +186,7 @@ async function buildContextForUser(db, uid, summary, artistByMbid, artistByNameL
     const ensured = await ensureCanonicalArtist(
       db,
       artist,
-      artistDoc.id,
+      uid,
       artistByMbid,
       artistByNameLower,
     )
@@ -210,7 +213,7 @@ async function buildContextForUser(db, uid, summary, artistByMbid, artistByNameL
   for (const albumDoc of albumsSnapshot.docs) {
     const album = albumDoc.data()
     summary.albumsScanned++
-    const ensured = await ensureCanonicalAlbum(db, album, artistIdMap, albumByReleaseMbid)
+    const ensured = await ensureCanonicalAlbum(db, album, uid, artistIdMap, albumByReleaseMbid)
     if (ensured.created) summary.albumsMerged++
     albumIdMap.set(albumDoc.id, ensured.canonicalAlbumId)
 

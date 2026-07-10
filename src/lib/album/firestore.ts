@@ -314,6 +314,7 @@ function toAlbum(id: string, data: AlbumDocument): Album {
     ratingBeforeSubmission: data.ratingBeforeSubmission,
     ratedAt: data.ratedAt?.toDate(),
     importedAt: data.importedAt.toDate(),
+    importedBy: data.importedBy,
   }
 }
 
@@ -391,6 +392,7 @@ export async function importReleaseToLibrary(
       coverUrlSmall: covers.small,
       coverUrlLarge: covers.large,
       importedAt: serverTimestamp(),
+      importedBy: uid,
     }),
   )
 

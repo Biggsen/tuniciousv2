@@ -42,6 +42,7 @@ function toArtist(id: string, data: ArtistDocument): Artist {
     imageUrlSmall: data.imageUrlSmall,
     imageUrlLarge: data.imageUrlLarge,
     importedAt: data.importedAt.toDate(),
+    importedBy: data.importedBy,
   }
 }
 
@@ -75,7 +76,7 @@ async function findArtistByNameLower(nameLower: string): Promise<Artist | null> 
   return toArtist(docSnap.id, docSnap.data() as ArtistDocument)
 }
 
-async function findOrCreateArtist(seed: ArtistSeedInput): Promise<Artist> {
+async function findOrCreateArtist(seed: ArtistSeedInput, importedBy: string): Promise<Artist> {
   if (seed.artistMbid) {
     const byMbid = await findArtistByMbid(seed.artistMbid)
     if (byMbid) return byMbid
@@ -86,7 +87,7 @@ async function findOrCreateArtist(seed: ArtistSeedInput): Promise<Artist> {
   if (byName) return byName
 
   const id = crypto.randomUUID()
-  const artist: Omit<Artist, 'importedAt'> = {
+  const artist: Omit<Artist, 'importedAt' | 'importedBy'> = {
     id,
     name: seed.name,
     sortName: seed.sortName,
@@ -100,6 +101,7 @@ async function findOrCreateArtist(seed: ArtistSeedInput): Promise<Artist> {
     omitUndefined({
       ...toArtistDocumentFields(artist),
       importedAt: serverTimestamp(),
+      importedBy,
     }),
   )
 
@@ -109,6 +111,7 @@ async function findOrCreateArtist(seed: ArtistSeedInput): Promise<Artist> {
   return {
     ...artist,
     importedAt: importedAt?.toDate() ?? new Date(),
+    importedBy,
   }
 }
 
@@ -125,7 +128,7 @@ export async function findOrCreateArtistsFromCredits(
     const key = artistDedupeKey(seed)
     if (seen.has(key)) continue
     seen.add(key)
-    artists.push(await findOrCreateArtist(seed))
+    artists.push(await findOrCreateArtist(seed, uid))
   }
 
   return artists

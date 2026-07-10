@@ -14,6 +14,7 @@ export interface Artist {
   preferredYouTubeChannelId?: string
   preferredYouTubeChannelTitle?: string
   importedAt: Date
+  importedBy?: string
 }
 
 export interface ArtistDocument {
@@ -28,6 +29,7 @@ export interface ArtistDocument {
   preferredYouTubeChannelId?: string
   preferredYouTubeChannelTitle?: string
   importedAt: Timestamp
+  importedBy?: string
 }
 
 export interface Track {
@@ -57,6 +59,7 @@ export interface Album {
   ratingBeforeSubmission?: StarRating
   ratedAt?: Date
   importedAt: Date
+  importedBy?: string
 }
 
 export interface AlbumDocument {
@@ -81,6 +84,7 @@ export interface AlbumDocument {
   ratingBeforeSubmission?: StarRating
   ratedAt?: Timestamp
   importedAt: Timestamp
+  importedBy?: string
 }
 
 /** Per-user relationship and state for a canonical album. */
@@ -124,8 +128,8 @@ export interface ArtistPrefsDocument {
 }
 
 export interface AlbumImportInput {
-  album: Omit<Album, 'importedAt'>
-  artists: Omit<Artist, 'importedAt'>[]
+  album: Omit<Album, 'importedAt' | 'importedBy'>
+  artists: Omit<Artist, 'importedAt' | 'importedBy'>[]
 }
 
 export interface Playlist {

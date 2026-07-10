@@ -71,6 +71,7 @@ async function listUserIds(explicitUserIds?: string[]): Promise<string[]> {
 
 async function ensureCanonicalArtist(
   artist: ArtistDocument,
+  importedBy: string,
 ): Promise<{ canonicalArtistId: string; created: boolean }> {
   const db = getFirestoreDb()
   const byMbid = artist.artistMbid
@@ -92,12 +93,14 @@ async function ensureCanonicalArtist(
     ...artist,
     id: canonicalArtistId,
     importedAt: artist.importedAt ?? serverTimestamp(),
+    importedBy,
   })
   return { canonicalArtistId, created: true }
 }
 
 async function ensureCanonicalAlbum(
   album: AlbumDocument,
+  importedBy: string,
 ): Promise<{ canonicalAlbumId: string; created: boolean; canonicalAlbum: AlbumDocument }> {
   const db = getFirestoreDb()
   const snapshot = await getDocs(collection(db, 'albums'))
@@ -119,6 +122,7 @@ async function ensureCanonicalAlbum(
     ...album,
     id: canonicalAlbumId,
     importedAt: album.importedAt ?? (serverTimestamp() as never),
+    importedBy,
   }
   await setDoc(doc(db, 'albums', canonicalAlbumId), canonicalAlbum)
   return { canonicalAlbumId, created: true, canonicalAlbum }
@@ -134,7 +138,7 @@ async function buildContextForUser(uid: string, summary: CatalogMigrationSummary
   for (const artistDoc of artistsSnapshot.docs) {
     const artist = artistDoc.data() as ArtistDocument
     summary.artistsScanned++
-    const ensured = await ensureCanonicalArtist(artist)
+    const ensured = await ensureCanonicalArtist(artist, uid)
     if (ensured.created) summary.artistsMerged++
     artistIdMap.set(artistDoc.id, ensured.canonicalArtistId)
 
@@ -153,7 +157,7 @@ async function buildContextForUser(uid: string, summary: CatalogMigrationSummary
   for (const albumDoc of albumsSnapshot.docs) {
     const album = albumDoc.data() as AlbumDocument
     summary.albumsScanned++
-    const ensured = await ensureCanonicalAlbum(album)
+    const ensured = await ensureCanonicalAlbum(album, uid)
     if (ensured.created) summary.albumsMerged++
     albumIdMap.set(albumDoc.id, ensured.canonicalAlbumId)
 
