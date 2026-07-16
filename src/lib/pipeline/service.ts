@@ -74,7 +74,7 @@ export function getStagePlaylistIds(stages: Stage[]): string[] {
 }
 
 export function isSafeWorkflowTemplate(templateId: Pipeline['templateId']): boolean {
-  return templateId === 'filter'
+  return templateId === 'filter' || templateId === 'evaluation'
 }
 
 function stageById(stages: Stage[], stageId: string): Stage {
@@ -104,9 +104,7 @@ function assertWorkflowEligible(
 ): void {
   if (membership) return
   if (!isSafeWorkflowTemplate(pipeline.templateId)) {
-    throw new WorkflowEligibilityError(
-      'Legacy album on evaluation funnel is not workflow-enabled until migration.',
-    )
+    throw new WorkflowEligibilityError('This funnel template does not support workflow actions.')
   }
 }
 
@@ -281,7 +279,10 @@ export async function listPlaylistWorkflowStates(
     return { enabled: false, byAlbumId: new Map() }
   }
 
-  const safeTemplate = isSafeWorkflowTemplate(context.graph.pipeline.templateId)
+  if (!isSafeWorkflowTemplate(context.graph.pipeline.templateId)) {
+    return { enabled: false, byAlbumId: new Map() }
+  }
+
   const openMemberships = await listPipelineOpenMemberships(uid, context.graph.pipeline.id)
   const openByAlbumId = new Map(openMemberships.map((membership) => [membership.albumId, membership]))
   const byAlbumId = new Map<string, PlaylistWorkflowRowState>()
@@ -289,14 +290,6 @@ export async function listPlaylistWorkflowStates(
   await Promise.all(
     albumIds.map(async (albumId) => {
       const open = openByAlbumId.get(albumId)
-      if (!open && !safeTemplate) {
-        byAlbumId.set(albumId, {
-          actions: [],
-          canUndo: false,
-          blockedReason: 'Awaiting migration: workflow disabled for legacy evaluation rows.',
-        })
-        return
-      }
 
       const actions = getAvailableActions(context.stage)
       let canUndo = false
@@ -315,9 +308,6 @@ export async function listPlaylistWorkflowStates(
 
   return {
     enabled: true,
-    blockedReason: safeTemplate
-      ? undefined
-      : 'Evaluation funnel workflow is locked until history migration.',
     byAlbumId,
   }
 }

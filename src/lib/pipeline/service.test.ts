@@ -118,15 +118,15 @@ beforeEach(() => {
 })
 
 describe('isSafeWorkflowTemplate', () => {
-  it('treats filter template as safe only', () => {
+  it('enables workflow for filter and evaluation templates', () => {
     expect(isSafeWorkflowTemplate('filter')).toBe(true)
-    expect(isSafeWorkflowTemplate('evaluation')).toBe(false)
+    expect(isSafeWorkflowTemplate('evaluation')).toBe(true)
     expect(isSafeWorkflowTemplate(undefined)).toBe(false)
   })
 })
 
 describe('listPlaylistWorkflowStates', () => {
-  it('blocks legacy rows for unsafe evaluation funnels', async () => {
+  it('exposes workflow actions on evaluation funnels', async () => {
     mockLoadGraph.mockResolvedValue({
       id: 'pipe-1',
       name: 'Eval',
@@ -137,8 +137,9 @@ describe('listPlaylistWorkflowStates', () => {
     const result = await listPlaylistWorkflowStates('user-1', 'playlist-inbox', ['album-1'])
 
     expect(result.enabled).toBe(true)
-    expect(result.byAlbumId.get('album-1')?.actions).toEqual([])
-    expect(result.byAlbumId.get('album-1')?.blockedReason).toMatch(/migration/i)
+    expect(result.blockedReason).toBeUndefined()
+    expect(result.byAlbumId.get('album-1')?.actions).toEqual(['start'])
+    expect(result.byAlbumId.get('album-1')?.blockedReason).toBeUndefined()
   })
 })
 
@@ -166,20 +167,22 @@ describe('applyWorkflowAction', () => {
     expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-check', 'album-1')
   })
 
-  it('throws for unsafe funnels without membership', async () => {
+  it('opens membership when starting on an evaluation funnel', async () => {
     mockLoadGraph.mockResolvedValue({
       id: 'pipe-1',
       name: 'Eval',
       templateId: 'evaluation',
       createdAt: new Date(),
     })
-    await expect(
-      applyWorkflowAction('user-1', {
-        playlistId: 'playlist-inbox',
-        albumId: 'album-1',
-        action: 'start',
-      }),
-    ).rejects.toBeInstanceOf(WorkflowEligibilityError)
+
+    await applyWorkflowAction('user-1', {
+      playlistId: 'playlist-inbox',
+      albumId: 'album-1',
+      action: 'start',
+    })
+
+    expect(mockOpenMembership).toHaveBeenCalled()
+    expect(mockCloseMembership).toHaveBeenCalledWith('user-1', 'm-open')
   })
 })
 
