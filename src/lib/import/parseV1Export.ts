@@ -17,7 +17,8 @@ export interface V1ExportAlbum {
   v1AlbumId: string
   albumTitle: string
   artistName: string
-  releaseYear?: string
+  /** v1 exports sometimes store this as a number. */
+  releaseYear?: string | number
   albumCover?: string
   playlistHistory?: V1ExportPlaylistHistoryEntry[]
 }
@@ -30,6 +31,12 @@ export interface V1ExportOpenPlaylist {
 
 function albumUriForV1(v1AlbumId: string): string {
   return `v1:${v1AlbumId}`
+}
+
+function releaseDateFromV1Year(releaseYear: string | number | undefined): string | undefined {
+  if (releaseYear == null) return undefined
+  const text = String(releaseYear).trim()
+  return text || undefined
 }
 
 function isOpenOnPlaylist(
@@ -83,23 +90,36 @@ export function parseV1ExportAlbums(
   for (const album of albums) {
     if (!album.v1AlbumId || !isOpenOnPlaylist(album.playlistHistory, v1PlaylistId)) continue
 
+    const openEntry = (album.playlistHistory ?? []).find(
+      (entry) => entry.playlistId === v1PlaylistId && entry.removedAt == null,
+    )
+
     const albumUri = albumUriForV1(album.v1AlbumId)
     staged.push({
       id: albumUri,
       albumUri,
       albumName: album.albumTitle?.trim() || 'Unknown album',
       albumArtist: album.artistName?.trim() || 'Unknown artist',
-      releaseDate: album.releaseYear?.trim() || undefined,
-      imageUrl: album.albumCover?.trim() || undefined,
+      releaseDate: releaseDateFromV1Year(album.releaseYear),
+      imageUrl: typeof album.albumCover === 'string' ? album.albumCover.trim() || undefined : undefined,
+      addedAt: openEntry?.addedAt,
       tracks: [],
       status: 'pending',
       source: 'v1',
     })
   }
 
-  return staged.sort(
-    (a, b) => a.albumArtist.localeCompare(b.albumArtist) || a.albumName.localeCompare(b.albumName),
-  )
+  return staged.sort((a, b) => {
+    if (a.addedAt && b.addedAt) {
+      const byDate = a.addedAt.localeCompare(b.addedAt)
+      if (byDate !== 0) return byDate
+    } else if (a.addedAt) {
+      return -1
+    } else if (b.addedAt) {
+      return 1
+    }
+    return a.albumArtist.localeCompare(b.albumArtist) || a.albumName.localeCompare(b.albumName)
+  })
 }
 
 export function parseV1ExportJson(text: string): V1ExportAlbum[] {

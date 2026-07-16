@@ -344,7 +344,9 @@ export const usePlaybackStore = defineStore('playback', () => {
 
     try {
       if (persisted.sourceType === 'playlist' && persisted.sourcePlaylistId) {
-        const members = await listPlaylistMembers(uid, persisted.sourcePlaylistId)
+        const members = await listPlaylistMembers(uid, persisted.sourcePlaylistId, {
+          fullAlbums: true,
+        })
         if (!members.length) return false
         await setQueueFromPlaylist(members, persisted.sourcePlaylistId, uid)
       } else {

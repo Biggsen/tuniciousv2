@@ -7,25 +7,20 @@ import PlaylistAlbumCard from '@/components/playlist/PlaylistAlbumCard.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { isLastfmConnected, refreshPlaylistPlaycounts } from '@/lib/lastfm/scrobble'
-import {
-  getPlaylistById,
-  listPlaylistMembers,
-  reorderPlaylistMember,
-  updatePlaylist,
-} from '@/lib/playlist/firestore'
+import { reorderPlaylistMember, updatePlaylist } from '@/lib/playlist/firestore'
 import {
   applyWorkflowAction,
   handleStagePlaylistAdd,
   handleStagePlaylistRemoval,
-  listPlaylistWorkflowStates,
+  SubmissionConfirmRequiredError,
   undoLastWorkflowStep,
   type PlaylistWorkflowRowState,
 } from '@/lib/pipeline/service'
 import { sortPlaylistMembers, type PlaylistSortField } from '@/lib/playlist/sortMembers'
-import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
-import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
+import { usePlaylistDetailStore } from '@/stores/playlistDetail'
 import type { Playlist, PlaylistMember } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
@@ -33,15 +28,19 @@ import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
 const auth = useAuthStore()
+const library = useLibraryStore()
 const playback = usePlaybackStore()
+const playlistDetail = usePlaylistDetailStore()
 
 const playlist = ref<Playlist | null>(null)
 const members = ref<PlaylistMember[]>([])
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
 const playStats = ref<Map<string, TrackPlayStats>>(new Map())
+const trackDataLoaded = ref(false)
 const loading = ref(true)
 const reloading = ref(false)
 const refreshing = ref(false)
+const hydratingTracklist = ref(false)
 const error = ref<string | null>(null)
 const playError = ref<string | null>(null)
 const refreshMessage = ref<string | null>(null)
@@ -50,13 +49,15 @@ const nameDraft = ref('')
 const savingName = ref(false)
 const nameError = ref<string | null>(null)
 const menuOpen = ref(false)
-const showTracklist = ref(true)
+const showTracklist = ref(false)
 const sortField = ref<PlaylistSortField>('date-added')
 const sortAscending = ref(false)
 const lastfmConnected = ref(false)
 const workflowEnabled = ref(false)
 const workflowBlockedReason = ref<string | null>(null)
 const workflowByAlbumId = ref<Map<string, PlaylistWorkflowRowState>>(new Map())
+const pendingSubmissionAlbumId = ref<string | null>(null)
+const pendingSubmissionRating = ref<number | null>(null)
 
 const playlistId = () => String(route.params.id)
 
@@ -67,6 +68,7 @@ const totalTracks = computed(() =>
 )
 
 const resolvedTracks = computed(() => {
+  if (!trackDataLoaded.value) return 0
   const trackIds = members.value.flatMap((member) => member.album.tracks.map((t) => t.id))
   return trackIds.filter((id) => mappings.value.has(id)).length
 })
@@ -79,22 +81,40 @@ function memberPosition(albumId: string): number {
   return members.value.findIndex((member) => member.album.id === albumId)
 }
 
-async function loadTrackData() {
-  if (!auth.user) return
-  const trackIds = members.value.flatMap((member) => member.album.tracks.map((track) => track.id))
-  const [loadedMappings, loadedStats] = await Promise.all([
-    getMappingsForTrackIds(auth.user.uid, trackIds),
-    getTrackPlayStatsMap(auth.user.uid, trackIds),
-  ])
-  mappings.value = loadedMappings
-  playStats.value = loadedStats
+function applyCacheToView(entry: {
+  playlist: Playlist
+  members: PlaylistMember[]
+  mappings: Map<string, TrackYouTubeMapping>
+  playStats: Map<string, TrackPlayStats>
+  trackDataLoaded: boolean
+  workflowEnabled: boolean
+  workflowBlockedReason: string | null
+  workflowByAlbumId: Map<string, PlaylistWorkflowRowState>
+}) {
+  playlist.value = entry.playlist
+  members.value = entry.members
+  mappings.value = entry.mappings
+  playStats.value = entry.playStats
+  trackDataLoaded.value = entry.trackDataLoaded
+  workflowEnabled.value = entry.workflowEnabled
+  workflowBlockedReason.value = entry.workflowBlockedReason
+  workflowByAlbumId.value = entry.workflowByAlbumId
 }
 
 function workflowStateForAlbum(albumId: string): PlaylistWorkflowRowState | undefined {
   return workflowByAlbumId.value.get(albumId)
 }
 
-async function load({ showFullPageLoader = true } = {}) {
+async function ensureTrackDataLoaded(force = false) {
+  if (!auth.user) return
+  const result = await playlistDetail.ensureTrackData(auth.user.uid, playlistId(), { force })
+  members.value = result.members
+  mappings.value = result.mappings
+  playStats.value = result.playStats
+  trackDataLoaded.value = true
+}
+
+async function load({ showFullPageLoader = true, force = false } = {}) {
   if (!auth.user) return
 
   if (showFullPageLoader) {
@@ -108,22 +128,13 @@ async function load({ showFullPageLoader = true } = {}) {
 
   try {
     lastfmConnected.value = await isLastfmConnected(auth.user.uid)
-    playlist.value = await getPlaylistById(auth.user.uid, playlistId())
-    if (!playlist.value) {
-      error.value = 'Playlist not found'
-      return
-    }
+    const entry = await playlistDetail.loadPlaylistShell(auth.user.uid, playlistId(), { force })
+    applyCacheToView(entry)
     editingName.value = false
-    members.value = await listPlaylistMembers(auth.user.uid, playlistId())
-    const workflowState = await listPlaylistWorkflowStates(
-      auth.user.uid,
-      playlistId(),
-      members.value.map((member) => member.album.id),
-    )
-    workflowEnabled.value = workflowState.enabled
-    workflowBlockedReason.value = workflowState.blockedReason ?? null
-    workflowByAlbumId.value = workflowState.byAlbumId
-    await loadTrackData()
+
+    if (showTracklist.value) {
+      await ensureTrackDataLoaded()
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load playlist'
   } finally {
@@ -132,25 +143,47 @@ async function load({ showFullPageLoader = true } = {}) {
   }
 }
 
-async function handleAdd(albumId: string) {
+async function refreshAfterMutation() {
+  if (!auth.user) return
+  playlistDetail.invalidate(playlistId())
+  const entry = await playlistDetail.loadPlaylistShell(auth.user.uid, playlistId(), { force: true })
+  applyCacheToView(entry)
+  if (showTracklist.value) {
+    await ensureTrackDataLoaded()
+  }
+}
+
+async function handleAdd(albumId: string, confirmedOverwrite = false) {
   if (!auth.user) return
 
   try {
-    await handleStagePlaylistAdd(auth.user.uid, { playlistId: playlistId(), albumId })
-    members.value = await listPlaylistMembers(auth.user.uid, playlistId())
-    const workflowState = await listPlaylistWorkflowStates(
-      auth.user.uid,
-      playlistId(),
-      members.value.map((member) => member.album.id),
-    )
-    workflowEnabled.value = workflowState.enabled
-    workflowBlockedReason.value = workflowState.blockedReason ?? null
-    workflowByAlbumId.value = workflowState.byAlbumId
-    await loadTrackData()
-    playlist.value = await getPlaylistById(auth.user.uid, playlistId())
+    await handleStagePlaylistAdd(auth.user.uid, {
+      playlistId: playlistId(),
+      albumId,
+      confirmedOverwrite,
+    })
+    pendingSubmissionAlbumId.value = null
+    pendingSubmissionRating.value = null
+    await refreshAfterMutation()
+    library.invalidate()
   } catch (err) {
+    if (err instanceof SubmissionConfirmRequiredError) {
+      pendingSubmissionAlbumId.value = albumId
+      pendingSubmissionRating.value = err.rating ?? null
+      return
+    }
     error.value = err instanceof Error ? err.message : 'Failed to add album'
   }
+}
+
+async function confirmSubmissionAdd() {
+  if (!pendingSubmissionAlbumId.value) return
+  await handleAdd(pendingSubmissionAlbumId.value, true)
+}
+
+function cancelSubmissionAdd() {
+  pendingSubmissionAlbumId.value = null
+  pendingSubmissionRating.value = null
 }
 
 async function handleRemove(albumId: string) {
@@ -158,16 +191,8 @@ async function handleRemove(albumId: string) {
 
   try {
     await handleStagePlaylistRemoval(auth.user.uid, { playlistId: playlistId(), albumId })
-    members.value = await listPlaylistMembers(auth.user.uid, playlistId())
-    const workflowState = await listPlaylistWorkflowStates(
-      auth.user.uid,
-      playlistId(),
-      members.value.map((member) => member.album.id),
-    )
-    workflowEnabled.value = workflowState.enabled
-    workflowBlockedReason.value = workflowState.blockedReason ?? null
-    workflowByAlbumId.value = workflowState.byAlbumId
-    await loadTrackData()
+    await refreshAfterMutation()
+    library.invalidate()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to remove album'
   }
@@ -182,7 +207,8 @@ async function handleWorkflowAction(albumId: string, action: WorkflowAction) {
       albumId,
       action,
     })
-    await load({ showFullPageLoader: false })
+    await load({ showFullPageLoader: false, force: true })
+    library.invalidate()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to apply workflow action'
   }
@@ -196,7 +222,8 @@ async function handleUndoWorkflow(albumId: string) {
       playlistId: playlistId(),
       albumId,
     })
-    await load({ showFullPageLoader: false })
+    await load({ showFullPageLoader: false, force: true })
+    library.invalidate()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to undo workflow step'
   }
@@ -207,7 +234,14 @@ async function handleReorder(albumId: string, direction: 'up' | 'down') {
 
   try {
     await reorderPlaylistMember(auth.user.uid, playlistId(), albumId, direction)
-    members.value = await listPlaylistMembers(auth.user.uid, playlistId())
+    playlistDetail.invalidate(playlistId())
+    const entry = await playlistDetail.loadPlaylistShell(auth.user.uid, playlistId(), {
+      force: true,
+    })
+    applyCacheToView(entry)
+    if (showTracklist.value) {
+      await ensureTrackDataLoaded()
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to reorder'
   }
@@ -216,22 +250,32 @@ async function handleReorder(albumId: string, direction: 'up' | 'down') {
 async function handlePlay() {
   if (!auth.user) return
   playError.value = null
-  const started = await playback.playFromPlaylist(members.value, playlistId(), auth.user.uid)
-  if (!started) {
-    playError.value = playback.error ?? 'No resolved tracks to play'
+  try {
+    await ensureTrackDataLoaded()
+    const started = await playback.playFromPlaylist(members.value, playlistId(), auth.user.uid)
+    if (!started) {
+      playError.value = playback.error ?? 'No resolved tracks to play'
+    }
+  } catch (err) {
+    playError.value = err instanceof Error ? err.message : 'Failed to start playback'
   }
 }
 
 async function handlePlayRandom() {
   if (!auth.user) return
   playError.value = null
-  const started = await playback.playRandomFromPlaylist(
-    members.value,
-    playlistId(),
-    auth.user.uid,
-  )
-  if (!started) {
-    playError.value = playback.error ?? 'No resolved tracks to play'
+  try {
+    await ensureTrackDataLoaded()
+    const started = await playback.playRandomFromPlaylist(
+      members.value,
+      playlistId(),
+      auth.user.uid,
+    )
+    if (!started) {
+      playError.value = playback.error ?? 'No resolved tracks to play'
+    }
+  } catch (err) {
+    playError.value = err instanceof Error ? err.message : 'Failed to start playback'
   }
 }
 
@@ -243,8 +287,9 @@ async function handleRefreshPlaycounts() {
   error.value = null
 
   try {
+    await ensureTrackDataLoaded()
     const synced = await refreshPlaylistPlaycounts(auth.user.uid, members.value)
-    await loadTrackData()
+    await ensureTrackDataLoaded(true)
     refreshMessage.value = `Synced playcounts for ${synced} tracks`
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to refresh playcounts'
@@ -276,6 +321,10 @@ async function saveRename() {
     const trimmed = nameDraft.value.trim()
     await updatePlaylist(auth.user.uid, playlistId(), { name: trimmed })
     playlist.value = { ...playlist.value, name: trimmed }
+    const cached = playlistDetail.getCached(playlistId())
+    if (cached) {
+      playlistDetail.setCached(playlistId(), { ...cached, playlist: playlist.value })
+    }
     editingName.value = false
   } catch (err) {
     nameError.value = err instanceof Error ? err.message : 'Failed to rename playlist'
@@ -289,7 +338,26 @@ function toggleSortDirection() {
 }
 
 onMounted(() => load())
-watch(() => route.params.id, () => load())
+watch(
+  () => route.params.id,
+  () => {
+    showTracklist.value = false
+    load()
+  },
+)
+watch(showTracklist, async (enabled) => {
+  if (!enabled || !auth.user || trackDataLoaded.value) return
+  hydratingTracklist.value = true
+  error.value = null
+  try {
+    await ensureTrackDataLoaded()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load tracklists'
+    showTracklist.value = false
+  } finally {
+    hydratingTracklist.value = false
+  }
+})
 </script>
 
 <template>
@@ -319,7 +387,7 @@ watch(() => route.params.id, () => load())
             type="button"
             class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
             :disabled="reloading || refreshing"
-            @click="load({ showFullPageLoader: false })"
+            @click="load({ showFullPageLoader: false, force: true })"
           >
             {{ reloading ? 'Reloading…' : 'Reload' }}
           </button>
@@ -382,8 +450,10 @@ watch(() => route.params.id, () => load())
             <span>{{ members.length }} album{{ members.length === 1 ? '' : 's' }}</span>
             <span class="mx-2">·</span>
             <span>{{ totalTracks }} track{{ totalTracks === 1 ? '' : 's' }}</span>
-            <span class="mx-2">·</span>
-            <span>{{ resolvedTracks }}/{{ totalTracks }} resolved</span>
+            <template v-if="trackDataLoaded">
+              <span class="mx-2">·</span>
+              <span>{{ resolvedTracks }}/{{ totalTracks }} resolved</span>
+            </template>
           </p>
         </template>
         <p v-if="nameError" class="mt-2 text-sm text-red-300">{{ nameError }}</p>
@@ -397,10 +467,11 @@ watch(() => route.params.id, () => load())
           <span class="text-text-muted">Tracklist</span>
           <button
             type="button"
-            class="relative h-6 w-11 rounded-full transition-colors"
+            class="relative h-6 w-11 rounded-full transition-colors disabled:opacity-50"
             :class="showTracklist ? 'bg-accent' : 'bg-white/15'"
             role="switch"
             :aria-checked="showTracklist"
+            :disabled="hydratingTracklist"
             @click="showTracklist = !showTracklist"
           >
             <span
@@ -408,6 +479,7 @@ watch(() => route.params.id, () => load())
               :class="showTracklist ? 'translate-x-5' : 'translate-x-0'"
             />
           </button>
+          <span v-if="hydratingTracklist" class="text-xs text-text-muted">Loading tracks…</span>
         </label>
 
         <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -436,7 +508,7 @@ watch(() => route.params.id, () => load())
         <button
           type="button"
           class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
-          :disabled="!members.length || resolvedTracks === 0"
+          :disabled="!members.length"
           @click="handlePlay"
         >
           Play
@@ -444,7 +516,7 @@ watch(() => route.params.id, () => load())
         <button
           type="button"
           class="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-white/5 disabled:opacity-50"
-          :disabled="!members.length || resolvedTracks === 0"
+          :disabled="!members.length"
           @click="handlePlayRandom"
         >
           Play Random
@@ -480,7 +552,8 @@ watch(() => route.params.id, () => load())
             :playlist-id="playlistId()"
             :mappings="mappings"
             :play-stats="playStats"
-            :show-tracklist="showTracklist"
+            :show-tracklist="showTracklist && trackDataLoaded"
+            :show-resolve-stats="trackDataLoaded"
             :can-move-up="memberPosition(member.album.id) > 0"
             :can-move-down="memberPosition(member.album.id) < members.length - 1"
             :workflow-actions="workflowStateForAlbum(member.album.id)?.actions ?? []"
@@ -494,6 +567,40 @@ watch(() => route.params.id, () => load())
           />
         </li>
       </ul>
+
+      <div
+        v-if="pendingSubmissionAlbumId"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="submission-confirm-title"
+      >
+        <div class="w-full max-w-md rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+          <h2 id="submission-confirm-title" class="text-lg font-semibold">Submit to evaluation?</h2>
+          <p class="mt-2 text-sm text-text-muted">
+            This album is rated
+            <span v-if="pendingSubmissionRating">{{ pendingSubmissionRating }}★</span>
+            <span v-else>already</span>.
+            Entering the evaluation funnel may overwrite that rating when it lands on a rated exit.
+          </p>
+          <div class="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
+              @click="cancelSubmissionAdd"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
+              @click="confirmSubmissionAdd"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>

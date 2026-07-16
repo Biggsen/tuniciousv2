@@ -19,6 +19,7 @@ const props = defineProps<{
   mappings: Map<string, TrackYouTubeMapping>
   playStats: Map<string, TrackPlayStats>
   showTracklist: boolean
+  showResolveStats?: boolean
   canMoveUp: boolean
   canMoveDown: boolean
   workflowActions?: WorkflowAction[]
@@ -206,26 +207,34 @@ function actionLabel(action: WorkflowAction): string {
           </div>
         </div>
 
-        <div class="mb-1 flex items-center justify-between text-xs text-text-muted">
+        <div v-if="showResolveStats !== false" class="mb-1 flex items-center justify-between text-xs text-text-muted">
           <span>Resolved tracks</span>
           <span>{{ resolvedPercent }}%</span>
         </div>
-        <div class="h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div
+          v-if="showResolveStats !== false"
+          class="h-1.5 overflow-hidden rounded-full bg-white/10"
+        >
           <div
             class="h-full rounded-full bg-emerald-500/80 transition-all"
             :style="{ width: `${resolvedPercent}%` }"
           />
         </div>
+        <p v-else class="text-xs text-text-muted">
+          {{ album.tracks.length }} track{{ album.tracks.length === 1 ? '' : 's' }}
+        </p>
 
         <div
           class="mt-3 flex items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2 text-xs"
         >
           <RouterLink
+            v-if="album.releaseMbid"
             :to="{ name: 'explorer-release', params: { mbid: album.releaseMbid } }"
             class="font-medium text-text-muted transition-colors hover:text-accent"
           >
             MusicBrainz
           </RouterLink>
+          <span v-else class="font-medium text-text-muted/40">MusicBrainz</span>
           <a
             :href="lastfmAlbumUrl(album.artist, album.title, lastfmUsername)"
             target="_blank"

@@ -1,4 +1,5 @@
 import { musicBrainzFetch } from '@/lib/musicbrainz/client'
+import { compareByFirstReleaseYearAsc } from '@/lib/musicbrainz/format'
 import type {
   MbArtistDetail,
   MbArtistSearchResult,
@@ -36,7 +37,7 @@ export async function searchReleaseGroups(
     `release-group?${searchParams({ query: term, limit: String(SEARCH_LIMIT) })}`,
     userAgent,
   )
-  return data['release-groups'] ?? []
+  return [...(data['release-groups'] ?? [])].sort(compareByFirstReleaseYearAsc)
 }
 
 export async function getArtist(mbid: string, userAgent?: string): Promise<MbArtistDetail> {

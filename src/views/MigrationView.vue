@@ -12,10 +12,16 @@ import {
   listV1MigrationAlbums,
   updateV1MigrationAlbumState,
 } from '@/lib/migrate/v1MigrationFirestore'
+import { backfillPlaylistMemberAddedAtFromStages } from '@/lib/pipeline/backfillPlaylistMemberAddedAt'
+import { backfillRatedExitRatings } from '@/lib/pipeline/backfillRatedExitRatings'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
+import { usePlaylistDetailStore } from '@/stores/playlistDetail'
 import type { V1MigrationAlbum, V1MigrationCounts, V1MigrationMeta, V1PlaylistIdMap } from '@/types/v1Migration'
 
 const auth = useAuthStore()
+const library = useLibraryStore()
+const playlistDetail = usePlaylistDetailStore()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -28,6 +34,8 @@ const counts = ref<V1MigrationCounts | null>(null)
 const dryRunning = ref(false)
 const applying = ref(false)
 const applyProgress = ref('')
+const backfillingRatings = ref(false)
+const backfillingAddedAt = ref(false)
 
 const reviewAlbums = computed(() =>
   albums.value.filter(
@@ -173,6 +181,54 @@ async function applyMapped() {
   }
 }
 
+async function runBackfillRatedExits() {
+  if (!auth.user) return
+  if (
+    !window.confirm(
+      'Set pipeline ratings for all albums currently on evaluation sinks / Wonderful? Safe to re-run; already-rated albums are skipped.',
+    )
+  ) {
+    return
+  }
+
+  backfillingRatings.value = true
+  error.value = null
+  message.value = null
+  try {
+    const result = await backfillRatedExitRatings(auth.user.uid)
+    library.invalidate()
+    message.value = `Rated-exit backfill: ${result.updated} updated, ${result.submissionOnly} submission-only, ${result.skipped} skipped.`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    backfillingRatings.value = false
+  }
+}
+
+async function runBackfillPlaylistAddedAt() {
+  if (!auth.user) return
+  if (
+    !window.confirm(
+      'Copy open StageMembership addedAt (from v1 playlistHistory) onto each stage playlist member? Safe to re-run; matching dates are skipped.',
+    )
+  ) {
+    return
+  }
+
+  backfillingAddedAt.value = true
+  error.value = null
+  message.value = null
+  try {
+    const result = await backfillPlaylistMemberAddedAtFromStages(auth.user.uid)
+    playlistDetail.invalidate()
+    message.value = `Playlist addedAt backfill: ${result.updated} updated, ${result.skipped} skipped, ${result.missingMember} missing playlist members.`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    backfillingAddedAt.value = false
+  }
+}
+
 onMounted(() => {
   void refresh()
 })
@@ -282,6 +338,45 @@ onMounted(() => {
         {{ applying ? 'Applying…' : `Apply mapped (${mappedCount})` }}
       </button>
       <p v-if="applyProgress" class="self-center text-sm text-text-muted">{{ applyProgress }}</p>
+    </section>
+
+    <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+      <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
+        Playlist date added
+      </h2>
+      <p class="max-w-2xl text-sm text-text-muted">
+        CSV sync wrote sync-time timestamps on playlist members. This copies each open
+        <code class="text-text">StageMembership.addedAt</code> (from v1
+        <code class="text-text">playlistHistory</code>) onto the matching stage playlist membership
+        so “Date added” sorts correctly.
+      </p>
+      <button
+        type="button"
+        class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
+        :disabled="backfillingAddedAt || backfillingRatings || applying || dryRunning || loading"
+        @click="runBackfillPlaylistAddedAt"
+      >
+        {{ backfillingAddedAt ? 'Backfilling…' : 'Backfill playlist addedAt from stages' }}
+      </button>
+    </section>
+
+    <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+      <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
+        Rated-exit ratings
+      </h2>
+      <p class="max-w-2xl text-sm text-text-muted">
+        Migrated albums on 1★–4★ / Wonderful may be missing stars. This writes
+        <code class="text-text">rating</code> from each stage’s
+        <code class="text-text">outcomeRating</code> for open memberships only.
+      </p>
+      <button
+        type="button"
+        class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
+        :disabled="backfillingRatings || backfillingAddedAt || applying || dryRunning || loading"
+        @click="runBackfillRatedExits"
+      >
+        {{ backfillingRatings ? 'Backfilling…' : 'Backfill sink / terminal ratings' }}
+      </button>
     </section>
 
     <section v-if="reviewAlbums.length" class="space-y-3">

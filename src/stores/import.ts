@@ -96,10 +96,16 @@ export const useImportStore = defineStore('import', () => {
     }
   }
 
-  async function addAlbumToSyncPlaylist(libraryAlbumId: string): Promise<void> {
+  async function addAlbumToSyncPlaylist(libraryAlbumId: string, addedAtIso?: string): Promise<void> {
     const uid = useAuthStore().user?.uid
     if (!uid || !syncPlaylistId.value) return
-    await addAlbumToPlaylist(uid, syncPlaylistId.value, libraryAlbumId)
+    const addedAt = addedAtIso ? new Date(addedAtIso) : undefined
+    const validAddedAt =
+      addedAt && Number.isFinite(addedAt.getTime()) ? addedAt : undefined
+    await addAlbumToPlaylist(uid, syncPlaylistId.value, libraryAlbumId, {
+      addedAt: validAddedAt,
+      repairAddedAt: Boolean(validAddedAt),
+    })
   }
 
   async function matchLibraryAndPlaylists(
@@ -265,6 +271,7 @@ export const useImportStore = defineStore('import', () => {
   }
 
   async function handleImported(payload: { albumUri: string; libraryAlbumId: string }) {
+    const staged = albums.value.find((album) => album.albumUri === payload.albumUri)
     markImported(payload.albumUri, payload.libraryAlbumId)
     useLibraryStore().invalidate()
 
@@ -272,7 +279,7 @@ export const useImportStore = defineStore('import', () => {
 
     syncError.value = null
     try {
-      await addAlbumToSyncPlaylist(payload.libraryAlbumId)
+      await addAlbumToSyncPlaylist(payload.libraryAlbumId, staged?.addedAt)
     } catch (err) {
       syncError.value =
         err instanceof Error ? err.message : 'Failed to add imported album to playlist'
@@ -288,7 +295,7 @@ export const useImportStore = defineStore('import', () => {
     try {
       for (const album of syncableAlbums.value) {
         if (!album.libraryAlbumId) continue
-        await addAlbumToSyncPlaylist(album.libraryAlbumId)
+        await addAlbumToSyncPlaylist(album.libraryAlbumId, album.addedAt)
       }
     } catch (err) {
       syncError.value =

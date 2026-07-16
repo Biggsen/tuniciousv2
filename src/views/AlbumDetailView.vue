@@ -5,15 +5,17 @@ import { RouterLink, useRoute } from 'vue-router'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import AlbumPipelineHistory from '@/components/album/AlbumPipelineHistory.vue'
+import AlbumRatingStars from '@/components/album/AlbumRatingStars.vue'
 import TrackResolvePanel from '@/components/youtube/TrackResolvePanel.vue'
 import {
   clearArtistPreferredYouTubeChannel,
   getArtistById,
 } from '@/lib/artist/firestore'
 import { formatDuration } from '@/lib/musicbrainz/format'
-import { getAlbumById } from '@/lib/album/firestore'
+import { getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
 import { isLastfmConnected, refreshAlbumPlaycounts } from '@/lib/lastfm/scrobble'
+import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
 import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
@@ -28,6 +30,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import type { Album, Artist } from '@/types/library'
+import type { StarRating } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
@@ -80,6 +83,29 @@ const resolvedCount = computed(() => {
 const artistName = computed(() => primaryArtist.value?.name ?? album.value?.artist ?? '')
 
 const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
+
+const ratingDisplay = computed(() =>
+  album.value ? resolveAlbumRatingDisplay(album.value) : null,
+)
+
+async function handleRatingChange(next: StarRating | null) {
+  if (!auth.user || !album.value || !ratingDisplay.value?.editable) return
+  try {
+    album.value = await updateAlbumRating(
+      auth.user.uid,
+      album.value.id,
+      next,
+      next === null ? null : 'manual',
+    )
+    library.patchCardRating(album.value.id, {
+      rating: album.value.rating,
+      ratingSource: album.value.ratingSource,
+      ratingSubmittedPipelineId: album.value.ratingSubmittedPipelineId,
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to update rating'
+  }
+}
 
 async function loadMappings() {
   if (!auth.user || !album.value) return
@@ -401,6 +427,14 @@ onMounted(load)
           <p class="mt-3 text-xs text-text-muted">
             Imported {{ album.importedAt.toLocaleDateString() }}
           </p>
+          <div v-if="ratingDisplay" class="mt-3">
+            <AlbumRatingStars
+              :rating="ratingDisplay.rating"
+              :editable="ratingDisplay.editable"
+              :label="ratingDisplay.label"
+              @change="handleRatingChange"
+            />
+          </div>
           <div
             class="mt-3 flex max-w-xs items-center justify-between gap-2 rounded-lg bg-surface-raised px-3 py-2 text-xs"
           >

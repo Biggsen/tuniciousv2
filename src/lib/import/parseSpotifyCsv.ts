@@ -127,6 +127,25 @@ function sortTracks(tracks: StagedTrack[]): StagedTrack[] {
   )
 }
 
+/** Prefer earlier Spotify "Added At" when merging rows for the same album. */
+function earlierIso(left?: string, right?: string): string | undefined {
+  if (!left) return right
+  if (!right) return left
+  return left <= right ? left : right
+}
+
+function compareStagedAlbums(a: StagedAlbum, b: StagedAlbum): number {
+  if (a.addedAt && b.addedAt) {
+    const byDate = a.addedAt.localeCompare(b.addedAt)
+    if (byDate !== 0) return byDate
+  } else if (a.addedAt) {
+    return -1
+  } else if (b.addedAt) {
+    return 1
+  }
+  return a.albumArtist.localeCompare(b.albumArtist) || a.albumName.localeCompare(b.albumName)
+}
+
 export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
   const rows = parseCsv(text)
   const albumsByUri = new Map<string, StagedAlbum>()
@@ -136,10 +155,12 @@ export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
     if (!albumUri) continue
 
     const track = rowToTrack(row)
+    const addedAt = row['Added At'].trim() || undefined
     const existing = albumsByUri.get(albumUri)
 
     if (existing) {
       existing.tracks = mergeTracks(existing.tracks, track)
+      existing.addedAt = earlierIso(existing.addedAt, addedAt)
       if (!existing.imageUrl && row['Album Image URL'].trim()) {
         existing.imageUrl = row['Album Image URL'].trim()
       }
@@ -153,6 +174,7 @@ export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
       albumArtist: row['Album Artist Name(s)'].trim() || row['Artist Name(s)'].trim() || 'Unknown artist',
       releaseDate: row['Album Release Date'].trim() || undefined,
       imageUrl: row['Album Image URL'].trim() || undefined,
+      addedAt,
       tracks: [track],
       status: 'pending',
       source: 'csv',
@@ -161,7 +183,7 @@ export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
 
   return [...albumsByUri.values()]
     .map((album) => ({ ...album, tracks: sortTracks(album.tracks) }))
-    .sort((a, b) => a.albumArtist.localeCompare(b.albumArtist) || a.albumName.localeCompare(b.albumName))
+    .sort(compareStagedAlbums)
 }
 
 export function mergeStagedAlbums(albums: StagedAlbum[]): StagedAlbum[] {
@@ -183,13 +205,12 @@ export function mergeStagedAlbums(albums: StagedAlbum[]): StagedAlbum[] {
       ...existing,
       tracks: sortTracks(tracks),
       imageUrl: existing.imageUrl ?? album.imageUrl,
+      addedAt: earlierIso(existing.addedAt, album.addedAt),
       source: existing.source ?? album.source,
     })
   }
 
-  return [...byUri.values()].sort(
-    (a, b) => a.albumArtist.localeCompare(b.albumArtist) || a.albumName.localeCompare(b.albumName),
-  )
+  return [...byUri.values()].sort(compareStagedAlbums)
 }
 
 export function getPrimaryIsrc(album: StagedAlbum): string | undefined {

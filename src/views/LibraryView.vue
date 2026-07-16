@@ -5,10 +5,12 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import ArtistAvatar from '@/components/artist/ArtistAvatar.vue'
+import AlbumRatingStars from '@/components/album/AlbumRatingStars.vue'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
-import type { LibraryAlbumCard } from '@/lib/album/firestore'
+import { updateAlbumRating, type LibraryAlbumCard } from '@/lib/album/firestore'
 import { matchesLibrarySearch } from '@/lib/library/search'
 import { loadUnresolvedOnlyFilter, saveUnresolvedOnlyFilter } from '@/lib/library/persist'
+import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
 import {
   albumLibraryCardClasses,
   albumResolveStatus,
@@ -16,6 +18,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
+import type { StarRating } from '@/types/pipeline'
 
 type LibrarySearchMode = 'album' | 'artist'
 
@@ -117,6 +120,32 @@ function resolveStatus(album: LibraryAlbumCard) {
 function isPlayingAlbum(albumId: string): boolean {
   if (!playback.showPlayerBar) return false
   return playback.currentItem?.albumId === albumId
+}
+
+function ratingDisplayFor(album: LibraryAlbumCard) {
+  return resolveAlbumRatingDisplay(album)
+}
+
+async function handleLibraryRatingChange(album: LibraryAlbumCard, next: StarRating | null) {
+  if (!auth.user) return
+  const display = ratingDisplayFor(album)
+  if (!display.editable) return
+
+  try {
+    const updated = await updateAlbumRating(
+      auth.user.uid,
+      album.id,
+      next,
+      next === null ? null : 'manual',
+    )
+    library.patchCardRating(album.id, {
+      rating: updated.rating,
+      ratingSource: updated.ratingSource,
+      ratingSubmittedPipelineId: updated.ratingSubmittedPipelineId,
+    })
+  } catch (err) {
+    library.error = err instanceof Error ? err.message : 'Failed to update rating'
+  }
 }
 
 const scrollPaddingClass = computed(() => {
@@ -233,16 +262,33 @@ onMounted(async () => {
                   No art
                 </div>
               </div>
-              <div class="flex flex-1 flex-col p-3">
-                <p
-                  class="line-clamp-2 text-sm font-medium leading-snug"
-                  :class="isPlayingAlbum(album.id) ? 'text-accent' : ''"
-                >{{ album.title }}</p>
-                <p class="mt-1 truncate text-xs text-text-muted">{{ album.artist }}</p>
-                <p v-if="album.albumYear" class="mt-1 text-[11px] text-text-muted/70">
-                  {{ album.albumYear }}
-                </p>
+            <div class="flex flex-1 flex-col p-3">
+              <p
+                class="line-clamp-2 text-sm font-medium leading-snug"
+                :class="isPlayingAlbum(album.id) ? 'text-accent' : ''"
+              >{{ album.title }}</p>
+              <p class="mt-1 truncate text-xs text-text-muted">{{ album.artist }}</p>
+              <p v-if="album.albumYear" class="mt-1 text-[11px] text-text-muted/70">
+                {{ album.albumYear }}
+              </p>
+              <div
+                class="mt-2"
+                @click.prevent.stop
+              >
+                <AlbumRatingStars
+                  :rating="ratingDisplayFor(album).rating"
+                  :editable="ratingDisplayFor(album).editable"
+                  :label="
+                    ratingDisplayFor(album).state === 'in-evaluation' ||
+                    ratingDisplayFor(album).state === 'rated-in-pipeline'
+                      ? ratingDisplayFor(album).label
+                      : undefined
+                  "
+                  size="sm"
+                  @change="handleLibraryRatingChange(album, $event)"
+                />
               </div>
+            </div>
             </RouterLink>
           </li>
         </ul>

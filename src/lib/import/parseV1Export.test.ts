@@ -56,6 +56,52 @@ describe('parseV1ExportAlbums', () => {
     expect(staged[0].releaseDate).toBe('2017')
   })
 
+  it('accepts numeric releaseYear from v1 exports', () => {
+    const staged = parseV1ExportAlbums(
+      [
+        {
+          v1AlbumId: 'a1',
+          albumTitle: 'Numeric Year',
+          artistName: 'Artist',
+          releaseYear: 2018,
+          playlistHistory: [{ playlistId: QUEUED, removedAt: null }],
+        },
+      ],
+      QUEUED,
+    )
+    expect(staged[0].releaseDate).toBe('2018')
+  })
+
+  it('sorts by playlist addedAt and carries it onto staged albums', () => {
+    const staged = parseV1ExportAlbums(
+      [
+        album('late', 'Zed Album', 'Zed', [
+          {
+            playlistId: QUEUED,
+            playlistName: 'New Queued',
+            addedAt: '2024-06-01T00:00:00.000Z',
+            removedAt: null,
+          },
+        ]),
+        album('early', 'Amy Album', 'Amy', [
+          {
+            playlistId: QUEUED,
+            playlistName: 'New Queued',
+            addedAt: '2024-01-01T00:00:00.000Z',
+            removedAt: null,
+          },
+        ]),
+      ],
+      QUEUED,
+    )
+
+    expect(staged.map((item) => item.albumName)).toEqual(['Amy Album', 'Zed Album'])
+    expect(staged.map((item) => item.addedAt)).toEqual([
+      '2024-01-01T00:00:00.000Z',
+      '2024-06-01T00:00:00.000Z',
+    ])
+  })
+
   it('returns empty when nothing is open on the playlist', () => {
     const albums = [
       album('a1', 'Closed', 'Artist', [

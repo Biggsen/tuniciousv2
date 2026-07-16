@@ -8,12 +8,19 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
 
-import { getAlbumById, listAlbums } from '@/lib/album/firestore'
+import {
+  albumStubFromPickerItem,
+  ensureAlbumPickerForAlbumIds,
+  getAlbumPickerItemsByIdsForUser,
+  getAlbumsByIdsForUser,
+  listAlbums,
+} from '@/lib/album/firestore'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 import type {
@@ -148,25 +155,64 @@ async function touchPlaylist(uid: string, playlistId: string): Promise<void> {
   await updateDoc(ref, { updatedAt: serverTimestamp() })
 }
 
+export async function listPlaylistMemberships(
+  uid: string,
+  playlistId: string,
+): Promise<PlaylistMembership[]> {
+  const snapshot = await getDocs(membersCollection(uid, playlistId))
+  return snapshot.docs
+    .map((docSnap) => toMembership(docSnap.data() as PlaylistMembershipDocument))
+    .sort((a, b) => a.position - b.position)
+}
+
+/**
+ * Lightweight playlist rows from album_picker (track ids only, no titles).
+ * Use hydratePlaylistMemberAlbums when tracklists / playback need full docs.
+ */
 export async function listPlaylistMembers(
   uid: string,
   playlistId: string,
+  options: { fullAlbums?: boolean } = {},
 ): Promise<PlaylistMember[]> {
-  const snapshot = await getDocs(membersCollection(uid, playlistId))
-  const memberships = snapshot.docs
-    .map((docSnap) => toMembership(docSnap.data() as PlaylistMembershipDocument))
-    .sort((a, b) => a.position - b.position)
+  const memberships = await listPlaylistMemberships(uid, playlistId)
+  if (memberships.length === 0) return []
 
-  const members: PlaylistMember[] = []
+  const albumIds = memberships.map((membership) => membership.albumId)
 
-  for (const membership of memberships) {
-    const album = await getAlbumById(uid, membership.albumId)
-    if (album) {
-      members.push({ membership, album })
-    }
+  if (options.fullAlbums) {
+    const albums = await getAlbumsByIdsForUser(uid, albumIds)
+    return memberships
+      .map((membership) => {
+        const album = albums.get(membership.albumId)
+        return album ? { membership, album } : null
+      })
+      .filter((member): member is PlaylistMember => Boolean(member))
   }
 
-  return members
+  await ensureAlbumPickerForAlbumIds(uid, albumIds)
+  const pickers = await getAlbumPickerItemsByIdsForUser(uid, albumIds)
+  return memberships
+    .map((membership) => {
+      const picker = pickers.get(membership.albumId)
+      return picker ? { membership, album: albumStubFromPickerItem(picker) } : null
+    })
+    .filter((member): member is PlaylistMember => Boolean(member))
+}
+
+/** Replace stub albums with full album docs (track titles, etc.). */
+export async function hydratePlaylistMemberAlbums(
+  uid: string,
+  members: PlaylistMember[],
+): Promise<PlaylistMember[]> {
+  if (members.length === 0) return members
+  const albums = await getAlbumsByIdsForUser(
+    uid,
+    members.map((member) => member.album.id),
+  )
+  return members.map((member) => {
+    const album = albums.get(member.album.id)
+    return album ? { ...member, album } : member
+  })
 }
 
 async function nextMemberPosition(uid: string, playlistId: string): Promise<number> {
@@ -186,17 +232,22 @@ export async function addAlbumToPlaylist(
   uid: string,
   playlistId: string,
   albumId: string,
+  options: { addedAt?: Date; repairAddedAt?: boolean } = {},
 ): Promise<void> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId, 'members', albumId)
   const existing = await getDoc(ref)
 
   if (existing.exists()) {
+    if (options.repairAddedAt && options.addedAt) {
+      await updateDoc(ref, { addedAt: Timestamp.fromDate(options.addedAt) })
+      await touchPlaylist(uid, playlistId)
+    }
     return
   }
 
   await setDoc(ref, {
     albumId,
-    addedAt: serverTimestamp(),
+    addedAt: options.addedAt ? Timestamp.fromDate(options.addedAt) : serverTimestamp(),
     position: await nextMemberPosition(uid, playlistId),
   })
 
@@ -219,16 +270,16 @@ export async function reorderPlaylistMember(
   albumId: string,
   direction: 'up' | 'down',
 ): Promise<void> {
-  const members = await listPlaylistMembers(uid, playlistId)
-  const index = members.findIndex((member) => member.album.id === albumId)
+  const memberships = await listPlaylistMemberships(uid, playlistId)
+  const index = memberships.findIndex((membership) => membership.albumId === albumId)
 
   if (index < 0) return
 
   const swapIndex = direction === 'up' ? index - 1 : index + 1
-  if (swapIndex < 0 || swapIndex >= members.length) return
+  if (swapIndex < 0 || swapIndex >= memberships.length) return
 
-  const current = members[index]
-  const swap = members[swapIndex]
+  const current = memberships[index]
+  const swap = memberships[swapIndex]
   const batch = writeBatch(getFirestoreDb())
 
   const currentRef = doc(
@@ -238,7 +289,7 @@ export async function reorderPlaylistMember(
     'playlists',
     playlistId,
     'members',
-    current.album.id,
+    current.albumId,
   )
   const swapRef = doc(
     getFirestoreDb(),
@@ -247,11 +298,11 @@ export async function reorderPlaylistMember(
     'playlists',
     playlistId,
     'members',
-    swap.album.id,
+    swap.albumId,
   )
 
-  batch.update(currentRef, { position: swap.membership.position })
-  batch.update(swapRef, { position: current.membership.position })
+  batch.update(currentRef, { position: swap.position })
+  batch.update(swapRef, { position: current.position })
 
   await batch.commit()
   await touchPlaylist(uid, playlistId)

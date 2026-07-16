@@ -19,6 +19,8 @@ export interface StagedAlbum {
   albumArtist: string
   releaseDate?: string
   imageUrl?: string
+  /** When the album was added to the source playlist (Spotify Added At / v1 history). */
+  addedAt?: string
   tracks: StagedTrack[]
   status: StagedAlbumStatus
   libraryAlbumId?: string

@@ -45,6 +45,12 @@ vi.mock('@/lib/playlist/firestore', () => ({
   listPlaylistMembers: vi.fn(),
 }))
 
+vi.mock('@/lib/album/firestore', () => ({
+  getAlbumById: vi.fn().mockResolvedValue(null),
+  updateAlbumRating: vi.fn().mockResolvedValue(undefined),
+  updateAlbumSubmissionState: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/pipeline/firestore', () => ({
   getPipelineById: (...args: unknown[]) => mockLoadGraph(...args),
 }))

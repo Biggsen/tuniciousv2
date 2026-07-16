@@ -1,4 +1,6 @@
+import { getAlbumById, updateAlbumRating, updateAlbumSubmissionState } from '@/lib/album/firestore'
 import { getPipelineById } from '@/lib/pipeline/firestore'
+import { needsSubmissionOverwriteConfirm, shouldAutoRateOnLand } from '@/lib/pipeline/rating'
 import { getStageByPlaylistId, listStagesByPipeline } from '@/lib/pipeline/stage'
 import {
   closeStageMembership,
@@ -9,7 +11,13 @@ import {
   openStageMembership,
   reopenStageMembership,
 } from '@/lib/pipeline/stageMembership'
-import { getAvailableActions, isEvaluationPipeline, resolveAdvanceTarget } from '@/lib/pipeline/workflow'
+import {
+  getAvailableActions,
+  isEvaluationPipeline,
+  resolveAdvanceTarget,
+  shouldClearRatingOnUndo,
+  shouldRestoreRatingOnLeave,
+} from '@/lib/pipeline/workflow'
 import {
   addAlbumToPlaylist,
   listPlaylistsByPipelineId,
@@ -21,6 +29,16 @@ export class WorkflowEligibilityError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'WorkflowEligibilityError'
+  }
+}
+
+export class SubmissionConfirmRequiredError extends Error {
+  constructor(
+    readonly albumId: string,
+    readonly rating: NonNullable<Awaited<ReturnType<typeof getAlbumById>>>['rating'],
+  ) {
+    super('Confirm that evaluation may overwrite the current rating on a rated exit')
+    this.name = 'SubmissionConfirmRequiredError'
   }
 }
 
@@ -149,6 +167,58 @@ async function syncStagePlaylistMembership(
   await addAlbumToPlaylist(uid, toPlaylistId, albumId)
 }
 
+async function assertEvaluationSubmissionAllowed(
+  uid: string,
+  albumId: string,
+  pipelineId: string,
+  confirmedOverwrite: boolean,
+): Promise<NonNullable<Awaited<ReturnType<typeof getAlbumById>>> | null> {
+  const album = await getAlbumById(uid, albumId)
+  if (!album) return null
+  if (album.ratingSubmittedPipelineId === pipelineId) return album
+
+  if (needsSubmissionOverwriteConfirm(album) && !confirmedOverwrite) {
+    throw new SubmissionConfirmRequiredError(albumId, album.rating)
+  }
+  return album
+}
+
+async function writeEvaluationSubmission(
+  uid: string,
+  album: NonNullable<Awaited<ReturnType<typeof getAlbumById>>>,
+  pipelineId: string,
+): Promise<void> {
+  if (album.ratingSubmittedPipelineId === pipelineId) return
+  await updateAlbumSubmissionState(uid, album.id, {
+    ratingBeforeSubmission: album.rating ?? null,
+    ratingSubmittedPipelineId: pipelineId,
+  })
+}
+
+async function applyOutcomeRatingIfNeeded(uid: string, albumId: string, stage: Stage): Promise<void> {
+  if (!shouldAutoRateOnLand(stage)) return
+  await updateAlbumRating(uid, albumId, stage.outcomeRating, 'pipeline')
+}
+
+async function cleanupRatingAfterLeavingPipeline(
+  uid: string,
+  albumId: string,
+  stageRole: Stage['pipelineRole'],
+): Promise<void> {
+  const album = await getAlbumById(uid, albumId)
+  if (!album) return
+
+  if (shouldRestoreRatingOnLeave(stageRole)) {
+    const restored = album.ratingBeforeSubmission ?? null
+    await updateAlbumRating(uid, albumId, restored, restored === null ? null : 'manual')
+  }
+
+  await updateAlbumSubmissionState(uid, albumId, {
+    ratingSubmittedPipelineId: null,
+    ratingBeforeSubmission: null,
+  })
+}
+
 export async function applyWorkflowAction(
   uid: string,
   input: {
@@ -182,6 +252,10 @@ export async function applyWorkflowAction(
     currentStage.playlistId,
     targetStage.playlistId,
   )
+
+  if (isEvaluationPipeline(graph.stages)) {
+    await applyOutcomeRatingIfNeeded(uid, input.albumId, targetStage)
+  }
 }
 
 export async function undoLastWorkflowStep(
@@ -219,21 +293,51 @@ export async function undoLastWorkflowStep(
     currentStage.playlistId,
     previousStage.playlistId,
   )
+
+  if (shouldClearRatingOnUndo(currentStage, previousStage)) {
+    await updateAlbumRating(uid, input.albumId, null, null)
+  }
 }
 
 export async function handleStagePlaylistAdd(
   uid: string,
-  input: { playlistId: string; albumId: string },
+  input: { playlistId: string; albumId: string; confirmedOverwrite?: boolean },
 ): Promise<void> {
-  await addAlbumToPlaylist(uid, input.playlistId, input.albumId)
   const context = await loadStageGraphForPlaylist(uid, input.playlistId)
-  if (!context) return
+  let albumForSubmission: NonNullable<Awaited<ReturnType<typeof getAlbumById>>> | null = null
+
+  if (context && isSafeWorkflowTemplate(context.graph.pipeline.templateId)) {
+    const open = await getOpenMembershipForAlbumPipeline(
+      uid,
+      input.albumId,
+      context.graph.pipeline.id,
+    )
+    const enteringOrMoving = !open || open.stageId !== context.stage.id
+
+    if (enteringOrMoving && isEvaluationPipeline(context.graph.stages)) {
+      albumForSubmission = await assertEvaluationSubmissionAllowed(
+        uid,
+        input.albumId,
+        context.graph.pipeline.id,
+        Boolean(input.confirmedOverwrite),
+      )
+    }
+  }
+
+  await addAlbumToPlaylist(uid, input.playlistId, input.albumId)
+  if (!context || !isSafeWorkflowTemplate(context.graph.pipeline.templateId)) return
 
   const { graph, stage } = context
-  if (!isSafeWorkflowTemplate(graph.pipeline.templateId)) return
-
   const open = await getOpenMembershipForAlbumPipeline(uid, input.albumId, graph.pipeline.id)
-  if (open) return
+  if (open?.stageId === stage.id) return
+
+  if (albumForSubmission) {
+    await writeEvaluationSubmission(uid, albumForSubmission, graph.pipeline.id)
+  }
+
+  if (open) {
+    await closeStageMembership(uid, open.id)
+  }
 
   await openStageMembership(uid, {
     albumId: input.albumId,
@@ -241,6 +345,10 @@ export async function handleStagePlaylistAdd(
     stageId: stage.id,
     pipelineRole: stage.pipelineRole,
   })
+
+  if (isEvaluationPipeline(graph.stages)) {
+    await applyOutcomeRatingIfNeeded(uid, input.albumId, stage)
+  }
 }
 
 export async function handleStagePlaylistRemoval(
@@ -256,6 +364,9 @@ export async function handleStagePlaylistRemoval(
 
   if (open.stageId === context.stage.id) {
     await closeStageMembership(uid, open.id)
+    if (isEvaluationPipeline(context.graph.stages)) {
+      await cleanupRatingAfterLeavingPipeline(uid, input.albumId, open.pipelineRole)
+    }
   }
 }
 

@@ -16,6 +16,19 @@ export function yearFromDate(date: string | undefined): string | undefined {
   return match?.[1]
 }
 
+/** Ascending by first-release year; undated groups sink to the bottom. */
+export function compareByFirstReleaseYearAsc(
+  a: { 'first-release-date'?: string },
+  b: { 'first-release-date'?: string },
+): number {
+  const yearA = yearFromDate(a['first-release-date'])
+  const yearB = yearFromDate(b['first-release-date'])
+  if (!yearA && !yearB) return 0
+  if (!yearA) return 1
+  if (!yearB) return -1
+  return Number(yearA) - Number(yearB)
+}
+
 export function formatDuration(ms: number | undefined): string {
   if (!ms || ms <= 0) return '—'
   const totalSeconds = Math.floor(ms / 1000)

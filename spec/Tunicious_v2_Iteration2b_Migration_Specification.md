@@ -1,10 +1,11 @@
 # Tunicious v2 — Iteration 2b: v1 → v2 Migration
 
-**Status:** Draft  
+**Status:** Complete (personal cutover, New evaluation funnel)  
+**Completed:** 2026-07-16  
 **Prerequisite:** [Iteration 2](Tunicious_v2_Iteration2_Specification.md) pipeline data model (Phase 0+). Evaluation funnel provisioned in v2 (Phase 1).  
 **Audience:** Personal cutover from Spotify-era v1 to v2. Not a general multi-user product feature unless promoted later.
 
-This document captures migration strategy for personal cutover from Spotify-era v1 to Tunicious v2. **v1 source constraints are confirmed** (see §2.1); playlist/stage ID mapping and rating field shapes remain to be inventoried from export.
+This document captures migration strategy for personal cutover from Spotify-era v1 to Tunicious v2. Cutover for the **New** evaluation funnel is done: staging upload, dry-run match, human map/apply on `/migration`, and smoke tests passed ([v1-migration-smoke-test.md](../docs/v1-migration-smoke-test.md)).
 
 ---
 
@@ -20,22 +21,22 @@ Iteration 2b defines how to land v1 **pipeline state** in v2 **without losing hi
 
 **Important:** v1 library data is **not** copied into v2. The v2 catalog was built independently via `/import` (Spotify Exportify CSV → MusicBrainz release match). Migration attaches v1 funnel history to albums that already exist in the v2 library.
 
-### 1.1 Iteration 2b delivers (target)
+### 1.1 Iteration 2b delivers
 
 - A documented **three-layer** migration model
 - **Cutover rules** — what to do before/after migration on real data
-- **Playlist CSV sync** spec (readiness triage, not full import) — may be built during iter 2 or 2b
-- **Pipeline state migration** — one-shot import of `StageMembership` history + album rating/submission fields from v1
-- **Album mapping workflow** — dry-run suggestions + human-reviewed `album-id-map.json` (see §7.2)
-- Inventory of **open questions** pending full v1 export (playlist IDs, rating fields)
+- **Pipeline state migration** — one-shot import of `StageMembership` history from v1 `playlistHistory`
+- **Album mapping workflow** — dry-run suggestions + human review/apply on `/migration` (Firestore staging via `npm run migrate:upload-v1`)
+- Live evaluation workflow after cutover (Start / Yes / No / Undo)
 
-### 1.2 Iteration 2b does not deliver (initially)
+### 1.2 Out of scope / deferred
 
-- Automated Spotify playlist pull (Exportify CSV remains the playlist snapshot source)
+- Automated Spotify playlist pull (Exportify CSV / v1 repo import remain the library sources)
 - Full `AlbumRatingEvent` audit trail (iteration 3+)
-- Migration UI in the app (first pass: script / admin tool + spreadsheet review for album mapping)
+- Backfill of sink/terminal **rating fields** on `album_entries` from v1 (apply writes memberships only)
 - Reconstructing history that v1 never persisted (playlist snapshot only)
 - Fully automated v1 → v2 album matching (no shared IDs; see §7)
+- **Known** funnel cutover (upload defaults to `new`; repeat with `V1_MIGRATION_GROUP=known` if needed)
 
 ---
 
@@ -408,33 +409,32 @@ Iteration 2 spec §1.2 links here for personal v1 cutover.
 
 ---
 
-## 9. Build plan (draft)
+## 9. Build plan
 
-| Phase | Summary | Depends on |
-|-------|---------|------------|
-| **0 — v1 export** | Export v1 album docs with `playlistHistory`; document playlist/rating field shapes | v1 access |
-| **1 — Playlist CSV sync** | Triage UI + bulk add (layer 2) | Iter 2 funnel playlists |
-| **2a — Album mapping** | Dry-run suggestions → human review on `/migration` (Firestore staging) | Phase 0, v2 library populated |
-| **2b — Migration apply** | Mapped staging albums → v2 `StageMembership` writes via Migration page | Phase 2a, playlist-id-map linked |
-| **3 — Cutover** | Run apply script on prod user; set flag; smoke-test workflow | Phases 1–2b |
-| **4 — (Optional) In-app migration** | Wizard wrapping export + mapping review + apply | Phase 2b proven |
+| Phase | Summary | Status |
+|-------|---------|--------|
+| **0 — v1 export** | Export v1 album docs with `playlistHistory`; playlist-id maps in repo | Done |
+| **1 — Playlist / library fill** | `/import` CSV + v1 repo staging; playlist sync as needed | Done (ongoing for new albums) |
+| **2a — Album mapping** | Dry-run suggestions → human review on `/migration` | Done |
+| **2b — Migration apply** | Mapped albums → v2 `StageMembership` writes | Done |
+| **3 — Cutover** | Apply on prod user; smoke-test workflow | Done (2026-07-16) |
 
 Album mapping effort scales with **albums that have v1 `playlistHistory`**, not total v2 library size.
 
 ---
 
-## 10. Exit criteria (draft)
+## 10. Exit criteria
 
-- [ ] v1 album + `playlistHistory` shape documented (§7.0)
-- [ ] v2 library contains albums needed for pipeline import (layer 1 via `/import`, not v1 copy)
-- [ ] `album-id-map.json` reviewed and complete for target albums
-- [ ] Stage playlists contain expected albums (layer 2)
-- [ ] Open `StageMembership` matches v1 current stage per in-funnel album
-- [ ] Closed history rows imported **or** consciously skipped with documented reason
-- [ ] Album ratings and submission fields match v1 for sink/terminal/in-progress albums
-- [ ] No pre-migration v2 workflow history on migrated albums
-- [ ] Start/Yes/No works on a newly queued album post-cutover
-- [ ] Cutover flag set
+- [x] v1 album + `playlistHistory` shape documented (§7.0)
+- [x] v2 library contains albums needed for pipeline import (layer 1 via `/import`, not v1 copy)
+- [x] Album map reviewed and complete for target albums (Firestore staging / `/migration`)
+- [x] Stage playlists contain expected albums (layer 2)
+- [x] Open `StageMembership` matches v1 current stage per in-funnel album
+- [x] Closed history rows imported
+- [ ] Album ratings and submission fields match v1 — **deferred** (apply does not write `album_entries` ratings)
+- [x] No conflicting pre-migration v2 workflow history on migrated albums (apply skips if memberships exist)
+- [x] Start/Yes/No works post-cutover (smoke test passed)
+- [x] Evaluation workflow unlocked for migrated funnel
 
 ---
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ExplorerBreadcrumb from '@/components/explorer/ExplorerBreadcrumb.vue'
@@ -8,7 +8,7 @@ import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { useMusicBrainzUserAgent } from '@/composables/useMusicBrainzUserAgent'
 import { getArtist } from '@/lib/musicbrainz/api'
 import { MusicBrainzError } from '@/lib/musicbrainz/client'
-import { yearFromDate } from '@/lib/musicbrainz/format'
+import { compareByFirstReleaseYearAsc, yearFromDate } from '@/lib/musicbrainz/format'
 import type { MbArtistDetail } from '@/lib/musicbrainz/types'
 
 const route = useRoute()
@@ -20,6 +20,10 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 
 const mbid = () => String(route.params.mbid)
+
+const releaseGroups = computed(() =>
+  [...(artist.value?.['release-groups'] ?? [])].sort(compareByFirstReleaseYearAsc),
+)
 
 async function load() {
   loading.value = true
@@ -76,14 +80,14 @@ watch(() => route.params.mbid, load)
       </h3>
 
       <p
-        v-if="!artist['release-groups']?.length"
+        v-if="!releaseGroups.length"
         class="text-sm text-text-muted"
       >
         No release groups listed.
       </p>
 
       <ul v-else class="divide-y divide-border rounded-xl border border-border">
-        <li v-for="rg in artist['release-groups']" :key="rg.id">
+        <li v-for="rg in releaseGroups" :key="rg.id">
           <button
             type="button"
             class="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-white/5"

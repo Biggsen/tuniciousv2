@@ -52,6 +52,7 @@ export interface AlbumPickerItem {
   artist: string
   albumYear?: string
   coverUrlSmall?: string
+  releaseMbid?: string
   importedAt?: Date
   titleLower: string
   artistLower: string
@@ -68,6 +69,7 @@ interface AlbumPickerItemDocument {
   artist: string
   albumYear?: string
   coverUrlSmall?: string
+  releaseMbid?: string
   importedAt?: AlbumDocument['importedAt']
   titleLower: string
   artistLower: string
@@ -86,6 +88,9 @@ export interface LibraryAlbumCard {
   coverUrlSmall?: string
   trackIds: string[]
   artistIds: string[]
+  rating?: StarRating
+  ratingSource?: RatingSource
+  ratingSubmittedPipelineId?: string
 }
 
 const FIRESTORE_IN_QUERY_LIMIT = 30
@@ -143,6 +148,7 @@ function toAlbumPickerItem(id: string, data: AlbumPickerItemDocument): AlbumPick
     artist: data.artist,
     albumYear: data.albumYear,
     coverUrlSmall: data.coverUrlSmall,
+    releaseMbid: data.releaseMbid,
     importedAt: data.importedAt?.toDate(),
     titleLower: data.titleLower,
     artistLower: data.artistLower,
@@ -157,6 +163,7 @@ function pickerNeedsTrackProjection(data: AlbumPickerItemDocument | undefined): 
   if (!data) return true
   if (!Array.isArray(data.titleTokens) || !Array.isArray(data.artistTokens)) return true
   if (!Array.isArray(data.trackIds)) return true
+  if (typeof data.releaseMbid !== 'string') return true
   return false
 }
 
@@ -174,6 +181,7 @@ export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unkn
     artist: album.artist,
     albumYear: album.albumYear,
     coverUrlSmall: album.coverUrlSmall,
+    releaseMbid: album.releaseMbid,
     importedAt: album.importedAt,
     titleLower,
     artistLower,
@@ -449,6 +457,25 @@ export async function listUserAlbumEntryIds(uid: string): Promise<string[]> {
   return snapshot.docs.map((docSnap) => docSnap.id)
 }
 
+async function listUserAlbumEntries(
+  uid: string,
+): Promise<Map<string, Pick<AlbumEntry, 'rating' | 'ratingSource' | 'ratingSubmittedPipelineId'>>> {
+  const snapshot = await getDocs(collection(getFirestoreDb(), 'users', uid, 'album_entries'))
+  const result = new Map<
+    string,
+    Pick<AlbumEntry, 'rating' | 'ratingSource' | 'ratingSubmittedPipelineId'>
+  >()
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data() as AlbumEntryDocument
+    result.set(docSnap.id, {
+      rating: data.rating,
+      ratingSource: data.ratingSource,
+      ratingSubmittedPipelineId: data.ratingSubmittedPipelineId,
+    })
+  }
+  return result
+}
+
 async function getAlbumsByIds(uid: string, albumIds: string[]): Promise<Map<string, Album>> {
   void uid
   const result = new Map<string, Album>()
@@ -471,6 +498,34 @@ async function getAlbumsByIds(uid: string, albumIds: string[]): Promise<Map<stri
   }
 
   return result
+}
+
+/** Batch-load full album docs (includes tracks). Prefer picker/cards for grid UIs. */
+export async function getAlbumsByIdsForUser(
+  uid: string,
+  albumIds: string[],
+): Promise<Map<string, Album>> {
+  return getAlbumsByIds(uid, albumIds)
+}
+
+export function albumStubFromPickerItem(item: AlbumPickerItem): Album {
+  const artistIds = item.artistIds?.length ? item.artistIds : []
+  return {
+    id: item.id,
+    title: item.title,
+    artist: item.artist,
+    artistId: artistIds[0] ?? '',
+    artistIds,
+    albumYear: item.albumYear,
+    releaseMbid: item.releaseMbid ?? '',
+    coverUrlSmall: item.coverUrlSmall,
+    tracks: (item.trackIds ?? []).map((id, index) => ({
+      id,
+      trackNumber: String(index + 1),
+      title: '',
+    })),
+    importedAt: item.importedAt ?? new Date(0),
+  }
 }
 
 async function getAlbumPickerItemsByIds(
@@ -502,6 +557,13 @@ async function getAlbumPickerItemsByIds(
   return result
 }
 
+export async function getAlbumPickerItemsByIdsForUser(
+  uid: string,
+  albumIds: string[],
+): Promise<Map<string, AlbumPickerItem>> {
+  return getAlbumPickerItemsByIds(uid, albumIds)
+}
+
 /**
  * Ensures album_picker docs exist (with trackIds) for the given album ids only —
  * scoped to the user's library, not the global catalog.
@@ -516,7 +578,13 @@ export async function ensureAlbumPickerForAlbumIds(
   const existing = await getAlbumPickerItemsByIds(uid, uniqueIds)
   const missingIds = uniqueIds.filter((id) => {
     const item = existing.get(id)
-    return !item || !Array.isArray(item.trackIds)
+    return (
+      !item ||
+      !Array.isArray(item.trackIds) ||
+      !item.releaseMbid ||
+      !Array.isArray(item.titleTokens) ||
+      !Array.isArray(item.artistTokens)
+    )
   })
   if (missingIds.length === 0) return 0
 
@@ -531,24 +599,32 @@ export async function ensureAlbumPickerForAlbumIds(
 
 /** User-scoped library grid: album_entries → album_picker cards (no full track payloads). */
 export async function listUserLibraryCards(uid: string): Promise<LibraryAlbumCard[]> {
-  const entryIds = await listUserAlbumEntryIds(uid)
+  const entries = await listUserAlbumEntries(uid)
+  const entryIds = [...entries.keys()]
   if (entryIds.length === 0) return []
 
   await ensureAlbumPickerForAlbumIds(uid, entryIds)
   const pickers = await getAlbumPickerItemsByIds(uid, entryIds)
 
   return entryIds
-    .map((id) => pickers.get(id))
-    .filter((item): item is AlbumPickerItem => Boolean(item))
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      artist: item.artist,
-      albumYear: item.albumYear,
-      coverUrlSmall: item.coverUrlSmall,
-      trackIds: item.trackIds ?? [],
-      artistIds: item.artistIds ?? [],
-    }))
+    .map((id) => {
+      const item = pickers.get(id)
+      if (!item) return null
+      const entry = entries.get(id)
+      return {
+        id: item.id,
+        title: item.title,
+        artist: item.artist,
+        albumYear: item.albumYear,
+        coverUrlSmall: item.coverUrlSmall,
+        trackIds: item.trackIds ?? [],
+        artistIds: item.artistIds ?? [],
+        rating: entry?.rating,
+        ratingSource: entry?.ratingSource,
+        ratingSubmittedPipelineId: entry?.ratingSubmittedPipelineId,
+      } satisfies LibraryAlbumCard
+    })
+    .filter((card): card is LibraryAlbumCard => Boolean(card))
     .sort((a, b) => a.title.localeCompare(b.title))
 }
 

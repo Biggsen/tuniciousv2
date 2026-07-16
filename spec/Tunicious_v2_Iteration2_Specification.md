@@ -16,7 +16,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | 1 — Evaluation template bootstrap | Complete | Set up funnel; Evaluation + Filter templates; map stages to existing or new playlists |
 | 2 — Playlist grouping UI | Complete | Collapsible groups; delete funnel with confirm; flat list for other playlists |
 | 3 — Pipeline workflow engine | Complete | Stage playlist Start/Yes/No/Undo with membership + playlist sync; evaluation legacy rows guarded until migration |
-| 4 — Rating & submission | Not started | Manual stars, submission, auto-rate, display states |
+| 4 — Rating & submission | In progress | Manual stars, submission confirm, auto-rate on rated exits, display states |
 | 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |
 
 ---
