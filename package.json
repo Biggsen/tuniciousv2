@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "backup:firestore": "node scripts/backup-firestore.mjs",
-    "migrate:catalog": "node scripts/migrate-catalog.mjs"
+    "migrate:catalog": "node scripts/migrate-catalog.mjs",
+    "migrate:upload-v1": "node scripts/upload-v1-migration.mjs"
   },
   "dependencies": {
     "firebase": "^11.6.0",

@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
+import AlbumPipelineHistory from '@/components/album/AlbumPipelineHistory.vue'
 import TrackResolvePanel from '@/components/youtube/TrackResolvePanel.vue'
 import {
   clearArtistPreferredYouTubeChannel,
@@ -444,7 +445,13 @@ onMounted(load)
       <p v-if="playError" class="mb-4 text-sm text-red-300">{{ playError }}</p>
       <p v-if="error" class="mb-4 text-sm text-red-300">{{ error }}</p>
 
-      <h3 class="mb-3 text-sm font-medium uppercase tracking-wider text-text-muted">Tracklist</h3>
+      <AlbumPipelineHistory
+        v-if="auth.user"
+        :uid="auth.user.uid"
+        :album-id="album.id"
+      />
+
+      <h3 class="mb-3 mt-8 text-sm font-medium uppercase tracking-wider text-text-muted">Tracklist</h3>
       <ol class="divide-y divide-border rounded-xl border border-border">
         <li
           v-for="(track, index) in album.tracks"

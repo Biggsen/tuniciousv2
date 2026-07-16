@@ -4,7 +4,7 @@
 **Prerequisite:** [Iteration 2](Tunicious_v2_Iteration2_Specification.md) pipeline data model (Phase 0+). Evaluation funnel provisioned in v2 (Phase 1).  
 **Audience:** Personal cutover from Spotify-era v1 to v2. Not a general multi-user product feature unless promoted later.
 
-This document captures migration strategy discussed alongside iteration 2 planning. It is **not exhaustive** — source schema inventory, field mapping, and tooling details will be revisited once v1 Firestore exports are inspected.
+This document captures migration strategy for personal cutover from Spotify-era v1 to Tunicious v2. **v1 source constraints are confirmed** (see §2.1); playlist/stage ID mapping and rating field shapes remain to be inventoried from export.
 
 ---
 
@@ -13,10 +13,12 @@ This document captures migration strategy discussed alongside iteration 2 planni
 Iteration 2 ships a greenfield evaluation funnel. A v1 user already has:
 
 - Albums organized across **stage playlists** (Queued, Curious, …) via Spotify-era tooling
-- **Pipeline process metadata** — when albums moved between stages, ratings, and related dates
+- **Pipeline process metadata** — when albums moved between stages, ratings, and related dates (`playlistHistory` on v1 album docs)
 - A longer **album readiness** path in v2 (library import → MusicBrainz → YouTube resolve) before playback
 
-Iteration 2b defines how to land v1 state in v2 **without losing history** and **without creating conflicting v2-native pipeline records** before migration runs.
+Iteration 2b defines how to land v1 **pipeline state** in v2 **without losing history** and **without creating conflicting v2-native pipeline records** before migration runs.
+
+**Important:** v1 library data is **not** copied into v2. The v2 catalog was built independently via `/import` (Spotify Exportify CSV → MusicBrainz release match). Migration attaches v1 funnel history to albums that already exist in the v2 library.
 
 ### 1.1 Iteration 2b delivers (target)
 
@@ -24,14 +26,16 @@ Iteration 2b defines how to land v1 state in v2 **without losing history** and *
 - **Cutover rules** — what to do before/after migration on real data
 - **Playlist CSV sync** spec (readiness triage, not full import) — may be built during iter 2 or 2b
 - **Pipeline state migration** — one-shot import of `StageMembership` history + album rating/submission fields from v1
-- Inventory of **open questions** pending v1 export analysis
+- **Album mapping workflow** — dry-run suggestions + human-reviewed `album-id-map.json` (see §7.2)
+- Inventory of **open questions** pending full v1 export (playlist IDs, rating fields)
 
 ### 1.2 Iteration 2b does not deliver (initially)
 
 - Automated Spotify playlist pull (Exportify CSV remains the playlist snapshot source)
 - Full `AlbumRatingEvent` audit trail (iteration 3+)
-- Migration UI in the app (first pass may be a script / admin tool)
+- Migration UI in the app (first pass: script / admin tool + spreadsheet review for album mapping)
 - Reconstructing history that v1 never persisted (playlist snapshot only)
+- Fully automated v1 → v2 album matching (no shared IDs; see §7)
 
 ---
 
@@ -39,11 +43,26 @@ Iteration 2b defines how to land v1 state in v2 **without losing history** and *
 
 Do not conflate these. Each has a different source and migration path.
 
-| Layer | What it is | v1 source (expected) | v2 target |
-|-------|------------|----------------------|-----------|
-| **1 — Library** | Canonical `Album` + artists + YouTube mappings | v1 library or re-import via `/import` | `users/{uid}/albums`, artists, mappings |
+| Layer | What it is | v1 source | v2 target |
+|-------|------------|-----------|-----------|
+| **1 — Library** | Canonical `Album` + artists + YouTube mappings | **Not migrated.** User builds v2 library via `/import` over time | Global `albums` / `artists`; per-user `album_entries` / `artist_prefs` |
 | **2 — Playlist snapshot** | Which albums appear on which stage playlist **today** | Spotify Exportify CSV per stage, or v1 playlist membership | `PlaylistMembership` on stage-linked playlists |
-| **3 — Pipeline state** | Current position + move history + evaluation ratings | v1 stage / pipeline process docs (TBD) | Open + closed `StageMembership`; `Album.rating*` fields |
+| **3 — Pipeline state** | Current position + move history + evaluation ratings | v1 `playlistHistory[]` on album docs (+ ratings TBD) | Open + closed `StageMembership`; rating fields on `album_entries` |
+
+### 2.1 Cross-system constraints (confirmed)
+
+v1 and v2 are **separate databases**. No v1 data was bulk-migrated into v2.
+
+| Topic | v1 (Spotify-era) | v2 (current) |
+|-------|------------------|--------------|
+| **Album IDs** | v1-owned doc IDs | v2-owned UUIDs — **no correlation** |
+| **MusicBrainz** | Not stored on albums | `releaseMbid` on every imported album |
+| **Spotify IDs** | May exist on playlists; not relied on for album join | Used only at CSV import time; **not stored** on `Album` |
+| **Track lists** | **Not stored** on album docs | Full MB track list on `Album` |
+| **Album fields** | Title, artist (and pipeline metadata) | Title, artist from MB (may differ — e.g. `(Deluxe)` stripped or different edition picked) |
+| **Library build** | Spotify-era catalog | Fresh MB imports via Exportify CSV → `suggestRelease` title/artist/year scoring |
+
+**Implication:** Layer 3 migration is a **semantic join** — “this v1 album’s funnel history belongs on this v2 album” — not a database FK remap. Wrong album links are worse than skipped history; human oversight is required for ambiguous matches (see §7.2).
 
 **Iteration 2 alone** (CSV fill without layer 3) leaves albums on the right playlists but the app treats them as **not in the pipeline** — no submission gating, no workflow actions, incorrect rating display.
 
@@ -53,12 +72,13 @@ Do not conflate these. Each has a different source and migration path.
 
 ## 3. Design principles
 
-1. **Library first.** Albums must exist in v2 library before playlist or pipeline migration. Resolve tracks for playback before expecting playlist add (same rule as iteration 2 `AddAlbumPanel`).
+1. **Library first.** Albums must exist in v2 library before playlist or pipeline migration. v2 library is built via `/import`, not v1 export. Resolve tracks for playback before expecting playlist add (same rule as iteration 2 `AddAlbumPanel`).
 2. **CSV sync is layer 2 only.** Re-parsing Exportify CSV matches library albums and adds playlist memberships. It does **not** write `StageMembership` or rating fields.
 3. **Pipeline migration is layer 3 only.** One-shot write of membership history and album evaluation state from v1. Run on a clean pipeline namespace for affected albums where possible.
 4. **Do not build history organically before migration** on the catalog you intend to import. Use throwaway accounts or post-migration albums for iteration 2 workflow testing.
-5. **Idempotent where practical.** Re-running playlist CSV sync should skip albums already on the playlist. Pipeline migration should be all-or-nothing per user with a explicit cutover flag.
+5. **Idempotent where practical.** Re-running playlist CSV sync should skip albums already on the playlist. Pipeline migration should be all-or-nothing per user with an explicit cutover flag.
 6. **Minimum vs full migration** — see §6. Choose based on what v1 actually stored.
+7. **Album mapping is human-gated.** Auto-match may suggest candidates; apply only rows with an explicit entry in `album-id-map.json`. Never silently pick among multiple v2 candidates.
 
 ---
 
@@ -86,7 +106,8 @@ For a v1 user moving to v2:
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  D. Pipeline state migration (one-shot, from v1 export)         │
-│     StageMembership chain + album rating/submission fields      │
+│     Human-reviewed album-id-map → StageMembership chain         │
+│     + album rating/submission fields on album_entries           │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -138,19 +159,31 @@ Per album that was in the v1 funnel:
 - One **open** `StageMembership` at the stage matching v1 current position (`removedAt: null`)
 - `pipelineRole` snapshot from stage definition
 - `PlaylistMembership` on that stage’s playlist (may already exist from layer 2)
-- `Album` fields per iteration 2 §4.6:
+- `Album` / `album_entries` fields per iteration 2 §4.6:
   - On sink/terminal: `rating`, `ratingSource: 'pipeline'`, `ratedAt` (from v1 if available)
   - On source/transient: `ratingSubmittedPipelineId` set if still in evaluation; `ratingBeforeSubmission` if stashed in v1
   - Out of funnel: clear submission fields; retain manual/pipeline rating as appropriate
 
 ### 6.2 Full migration (history-preserving)
 
-If v1 persisted move events:
+v1 persists move events on album docs as `playlistHistory[]`. Each array entry maps to one `StageMembership` row:
 
-- Reconstruct **closed** `StageMembership` rows in chronological order per `(albumId, pipelineId)`
+| v1 `playlistHistory[]` | v2 `StageMembership` |
+|------------------------|----------------------|
+| (parent v1 album id) | `albumId` → **v2** id via `album-id-map.json` |
+| `addedAt` | `addedAt` |
+| `removedAt` (`null` = current) | `removedAt` |
+| `pipelineRole` | `pipelineRole` |
+| `playlistId` | → resolve to `stageId` via playlist-id map |
+| — | `pipelineId` (evaluation pipeline in v2) |
+| new UUID | `id` |
+
+Migration steps:
+
+- Reconstruct **closed** `StageMembership` rows in chronological order per `(v2AlbumId, pipelineId)`
 - Each segment: `stageId`, `pipelineRole`, `addedAt`, `removedAt` from v1 timestamps
 - Final segment open with `removedAt: null`
-- Map v1 album IDs → v2 album IDs (release MBID, title/artist, or explicit mapping table)
+- **Require** confirmed `v1AlbumId → v2AlbumId` mapping before writing (§7.2) — v1 and v2 album IDs are unrelated
 
 v2 schema stores history as closed memberships — no separate audit collection required for iteration 2.
 
@@ -161,7 +194,7 @@ If v1 only has **current playlist placement** (no event log):
 - Full path (Queued → Curious → … with dates) is **not reconstructable**
 - Minimum migration (current stage + rating) is still possible from snapshot + v1 album docs
 
-**Action item:** Export v1 Firestore and inventory collections/fields before finalizing §6.2 mapping.
+**Scope note:** Only albums with a confirmed v2 library match **and** a row in `album-id-map.json` receive pipeline history. v1 albums not imported to v2 are skipped (or imported first, then mapped).
 
 ### 6.4 Conflict rules (draft)
 
@@ -182,24 +215,183 @@ If v1 only has **current playlist placement** (no event log):
 
 ---
 
-## 7. v1 → v2 mapping (preliminary)
+## 7. v1 → v2 mapping
 
-Pending v1 export. Expected differences from iteration 1 Appendix A:
+### 7.0 Source inventory (partial)
+
+**v1 album doc (confirmed):**
+
+- `id` — v1-only; not portable
+- `title`, `artist` — primary matching inputs
+- `playlistHistory[]` — pipeline segments (`addedAt`, `removedAt`, `pipelineRole`, `playlistId`, …)
+- No MusicBrainz IDs, no track list
+
+**v2 album doc (confirmed):**
+
+- `id` — v2 UUID; assigned at MB import
+- `title`, `artist`, `releaseMbid`, `tracks[]` — from MusicBrainz
+- No Spotify album ID persisted
+
+**Structural differences (Spotify-era v1 vs Tunicious v2):**
 
 | Spotify-era v1 | Tunicious v2 |
 |----------------|--------------|
 | Playlist doc = stage + Spotify ID | `Playlist` + `Stage.playlistId` |
 | One global current stage | One open `StageMembership` per pipeline |
 | Stage implied playlist membership | Explicit `PlaylistMembership` + `StageMembership` |
-| (TBD) move timestamps / history collection | Closed `StageMembership` rows |
+| `playlistHistory[]` on album doc | Closed + open `StageMembership` rows |
 
 ### 7.1 ID mapping
 
 | Entity | Strategy |
 |--------|----------|
-| Album | Prefer `releaseMbid` match; fallback title+artist; maintain `v1AlbumId → v2AlbumId` map for failures |
-| Playlist / stage | Match evaluation template names (Queued, Curious, …); map v1 playlist/stage IDs to v2 `stageId` / `playlistId` after funnel creation |
-| Pipeline | Multiple evaluation pipelines per user; names unique; `templateId: 'evaluation'` |
+| **Album** | **No shared IDs.** Auto-**suggest** via normalized title + artist (`albumTitleMatchKeys`, `findLibraryMatch`). **Apply** only with human-confirmed `album-id-map.json`. `releaseMbid` is v2-only and cannot bridge from v1. Edition disambiguation (Deluxe vs standard, remasters) requires human review — v1 has no track list to compare. |
+| **Playlist / stage** | Match evaluation template names (Queued, Curious, …); map v1 `playlistId` → v2 `stageId` / `playlistId` after funnel creation |
+| **Pipeline** | Evaluation pipeline per user; `templateId: 'evaluation'` |
+
+### 7.2 Album mapping workflow (required)
+
+Because v1 and v2 catalogs were built independently, album mapping is a **one-time curated artifact**, not an automatic migration step.
+
+**1. Export v1** (read-only) — see **§7.3 Export contract** for the required shape and fields.
+
+Only export albums with `playlistHistory` worth migrating (not necessarily the full v1 library).
+
+**2. Dry-run** — for each v1 album, query v2 global `albums` and classify:
+
+| Bucket | Condition | Action |
+|--------|-----------|--------|
+| `auto_suggested` | Exactly one candidate after normalized title + artist match | Suggest for map; still review if edition qualifiers differ between v1 and v2 titles |
+| `ambiguous` | Multiple v2 candidates (e.g. standard + deluxe share core title) | Review queue — show v1 title/artist beside each v2 title/artist/**track count** |
+| `unmatched` | No v2 candidate | Skip pipeline import, or import album to v2 first |
+| `mapped` | Row present in `album-id-map.json` | Eligible for apply |
+
+**3. Human review** — edit `album-id-map.json`:
+
+```json
+{
+  "v1AlbumId": {
+    "v2AlbumId": "uuid",
+    "confidence": "manual",
+    "note": "v1 Deluxe title; v2 is standard MB release — same listening copy"
+  }
+}
+```
+
+Auto-accept **only** unambiguous single matches with matching edition intent. When in doubt, pick manually. Wrong history on the wrong album is unacceptable.
+
+**4. Apply** — migration script writes `StageMembership` rows **only** for mapped albums. Emit report: applied / skipped-unmapped / skipped-no-v2-library.
+
+**Supporting mapping files:**
+
+| File | Purpose |
+|------|---------|
+| `album-id-map.json` | v1 album id → v2 global `albumId` (human-gated); or `migration` node on working `albums.json` |
+| `playlist-id-map-{group}.json` | Spotify playlist id → inferred stage name + v2 `stageId` / `playlistId`. Derive by walking `playlists.json` graph (`nextStagePlaylistId` / `terminationPlaylistId`) per `group` — no Spotify name lookup. Examples: `playlist-id-map-new.json`, `playlist-id-map-known.json` |
+| `pipeline-map.json` / uid map | v1 uid → v2 uid; v1 group → v2 `pipelineId` |
+
+**Reference implementation for suggestions:** `src/lib/import/normalizeAlbumTitle.ts` (edition qualifier stripping), `src/lib/import/matchLibrary.ts` (title + artist index). These match how v2 library was built from CSV — they are **suggestion helpers**, not authoritative matchers across systems.
+
+### 7.3 v1 export contract (for the v1 app)
+
+v1 must produce a **read-only JSON export**. No writes to v1. No MusicBrainz / Spotify enrichment required — export what is already on the album docs.
+
+#### Scope
+
+- Export albums that have a non-empty `playlistHistory` (or equivalent move-history array).
+- Optionally also export a small **playlist catalog** so v2 can build `playlist-id-map.json`.
+- Do **not** require track lists, MBIDs, or Spotify album IDs (v1 does not have them for this join).
+
+#### Recommended layout
+
+```
+exports/v1-pipeline-YYYY-MM-DD/
+  manifest.json
+  albums.json                 # or albums/{v1AlbumId}.json (one file per album)
+  playlists.json              # optional but recommended
+```
+
+#### `manifest.json`
+
+```json
+{
+  "exportedAt": "2026-07-10T12:00:00.000Z",
+  "source": "tunicious-v1",
+  "uid": "<firebase-auth-uid>",
+  "albumCount": 0,
+  "playlistCount": 0,
+  "notes": "Pipeline history export for Tunicious v2 iteration 2b"
+}
+```
+
+#### Album record (required)
+
+Each album object **must** include:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `v1AlbumId` | string | Firestore document id |
+| `title` | string | Exact stored title (do not normalize/strip Deluxe etc.) |
+| `artist` | string | Primary album artist string as stored |
+| `playlistHistory` | array | Chronological segments; see below |
+
+**Include if present on the album doc** (do not invent):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `rating` | number | Star rating if stored |
+| `ratedAt` | string (ISO) | |
+| `ratingSource` | string | |
+| `year` | string/number | Helps human review only |
+| `imageUrl` | string | Optional, review UI only |
+| Any other rating / submission / “current stage” fields | — | Export as-is under a `extras` object if names are unclear |
+
+#### `playlistHistory[]` entry (required fields)
+
+Preserve every segment. Serialize Firestore Timestamps as **ISO-8601 strings** (or `{ "_seconds": n, "_nanoseconds": n }` — pick one and document it in `manifest.json`).
+
+| Field | Type | Required | Maps to v2 |
+|-------|------|----------|------------|
+| `addedAt` | ISO string / timestamp | **yes** | `StageMembership.addedAt` |
+| `removedAt` | ISO string / timestamp / `null` | **yes** (`null` = current open segment) | `StageMembership.removedAt` |
+| `playlistId` | string | **yes** | → `stageId` via playlist map |
+| `pipelineRole` | string | yes if stored | `pipelineRole` |
+| `playlistName` | string | recommended | Human review / stage name match |
+| `category` | string | if stored | Review / mapping aid |
+
+Export **all other keys** on each history entry as-is (do not drop unknown fields). Order array chronologically by `addedAt` ascending if not already ordered.
+
+#### `playlists.json` (recommended)
+
+One row per stage / evaluation playlist referenced by history:
+
+```json
+[
+  {
+    "v1PlaylistId": "...",
+    "name": "Curious",
+    "pipelineRole": "transient",
+    "spotifyPlaylistId": "..."
+  }
+]
+```
+
+`name` + `pipelineRole` are enough for v2 to map Queued / Curious / … → stages. Spotify playlist id is optional.
+
+#### Filtering rules
+
+1. Skip albums with missing/empty `playlistHistory`.
+2. Do not rewrite titles or merge editions.
+3. Do not resolve or change `playlistId` values — export raw v1 ids.
+4. Prefer one downloadable zip or a single `albums.json` array for handoff to v2.
+
+#### Acceptance check (v1)
+
+- [ ] Sample album JSON opens and has `v1AlbumId`, `title`, `artist`, `playlistHistory`
+- [ ] At least one history entry has `removedAt: null` (current stage) when album is still in funnel
+- [ ] Closed segments have both `addedAt` and `removedAt`
+- [ ] Timestamps are parseable (ISO or documented Firestore shape)
+- [ ] `playlists.json` covers every distinct `playlistId` appearing in history (or list gaps)
 
 ---
 
@@ -220,20 +412,22 @@ Iteration 2 spec §1.2 links here for personal v1 cutover.
 
 | Phase | Summary | Depends on |
 |-------|---------|------------|
-| **0 — v1 inventory** | Export Firestore; document collections, sample docs, move history shape | v1 access |
+| **0 — v1 export** | Export v1 album docs with `playlistHistory`; document playlist/rating field shapes | v1 access |
 | **1 — Playlist CSV sync** | Triage UI + bulk add (layer 2) | Iter 2 funnel playlists |
-| **2 — Migration script** | v1 export → v2 writes (layer 3); dry-run report | Phase 0, iter 2 Phase 0 |
-| **3 — Cutover** | Run script on prod user; set flag; smoke-test workflow | Phases 1–2 |
-| **4 — (Optional) In-app migration** | Wizard wrapping script steps | Phase 2 proven |
+| **2a — Album mapping** | Dry-run suggestions → human review on `/migration` (Firestore staging) | Phase 0, v2 library populated |
+| **2b — Migration apply** | Mapped staging albums → v2 `StageMembership` writes via Migration page | Phase 2a, playlist-id-map linked |
+| **3 — Cutover** | Run apply script on prod user; set flag; smoke-test workflow | Phases 1–2b |
+| **4 — (Optional) In-app migration** | Wizard wrapping export + mapping review + apply | Phase 2b proven |
 
-Estimates deferred until v1 inventory completes.
+Album mapping effort scales with **albums that have v1 `playlistHistory`**, not total v2 library size.
 
 ---
 
 ## 10. Exit criteria (draft)
 
-- [ ] v1 Firestore schema documented with field mapping to v2
-- [ ] Library albums in v2 match v1 catalog (or accepted subset)
+- [ ] v1 album + `playlistHistory` shape documented (§7.0)
+- [ ] v2 library contains albums needed for pipeline import (layer 1 via `/import`, not v1 copy)
+- [ ] `album-id-map.json` reviewed and complete for target albums
 - [ ] Stage playlists contain expected albums (layer 2)
 - [ ] Open `StageMembership` matches v1 current stage per in-funnel album
 - [ ] Closed history rows imported **or** consciously skipped with documented reason
@@ -246,9 +440,18 @@ Estimates deferred until v1 inventory completes.
 
 ## 11. Open questions (revisit)
 
-1. **Exact v1 collections** for stage moves, ratings, and timestamps — names and shapes?
+### Resolved / confirmed
+
+1. **Separate databases** — v1 and v2 have no shared album (or other catalog) IDs.
+2. **v1 album shape** — title, artist, `playlistHistory[]` only; no MBIDs, no track list.
+3. **v2 library origin** — built via `/import` (CSV title/artist → MB); no v1 bulk migration.
+4. **Album matching** — human-gated `album-id-map.json`; auto-suggest title+artist only.
+
+### Still open
+
+1. **Exact v1 fields** on `playlistHistory[]` entries and any per-album rating / submission fields.
 2. Does v1 store **per-album rating** on sinks only, or tentative ratings on transients?
-3. Same Firebase project or separate? Same `uid`?
+3. v1 Firebase project vs v2 — same `uid`?
 4. Should playlist CSV sync live on iteration 2 roadmap or only 2b?
 5. Fabricate `addedAt` on open membership when v1 date unknown, or use migration run time?
 6. Albums in v1 library but not in any stage playlist — leave out of pipeline entirely?
@@ -260,5 +463,7 @@ Estimates deferred until v1 inventory completes.
 
 - [Iteration 2 Specification](Tunicious_v2_Iteration2_Specification.md) — pipeline model, ratings, workflow
 - [Iteration 1 Specification — Appendix A](Tunicious_v2_Iteration1_Specification.md) — v1 vs v2 pipeline concepts
-- `src/lib/import/matchLibrary.ts` — CSV → library matching for layer 2
+- `src/lib/import/normalizeAlbumTitle.ts` — edition qualifier stripping for match suggestions
+- `src/lib/import/matchLibrary.ts` — CSV → library matching (layer 2 and album-map suggestions)
+- `src/lib/import/suggestRelease.ts` — how v2 picked MB releases at import time
 - `src/lib/pipeline/stageMembership.ts` — layer 3 target writes

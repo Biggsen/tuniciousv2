@@ -116,6 +116,12 @@ const router = createRouter({
           component: () => import('@/views/SettingsView.vue'),
           meta: { title: 'Settings' },
         },
+        {
+          path: 'migration',
+          name: 'migration',
+          component: () => import('@/views/MigrationView.vue'),
+          meta: { title: 'Migration' },
+        },
       ],
     },
   ],

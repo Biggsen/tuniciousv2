@@ -1,0 +1,26 @@
+[
+  {
+    "v1PlaylistId": "3PTpK7Yzq05S4D4d8rrcrN",
+    "pipelineRole": "source",
+    "group": "new",
+    "nextStagePlaylistId": "5WE5TNoxDD1XrGKicFj3",
+    "terminationPlaylistId": null,
+    "firestoreDocId": "Mw1JzBlGs86Osw9NawiR"
+  },
+  {
+    "v1PlaylistId": "4YMIhj3YESsAZF4iBWKfG1",
+    "pipelineRole": "transient",
+    "group": "known",
+    "nextStagePlaylistId": "X230MVMveDYyNbzFctqQ",
+    "terminationPlaylistId": "JOUZGeY6NHhzNgOPnpy3",
+    "firestoreDocId": "uNyoO6J4DNGPAXAuNApX"
+  },
+  {
+    "v1PlaylistId": "5bK537V2so6OqMaOVecYxX",
+    "pipelineRole": "source",
+    "group": "known",
+    "nextStagePlaylistId": "uNyoO6J4DNGPAXAuNApX",
+    "terminationPlaylistId": null,
+    "firestoreDocId": "UxlywRbmJEuWG1snjUR9"
+  }
+]

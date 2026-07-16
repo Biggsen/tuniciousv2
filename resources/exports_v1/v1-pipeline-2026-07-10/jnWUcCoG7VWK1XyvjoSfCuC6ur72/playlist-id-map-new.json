@@ -1,0 +1,188 @@
+{
+  "v1Uid": "jnWUcCoG7VWK1XyvjoSfCuC6ur72",
+  "v2Uid": "HLxlL3xwLKMumpHf9FVYMsxNlNw1",
+  "v2PipelineId": "d41c3b0d-ce85-472f-80d0-b2ce2161d869",
+  "group": "new",
+  "derivedAt": "2026-07-10T13:26:39.945Z",
+  "derivedFrom": "playlists.json graph walk (nextStagePlaylistId / terminationPlaylistId)",
+  "templateAlignment": "evaluation: Queued→Curious→Interested→Good→Excellent→Wonderful + 1★–4★ sinks",
+  "chain": [
+    {
+      "v1PlaylistId": "50mWTRVvyIC3lUjTJ3r5KV",
+      "inferredName": "Queued",
+      "pipelineRole": "source"
+    },
+    {
+      "v1PlaylistId": "67lIAfdpjpYSvruBVFuP9N",
+      "inferredName": "Curious",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "7zdATiJXMzfRaAAfb5nJA1",
+      "inferredName": "1★",
+      "pipelineRole": "sink",
+      "exitFrom": "Curious"
+    },
+    {
+      "v1PlaylistId": "3BUpSXAvxd05UkBil8JYWe",
+      "inferredName": "Interested",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "7a3qMfves1XspMyfmHcbsx",
+      "inferredName": "2★",
+      "pipelineRole": "sink",
+      "exitFrom": "Interested"
+    },
+    {
+      "v1PlaylistId": "2tmqzXyCSHUeFWSdPF6UuC",
+      "inferredName": "Good",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "1o6uNnEe2vWdGkX5azoLEF",
+      "inferredName": "3★",
+      "pipelineRole": "sink",
+      "exitFrom": "Good"
+    },
+    {
+      "v1PlaylistId": "0JKPso7ACSmMc9NNWUzDQ6",
+      "inferredName": "Excellent",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "6pLxu15QzGhPXRt3jNa2wu",
+      "inferredName": "4★",
+      "pipelineRole": "sink",
+      "exitFrom": "Excellent"
+    },
+    {
+      "v1PlaylistId": "6t7Ftpes0Wp2THxA4olWLC",
+      "inferredName": "Wonderful",
+      "pipelineRole": "terminal"
+    }
+  ],
+  "stages": {
+    "50mWTRVvyIC3lUjTJ3r5KV": {
+      "inferredName": "Queued",
+      "pipelineRole": "source",
+      "group": "new",
+      "firestoreDocId": "9lsBONl1DM6Mj3XAwb70",
+      "nextStagePlaylistId": "Z7evQTAhDyiDbWKzdSmX",
+      "terminationPlaylistId": null,
+      "v2StageId": "0ae28abd-d939-4160-8b67-a66bdd7893c3",
+      "v2PlaylistId": "6e2af505-087c-4790-a0d2-7d82901ab0a1",
+      "v2StageName": "Queued"
+    },
+    "67lIAfdpjpYSvruBVFuP9N": {
+      "inferredName": "Curious",
+      "pipelineRole": "transient",
+      "group": "new",
+      "firestoreDocId": "Z7evQTAhDyiDbWKzdSmX",
+      "nextStagePlaylistId": "gC9VcAhK6r6FP7t7aaDN",
+      "terminationPlaylistId": "AMEtSjK99SYdAGMWKriE",
+      "v2StageId": "abc5a80b-2615-47f5-a235-0937b6b3039a",
+      "v2PlaylistId": "f0f79bf0-cf6d-4a24-9670-8c0052b44f08",
+      "v2StageName": "Curious"
+    },
+    "7zdATiJXMzfRaAAfb5nJA1": {
+      "inferredName": "1★",
+      "pipelineRole": "sink",
+      "group": "new",
+      "firestoreDocId": "AMEtSjK99SYdAGMWKriE",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "67lIAfdpjpYSvruBVFuP9N",
+      "exitFromInferredName": "Curious",
+      "v2StageId": "b8c825d0-4f1b-4a6e-8ef6-4aa668edbfb1",
+      "v2PlaylistId": "213e91ac-4633-4bb6-94d4-b7cc783ea9e3",
+      "v2StageName": "1★"
+    },
+    "3BUpSXAvxd05UkBil8JYWe": {
+      "inferredName": "Interested",
+      "pipelineRole": "transient",
+      "group": "new",
+      "firestoreDocId": "gC9VcAhK6r6FP7t7aaDN",
+      "nextStagePlaylistId": "g2yG4RdWXpRbhjAcvMST",
+      "terminationPlaylistId": "ZUWJUZyWHhxzq5yyYSX6",
+      "v2StageId": "dca74716-1e88-42ba-a381-3bb62352e3d7",
+      "v2PlaylistId": "3f5cfc68-685b-48d3-a72a-470d63642842",
+      "v2StageName": "Interested"
+    },
+    "7a3qMfves1XspMyfmHcbsx": {
+      "inferredName": "2★",
+      "pipelineRole": "sink",
+      "group": "new",
+      "firestoreDocId": "ZUWJUZyWHhxzq5yyYSX6",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "3BUpSXAvxd05UkBil8JYWe",
+      "exitFromInferredName": "Interested",
+      "v2StageId": "2dc40dd1-d9a0-4d66-b17d-5a0e05dfad3a",
+      "v2PlaylistId": "51eb6e9a-fd15-41e0-894c-eecaa6509f61",
+      "v2StageName": "2★"
+    },
+    "2tmqzXyCSHUeFWSdPF6UuC": {
+      "inferredName": "Good",
+      "pipelineRole": "transient",
+      "group": "new",
+      "firestoreDocId": "g2yG4RdWXpRbhjAcvMST",
+      "nextStagePlaylistId": "VbUxpfFZavnrD3cwiuFo",
+      "terminationPlaylistId": "3AVXm2t1CiRPyV0nM4Bh",
+      "v2StageId": "41089dca-a0f5-4350-b295-198d4877b4c6",
+      "v2PlaylistId": "2f43b5c8-58c7-4d45-bfee-802df584a1d7",
+      "v2StageName": "Good"
+    },
+    "1o6uNnEe2vWdGkX5azoLEF": {
+      "inferredName": "3★",
+      "pipelineRole": "sink",
+      "group": "new",
+      "firestoreDocId": "3AVXm2t1CiRPyV0nM4Bh",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "2tmqzXyCSHUeFWSdPF6UuC",
+      "exitFromInferredName": "Good",
+      "v2StageId": "9aa2de94-699f-4e72-bb8b-9548e7a4af1d",
+      "v2PlaylistId": "087da749-f438-468e-8a02-62fbc99472d9",
+      "v2StageName": "3★"
+    },
+    "0JKPso7ACSmMc9NNWUzDQ6": {
+      "inferredName": "Excellent",
+      "pipelineRole": "transient",
+      "group": "new",
+      "firestoreDocId": "VbUxpfFZavnrD3cwiuFo",
+      "nextStagePlaylistId": "5f7wsu5iZAf0VUhhKoJn",
+      "terminationPlaylistId": "8rrAQu5BitCWSX0ubQkb",
+      "v2StageId": "eb379d42-5be2-4202-8be3-a00dca0949aa",
+      "v2PlaylistId": "a76c9f31-44c5-4235-a928-7010879e2eab",
+      "v2StageName": "Excellent"
+    },
+    "6pLxu15QzGhPXRt3jNa2wu": {
+      "inferredName": "4★",
+      "pipelineRole": "sink",
+      "group": "new",
+      "firestoreDocId": "8rrAQu5BitCWSX0ubQkb",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "0JKPso7ACSmMc9NNWUzDQ6",
+      "exitFromInferredName": "Excellent",
+      "v2StageId": "5c591aeb-504d-45c1-9c2c-54286c2956c3",
+      "v2PlaylistId": "d7412e3e-9ebf-439b-a3a7-3f75573cbcb2",
+      "v2StageName": "4★"
+    },
+    "6t7Ftpes0Wp2THxA4olWLC": {
+      "inferredName": "Wonderful",
+      "pipelineRole": "terminal",
+      "group": "new",
+      "firestoreDocId": "5f7wsu5iZAf0VUhhKoJn",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "v2StageId": "cc93caac-5f83-42e0-8927-a6fd60d6e0c9",
+      "v2PlaylistId": "5a2f30b5-935f-4703-80e1-7e01a7b59bcc",
+      "v2StageName": "Wonderful"
+    }
+  },
+  "warnings": [],
+  "v2PipelineName": "New",
+  "linkedAt": "2026-07-10T13:40:57.765Z"
+}

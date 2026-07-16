@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import {
   completeLastfmConnect,
@@ -305,6 +306,20 @@ async function handleRefreshArtistImages() {
       <p v-if="coverError" class="mt-3 text-sm text-red-300">{{ coverError }}</p>
       <p v-if="artistImageMessage" class="mt-3 text-sm text-emerald-400">{{ artistImageMessage }}</p>
       <p v-if="artistImageError" class="mt-3 text-sm text-red-300">{{ artistImageError }}</p>
+    </section>
+
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">v1 pipeline migration</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Stage v1 funnel history, match albums to the library, and apply
+        <code class="text-text">StageMembership</code> rows.
+      </p>
+      <RouterLink
+        to="/migration"
+        class="mt-4 inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
+      >
+        Open migration
+      </RouterLink>
     </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">

@@ -4,6 +4,7 @@ import {
   buildAlbumPickerItemFromAlbum,
   mergeAlbumPickerMatches,
   normalizeAlbumPickerText,
+  tokenizeAlbumPickerText,
   type AlbumPickerItem,
 } from '@/lib/album/firestore'
 import type { Album } from '@/types/library'
@@ -43,6 +44,12 @@ describe('normalizeAlbumPickerText', () => {
   })
 })
 
+describe('tokenizeAlbumPickerText', () => {
+  it('splits terms into lowercase deduped word tokens', () => {
+    expect(tokenizeAlbumPickerText(' Mr. Finish-Line ')).toEqual(['mr', 'finish', 'line'])
+  })
+})
+
 describe('buildAlbumPickerItemFromAlbum', () => {
   it('projects only lightweight picker fields', () => {
     const album = makeAlbum({
@@ -62,6 +69,8 @@ describe('buildAlbumPickerItemFromAlbum', () => {
       coverUrlSmall: 'https://example.com/cover.jpg',
       titleLower: 'frances the mute',
       artistLower: 'the mars volta',
+      titleTokens: ['frances', 'the', 'mute'],
+      artistTokens: ['the', 'mars', 'volta'],
     })
     expect(projection).not.toHaveProperty('tracks')
   })

@@ -54,6 +54,8 @@ export interface AlbumPickerItem {
   importedAt?: Date
   titleLower: string
   artistLower: string
+  titleTokens?: string[]
+  artistTokens?: string[]
 }
 
 interface AlbumPickerItemDocument {
@@ -65,6 +67,8 @@ interface AlbumPickerItemDocument {
   importedAt?: AlbumDocument['importedAt']
   titleLower: string
   artistLower: string
+  titleTokens?: string[]
+  artistTokens?: string[]
 }
 
 export interface AlbumPickerCursor {
@@ -93,6 +97,12 @@ export function normalizeAlbumPickerText(value: string): string {
   return value.trim().toLowerCase()
 }
 
+export function tokenizeAlbumPickerText(value: string): string[] {
+  const normalized = normalizeAlbumPickerText(value)
+  if (!normalized) return []
+  return [...new Set(normalized.split(/[^a-z0-9]+/g).filter(Boolean))]
+}
+
 /** Test/helper: clear in-memory picker sync gate. */
 export function resetAlbumPickerSyncGateForTests(): void {
   albumPickerSyncedUids.clear()
@@ -108,10 +118,14 @@ function toAlbumPickerItem(id: string, data: AlbumPickerItemDocument): AlbumPick
     importedAt: data.importedAt?.toDate(),
     titleLower: data.titleLower,
     artistLower: data.artistLower,
+    titleTokens: data.titleTokens,
+    artistTokens: data.artistTokens,
   }
 }
 
 export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unknown> {
+  const titleLower = normalizeAlbumPickerText(album.title)
+  const artistLower = normalizeAlbumPickerText(album.artist)
   return omitUndefined({
     id: album.id,
     title: album.title,
@@ -119,8 +133,10 @@ export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unkn
     albumYear: album.albumYear,
     coverUrlSmall: album.coverUrlSmall,
     importedAt: album.importedAt,
-    titleLower: normalizeAlbumPickerText(album.title),
-    artistLower: normalizeAlbumPickerText(album.artist),
+    titleLower,
+    artistLower,
+    titleTokens: tokenizeAlbumPickerText(titleLower),
+    artistTokens: tokenizeAlbumPickerText(artistLower),
   })
 }
 
@@ -191,10 +207,7 @@ export async function upsertAlbumPickerItem(uid: string, album: Album): Promise<
   await setDoc(ref, buildAlbumPickerItemFromAlbum(album), { merge: true })
 }
 
-/**
- * Upserts any albums missing from album_picker.
- * Partial projections (one Steely Dan yes, the other no) were possible with empty-only backfill.
- */
+/** Rebuilds lightweight album_picker projection from the global album catalog. */
 export async function syncMissingAlbumPickerItems(uid: string): Promise<number> {
   const [sourceSnapshot, pickerSnapshot] = await Promise.all([
     getDocs(albumsCollection(uid)),
@@ -203,16 +216,24 @@ export async function syncMissingAlbumPickerItems(uid: string): Promise<number> 
   if (sourceSnapshot.empty) return 0
 
   const existingIds = new Set(pickerSnapshot.docs.map((docSnap) => docSnap.id))
-  const missingAlbums = sourceSnapshot.docs
+  const sourceAlbums = sourceSnapshot.docs
     .map((docSnap) => toAlbum(docSnap.id, docSnap.data() as AlbumDocument))
-    .filter((album) => !existingIds.has(album.id))
+  const pickerDocsById = new Map(
+    pickerSnapshot.docs.map((docSnap) => [docSnap.id, docSnap.data() as AlbumPickerItemDocument]),
+  )
+  const albumsToUpsert = sourceAlbums.filter((album) => {
+    const existing = pickerDocsById.get(album.id)
+    if (!existing) return true
+    if (!existingIds.has(album.id)) return true
+    return !Array.isArray(existing.titleTokens) || !Array.isArray(existing.artistTokens)
+  })
 
-  for (let index = 0; index < missingAlbums.length; index += ALBUM_PICKER_WRITE_CHUNK) {
-    const chunk = missingAlbums.slice(index, index + ALBUM_PICKER_WRITE_CHUNK)
+  for (let index = 0; index < albumsToUpsert.length; index += ALBUM_PICKER_WRITE_CHUNK) {
+    const chunk = albumsToUpsert.slice(index, index + ALBUM_PICKER_WRITE_CHUNK)
     await Promise.all(chunk.map((album) => upsertAlbumPickerItem(uid, album)))
   }
 
-  return missingAlbums.length
+  return albumsToUpsert.length
 }
 
 async function ensureAlbumPickerSynced(uid: string): Promise<void> {
@@ -257,7 +278,22 @@ export async function listAlbumPickerItems(
   }
 
   const searchUpperBound = `${normalizedSearch}\uf8ff`
-  const [titleSnapshot, artistSnapshot] = await Promise.all([
+  const [titleTokenSnapshot, artistTokenSnapshot, titlePrefixSnapshot, artistPrefixSnapshot] =
+    await Promise.all([
+      getDocs(
+        query(
+          albumPickerCollection(uid),
+          where('titleTokens', 'array-contains', normalizedSearch),
+          limit(pageSize),
+        ),
+      ),
+      getDocs(
+        query(
+          albumPickerCollection(uid),
+          where('artistTokens', 'array-contains', normalizedSearch),
+          limit(pageSize),
+        ),
+      ),
     getDocs(
       query(
         albumPickerCollection(uid),
@@ -278,17 +314,27 @@ export async function listAlbumPickerItems(
         limit(pageSize),
       ),
     ),
-  ])
+    ])
 
-  const titleMatches = titleSnapshot.docs.map((docSnap) =>
+  const titleTokenMatches = titleTokenSnapshot.docs.map((docSnap) =>
     toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
   )
-  const artistMatches = artistSnapshot.docs.map((docSnap) =>
+  const artistTokenMatches = artistTokenSnapshot.docs.map((docSnap) =>
+    toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
+  )
+  const titlePrefixMatches = titlePrefixSnapshot.docs.map((docSnap) =>
+    toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
+  )
+  const artistPrefixMatches = artistPrefixSnapshot.docs.map((docSnap) =>
     toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
   )
 
   return {
-    items: mergeAlbumPickerMatches(titleMatches, artistMatches, pageSize),
+    items: mergeAlbumPickerMatches(
+      [...titleTokenMatches, ...titlePrefixMatches],
+      [...artistTokenMatches, ...artistPrefixMatches],
+      pageSize,
+    ),
   }
 }
 

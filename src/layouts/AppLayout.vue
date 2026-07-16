@@ -16,6 +16,7 @@ const navItems = [
   { name: 'explorer', label: 'Explorer', to: '/explorer', mobile: false },
   { name: 'library', label: 'Library', to: '/library', mobile: true },
   { name: 'import', label: 'Import', to: '/import', mobile: false },
+  { name: 'migration', label: 'Migration', to: '/migration', mobile: false },
   { name: 'playlists', label: 'Playlists', to: '/playlists', mobile: true },
   { name: 'history', label: 'History', to: '/history', mobile: false },
   { name: 'settings', label: 'Settings', to: '/settings', mobile: true },

@@ -110,6 +110,18 @@ export async function listMembershipHistoryForAlbumPipeline(
     .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
 }
 
+export async function listMembershipsForAlbum(
+  uid: string,
+  albumId: string,
+): Promise<StageMembership[]> {
+  const snapshot = await getDocs(
+    query(stageMembershipsCollection(uid), where('albumId', '==', albumId)),
+  )
+  return snapshot.docs
+    .map((docSnap) => toStageMembership(docSnap.id, docSnap.data() as StageMembershipDocument))
+    .sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())
+}
+
 export async function openStageMembership(
   uid: string,
   input: {

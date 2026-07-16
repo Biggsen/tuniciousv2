@@ -1,0 +1,2935 @@
+[
+  {
+    "v1AlbumId": "00rssxYxFqqdbuO1lz1Gxa",
+    "albumTitle": "Snipe Hunter",
+    "artistName": "Tyler Childers",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "type": "new",
+        "removedAt": "2025-12-13T22:08:09.857Z",
+        "addedAt": "2025-12-13T21:25:04.927Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02e47f3451435776271b3d43da",
+    "extras": {
+      "artistNameLower": "tyler childers",
+      "artistId": "13ZEDW6vyBF12HYcZRr4EV",
+      "createdAt": "2025-12-13T21:25:05.194Z",
+      "updatedAt": "2025-12-13T22:08:09.965Z"
+    }
+  },
+  {
+    "v1AlbumId": "02YUay44E5r92i65mjcyHe",
+    "albumTitle": "In The Reins",
+    "artistName": "Calexico",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-27T14:05:11.970Z",
+        "type": "new",
+        "removedAt": "2026-01-18T12:29:27.796Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-18T12:29:28.393Z",
+        "removedAt": "2026-02-02T19:56:23.314Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new"
+      }
+    ],
+    "releaseYear": "2005",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02db6ed84607f389627c70113b",
+    "extras": {
+      "artistNameLower": "calexico",
+      "artistId": "1OmdWpAh1pucAuZPzJaxIJ",
+      "rymLink": "https://rateyourmusic.com/release/ep/calexico-iron-and-wine/in-the-reins/",
+      "updatedAt": "2026-02-02T19:56:23.142Z",
+      "createdAt": "2025-12-27T14:05:12.312Z"
+    }
+  },
+  {
+    "v1AlbumId": "0A6yLV44DEhpwXB7cyvLEP",
+    "albumTitle": "Blind Melon",
+    "artistName": "Blind Melon",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T01:35:47.634Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "addedAt": "2025-12-19T01:09:03.854Z",
+        "type": "new"
+      },
+      {
+        "removedAt": "2025-12-19T02:13:35.956Z",
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "addedAt": "2025-12-19T01:37:07.061Z",
+        "pipelineRole": "source"
+      },
+      {
+        "addedAt": "2025-12-19T02:13:36.596Z",
+        "type": "known",
+        "pipelineRole": "transient",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "removedAt": "2026-01-31T22:45:14.422Z"
+      },
+      {
+        "playlistId": "5tRUehBSR1OPDgWCraEFqG",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-01-31T22:45:15.156Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1992",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02adcfbf7d4107233c8c1b7f3e",
+    "extras": {
+      "artistNameLower": "blind melon",
+      "artistId": "5sD1ZLf2dGQ9gQ3YJl1eAd",
+      "updatedAt": "2026-01-31T22:45:15.253Z",
+      "createdAt": "2025-12-19T01:09:04.204Z"
+    }
+  },
+  {
+    "v1AlbumId": "0buVDygENpuDy8VoHXZNDi",
+    "albumTitle": "No Kings",
+    "artistName": "Jesse Welles",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:38:02.847Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2025-12-13T22:06:33.438Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0291fc4f4221013d104dbeebf5",
+    "extras": {
+      "artistNameLower": "jesse welles",
+      "artistId": "366xgdzfRGQoiDRGidGlDJ",
+      "createdAt": "2025-12-13T21:38:03.076Z",
+      "updatedAt": "2025-12-13T22:06:33.484Z"
+    }
+  },
+  {
+    "v1AlbumId": "0eeXb23yMW6EaIgm63xxPC",
+    "albumTitle": "Getting Killed",
+    "artistName": "Geese",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-13T22:00:08.871Z",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "addedAt": "2025-12-13T21:36:42.758Z"
+      },
+      {
+        "removedAt": "2025-12-19T00:11:27.228Z",
+        "type": "new",
+        "addedAt": "2025-12-13T22:00:09.506Z",
+        "pipelineRole": "transient",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW"
+      },
+      {
+        "type": "new",
+        "removedAt": "2026-01-09T19:52:47.121Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "addedAt": "2025-12-19T00:11:28.060Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-09T19:52:47.646Z",
+        "type": "new",
+        "removedAt": "2026-01-11T15:14:36.144Z"
+      },
+      {
+        "type": "new",
+        "removedAt": "2026-04-16T22:04:37.449Z",
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-11T15:14:36.656Z"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-04-16T22:04:38.692Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0245e82ae0372a50834825c018",
+    "extras": {
+      "artistNameLower": "geese",
+      "artistId": "0WCo84qtCKfbyIf1lqQWB4",
+      "createdAt": "2025-12-13T21:36:43.053Z",
+      "updatedAt": "2026-04-16T22:04:38.842Z"
+    }
+  },
+  {
+    "v1AlbumId": "0gsiszk6JWYwAyGvaTTud4",
+    "albumTitle": "Follow The Leader",
+    "artistName": "Korn",
+    "playlistHistory": [
+      {
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2025-12-19T01:36:35.417Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1998",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e024e492e787ed64de43c3a3a21",
+    "extras": {
+      "artistNameLower": "korn",
+      "artistId": "3RNrq3jvMZxD9ZyoOZbQOD",
+      "createdAt": "2025-12-19T01:36:35.667Z",
+      "updatedAt": "2025-12-19T01:36:35.667Z"
+    }
+  },
+  {
+    "v1AlbumId": "0JfgfkFvNYiZIt5mS3skmZ",
+    "albumTitle": "boy",
+    "artistName": "2hollis",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "pipelineRole": "source",
+        "addedAt": "2026-02-14T01:21:37.198Z",
+        "removedAt": "2026-02-14T01:21:52.072Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:21:52.552Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2024",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e023db98a6290b17283bd2a3186",
+    "extras": {
+      "artistId": "72NhFAGG5Pt91VbheJeEPG",
+      "updatedAt": "2026-02-14T01:21:52.452Z",
+      "artistNameLower": "2hollis",
+      "createdAt": "2026-02-14T01:21:37.308Z"
+    }
+  },
+  {
+    "v1AlbumId": "0lxXFHrXtfdUz1poZoIrF1",
+    "albumTitle": "In A Bar, Under The Sea",
+    "artistName": "dEUS",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-01-13T19:12:49.882Z",
+        "type": "known",
+        "removedAt": "2026-01-15T22:08:01.681Z",
+        "pipelineRole": "transient",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT"
+      },
+      {
+        "type": "known",
+        "addedAt": "2026-01-15T22:08:02.054Z",
+        "removedAt": "2026-01-31T22:31:00.565Z",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "removedAt": "2026-02-08T15:18:18.467Z",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-31T22:31:01.089Z",
+        "type": "known"
+      },
+      {
+        "playlistId": "0tTRhPw6hCJL6UuzZ1Hwlu",
+        "pipelineRole": "terminal",
+        "type": "known",
+        "addedAt": "2026-02-08T15:18:19.039Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1996",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02773a1c32a9fc96b3c49936a4",
+    "extras": {
+      "artistNameLower": "deus",
+      "artistId": "3zMir00BoCKhwNTjlT61KN",
+      "createdAt": "2026-01-13T19:12:49.467Z",
+      "updatedAt": "2026-02-08T15:18:18.786Z"
+    }
+  },
+  {
+    "v1AlbumId": "0M1BsAowLxOrnBsx0YYlNy",
+    "albumTitle": "Woven Hand",
+    "artistName": "Woven Hand",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-03-08T12:05:04.056Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2026-03-08T12:07:37.696Z"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:07:38.464Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2002",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273da785bd99d21bc911c00532b",
+    "extras": {
+      "artistId": "0dpglhdTlof5BS5LX7uJmg",
+      "artistNameLower": "woven hand",
+      "createdAt": "2026-03-08T12:05:03.915Z",
+      "updatedAt": "2026-03-08T12:07:38.140Z"
+    }
+  },
+  {
+    "v1AlbumId": "0Q2o6ioxIOlKPvRdG1K5da",
+    "albumTitle": "Bad Witch",
+    "artistName": "Nine Inch Nails",
+    "playlistHistory": [
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "removedAt": "2026-02-08T18:57:26.385Z",
+        "addedAt": "2026-01-31T22:36:21.991Z"
+      },
+      {
+        "removedAt": "2026-02-08T19:41:12.328Z",
+        "pipelineRole": "transient",
+        "addedAt": "2026-02-08T18:57:26.161Z",
+        "type": "new",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-02-08T19:41:12.935Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2018",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e026c6ed30d116acf0e0f241599",
+    "extras": {
+      "artistNameLower": "nine inch nails",
+      "artistId": "0X380XXQSNBYuleKzav5UO",
+      "updatedAt": "2026-02-08T19:41:13.017Z",
+      "createdAt": "2026-01-31T22:36:22.534Z"
+    }
+  },
+  {
+    "v1AlbumId": "0RHX9XECH8IVI3LNgWDpmQ",
+    "albumTitle": "A Rush of Blood to the Head",
+    "artistName": "Coldplay",
+    "playlistHistory": [
+      {
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2025-12-19T01:36:56.257Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2002",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02de09e02aa7febf30b7c02d82",
+    "extras": {
+      "artistNameLower": "coldplay",
+      "artistId": "4gzpq5DPGxSnKTe4SA8HAU",
+      "createdAt": "2025-12-19T01:36:56.518Z",
+      "updatedAt": "2025-12-19T01:36:56.518Z"
+    }
+  },
+  {
+    "v1AlbumId": "0VwdLX4EvZMcaFwd7fWtil",
+    "albumTitle": "How To Replace It",
+    "artistName": "dEUS",
+    "playlistHistory": [
+      {
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2026-02-14T02:09:39.832Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2023",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e028fcf214a3b311f3558763b0f",
+    "extras": {
+      "artistId": "3zMir00BoCKhwNTjlT61KN",
+      "updatedAt": "2026-02-14T02:09:40.054Z",
+      "artistNameLower": "deus",
+      "createdAt": "2026-02-14T02:09:40.054Z"
+    }
+  },
+  {
+    "v1AlbumId": "0wqNHE2JkzVPN48jGopZjG",
+    "albumTitle": "The Human Thing",
+    "artistName": "Das Pop",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-03-19T23:51:29.092Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2003",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02b1086e2628d1d01322164a43",
+    "extras": {
+      "artistNameLower": "das pop",
+      "artistId": "6HvBsTSctQ8SGUzzfnMPcV",
+      "createdAt": "2026-03-19T23:51:30.030Z",
+      "updatedAt": "2026-03-19T23:51:30.030Z"
+    }
+  },
+  {
+    "v1AlbumId": "10O0RKFxTvxVR7awhUrWBm",
+    "albumTitle": "Future Perfect",
+    "artistName": "Autolux",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-03-08T12:07:50.076Z",
+        "pipelineRole": "source",
+        "addedAt": "2026-03-08T12:05:21.450Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:07:50.780Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2005",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b27363c9a6af242f7b0a4b060221",
+    "extras": {
+      "artistId": "7HizNYe1mSfmvbXlx3la3m",
+      "artistNameLower": "autolux",
+      "createdAt": "2026-03-08T12:05:21.275Z",
+      "updatedAt": "2026-03-08T12:07:50.419Z"
+    }
+  },
+  {
+    "v1AlbumId": "11oR0ZuqB3ucZwb5TGbZxb",
+    "albumTitle": "Licensed To Ill",
+    "artistName": "Beastie Boys",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "addedAt": "2026-01-15T22:05:13.710Z",
+        "removedAt": "2026-01-15T22:10:15.183Z"
+      },
+      {
+        "type": "known",
+        "removedAt": "2026-02-01T18:09:54.816Z",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "addedAt": "2026-01-15T22:10:15.554Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "5tRUehBSR1OPDgWCraEFqG",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-02-01T18:09:55.406Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1986",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02a7ea08ab3914c5fb2084a8ac",
+    "extras": {
+      "artistNameLower": "beastie boys",
+      "artistId": "03r4iKL2g2442PT9n2UKsx",
+      "createdAt": "2026-01-15T22:05:14.014Z",
+      "updatedAt": "2026-02-01T18:09:55.069Z"
+    }
+  },
+  {
+    "v1AlbumId": "12N6IsuqIJzbTXdIrJnc9b",
+    "albumTitle": "Katy Lied",
+    "artistName": "Steely Dan",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-01-15T22:10:27.384Z",
+        "type": "known",
+        "addedAt": "2026-01-15T22:02:01.454Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source"
+      },
+      {
+        "removedAt": "2026-02-07T11:04:19.453Z",
+        "pipelineRole": "transient",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "addedAt": "2026-01-15T22:10:27.759Z",
+        "type": "known"
+      },
+      {
+        "playlistId": "5tRUehBSR1OPDgWCraEFqG",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-02-07T11:04:19.947Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1975",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02d72ce442e7717e75315dd7a1",
+    "extras": {
+      "artistNameLower": "steely dan",
+      "artistId": "6P7H3ai06vU1sGvdpBwDmE",
+      "createdAt": "2026-01-15T22:02:01.731Z",
+      "updatedAt": "2026-02-07T11:04:19.483Z"
+    }
+  },
+  {
+    "v1AlbumId": "19hj6fsd54o4WnytTTDGmD",
+    "albumTitle": "Killer Be Killed",
+    "artistName": "Killer Be Killed",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T22:52:47.948Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2014",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b27398e56e7ff5b358d1b9e47532",
+    "extras": {
+      "artistNameLower": "killer be killed",
+      "artistId": "4JNF6YOUi69O4zAdwQVGLY",
+      "createdAt": "2026-02-14T22:52:48.602Z",
+      "updatedAt": "2026-02-14T22:52:48.602Z"
+    }
+  },
+  {
+    "v1AlbumId": "1DxGZndXpo891IjdzWCqbg",
+    "albumTitle": "Mew",
+    "artistName": "FULLER",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-02-14T11:58:31.065Z",
+        "addedAt": "2026-02-14T01:48:31.863Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e022a675a4229c89ec542ba7b8a",
+    "extras": {
+      "artistNameLower": "fuller",
+      "artistId": "7rAGkg2QRWfFIh9dmyhIpm",
+      "createdAt": "2026-02-14T01:48:32.000Z",
+      "updatedAt": "2026-02-14T11:58:31.172Z"
+    }
+  },
+  {
+    "v1AlbumId": "1fevi1JMVt1PVIMh5Z80ad",
+    "albumTitle": "Snocaps",
+    "artistName": "Snocaps",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "addedAt": "2025-12-13T21:40:43.829Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2026-03-08T12:06:42.142Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02712b49f6c9d425fd6033e218",
+    "extras": {
+      "artistNameLower": "snocaps",
+      "artistId": "6kYyxNv4xNafn6AMAt6qTE",
+      "createdAt": "2025-12-13T21:40:44.061Z",
+      "updatedAt": "2026-03-08T12:06:41.438Z"
+    }
+  },
+  {
+    "v1AlbumId": "1FOBUa0z9RhKPH0frnWMRa",
+    "albumTitle": "The Bleeding",
+    "artistName": "Cannibal Corpse",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-03-08T12:05:12.245Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1994",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b27324b8f28b738efc0203c60167",
+    "extras": {
+      "artistNameLower": "cannibal corpse",
+      "artistId": "0yLwGBQiBqhXOvmTfH2A7n",
+      "createdAt": "2026-03-08T12:05:12.036Z",
+      "updatedAt": "2026-03-08T12:05:12.036Z"
+    }
+  },
+  {
+    "v1AlbumId": "1gmWnG5TeRj91Tdm2lpEvJ",
+    "albumTitle": "private music",
+    "artistName": "Deftones",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:20:22.877Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-13T21:59:20.556Z",
+        "pipelineRole": "source",
+        "type": "new"
+      },
+      {
+        "removedAt": "2025-12-16T13:35:06.442Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2025-12-13T21:59:21.513Z"
+      },
+      {
+        "type": "known",
+        "removedAt": "2026-01-15T22:07:45.994Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-19T00:03:14.941Z"
+      },
+      {
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-01-15T22:07:46.510Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0217e4d3ab44b89f1b62dcc2d6",
+    "extras": {
+      "artistNameLower": "deftones",
+      "artistId": "6Ghvu1VvMGScGpOUJBAHNH",
+      "createdAt": "2025-12-13T21:20:23.190Z",
+      "updatedAt": "2026-01-15T22:07:46.628Z"
+    }
+  },
+  {
+    "v1AlbumId": "1JYiHYoxrSoTmRrEPhXU34",
+    "albumTitle": "Psychotica",
+    "artistName": "Psychotica",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-13T19:59:09.920Z",
+        "addedAt": "2025-12-13T19:56:42.650Z",
+        "pipelineRole": "source"
+      },
+      {
+        "type": "new",
+        "pipelineRole": "transient",
+        "removedAt": "2025-12-13T20:12:29.566Z",
+        "addedAt": "2025-12-13T19:59:10.672Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW"
+      },
+      {
+        "removedAt": "2025-12-16T13:34:14.645Z",
+        "type": "new",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "addedAt": "2025-12-13T20:12:30.469Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "removedAt": "2026-01-25T17:57:47.567Z",
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2025-12-16T13:34:15.520Z"
+      },
+      {
+        "playlistId": "6mNfdhCIwc1EmgLN3afiHR",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-01-25T17:57:48.208Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1996",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02001de18804d97c5cfda22968",
+    "extras": {
+      "artistNameLower": "psychotica",
+      "artistId": "4jP56EOsScC5xTDWL5gkkh",
+      "createdAt": "2025-12-13T19:56:42.963Z",
+      "updatedAt": "2026-01-25T17:57:48.106Z"
+    }
+  },
+  {
+    "v1AlbumId": "1k5fYWqCnKmTd8KQlez9TC",
+    "albumTitle": "Get Away from the Feeling",
+    "artistName": "The Night Café",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "addedAt": "2025-12-13T21:07:03.086Z",
+        "pipelineRole": "transient",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2025-12-16T13:34:42.268Z"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "addedAt": "2025-12-16T13:34:43.056Z",
+        "removedAt": "2026-01-11T15:12:45.795Z",
+        "type": "new",
+        "pipelineRole": "transient"
+      },
+      {
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "removedAt": "2026-02-07T20:21:07.228Z",
+        "addedAt": "2026-01-11T15:12:46.371Z"
+      },
+      {
+        "playlistId": "1hY6QKdGrEScYtdiwFUyQp",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-02-07T20:21:07.898Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2017",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0234f1b787dcea4fb149593c7e",
+    "extras": {
+      "artistNameLower": "the night café",
+      "artistId": "1ShwUjKIwQRaUJij7jgRhp",
+      "createdAt": "2025-12-13T21:07:03.352Z",
+      "updatedAt": "2026-02-07T20:21:07.998Z"
+    }
+  },
+  {
+    "v1AlbumId": "1nCEkf3saNVR9irE8vwy9q",
+    "albumTitle": "0151",
+    "artistName": "The Night Café",
+    "playlistHistory": [
+      {
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2025-12-13T21:14:05.274Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2025-12-13T21:16:07.871Z"
+      },
+      {
+        "type": "new",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-13T21:17:09.536Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "removedAt": "2026-01-18T12:24:34.053Z"
+      },
+      {
+        "type": "new",
+        "addedAt": "2026-01-18T12:24:34.584Z",
+        "pipelineRole": "transient",
+        "removedAt": "2026-02-02T19:54:24.500Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-02-02T19:54:25.123Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2019",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0283a6d3ee54f775793ac5a137",
+    "extras": {
+      "artistNameLower": "the night café",
+      "artistId": "1ShwUjKIwQRaUJij7jgRhp",
+      "createdAt": "2025-12-13T21:14:05.600Z",
+      "updatedAt": "2026-02-02T19:54:24.947Z"
+    }
+  },
+  {
+    "v1AlbumId": "1WuqlDJb7Z2ipBhM6ww7QI",
+    "albumTitle": "Pain Remains",
+    "artistName": "Lorna Shore",
+    "playlistHistory": [
+      {
+        "playlistId": "3TFi0IivoH8BJgaAzGjTMy",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2025-12-13T21:04:17.868Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2022",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02b80c64b9e144b6a2f5939d4b",
+    "extras": {
+      "artistNameLower": "lorna shore",
+      "artistId": "6vXYoy8ouRVib302zxaxFF",
+      "createdAt": "2025-12-13T21:04:18.142Z",
+      "updatedAt": "2025-12-13T21:04:18.142Z"
+    }
+  },
+  {
+    "v1AlbumId": "1Yg57d0GXf7ko3fiEmUBvb",
+    "albumTitle": "Peasant",
+    "artistName": "Richard Dawson",
+    "playlistHistory": [
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:34:34.734Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2017",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0295f6c2c24a0e5b23fb639c3b",
+    "extras": {
+      "artistId": "0VeQgI9lzgoOMszAOq0iml",
+      "updatedAt": "2026-02-14T01:34:34.779Z",
+      "artistNameLower": "richard dawson",
+      "createdAt": "2026-02-14T01:34:34.779Z"
+    }
+  },
+  {
+    "v1AlbumId": "29HKbQ2pgXgElTnH66mFXK",
+    "albumTitle": "Bleeds",
+    "artistName": "Wednesday",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:23:13.569Z",
+        "removedAt": "2025-12-13T22:09:00.676Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "addedAt": "2025-12-13T22:09:02.042Z",
+        "removedAt": "2025-12-16T13:37:18.152Z",
+        "pipelineRole": "transient",
+        "type": "new"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2025-12-19T00:14:51.738Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-16T13:37:18.923Z"
+      },
+      {
+        "addedAt": "2025-12-19T00:14:52.365Z",
+        "removedAt": "2026-01-11T15:14:26.028Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho"
+      },
+      {
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "removedAt": "2026-04-16T22:04:24.122Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-01-11T15:14:26.634Z"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-04-16T22:04:25.680Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0279cc56467c944a260be5c2a9",
+    "extras": {
+      "artistNameLower": "wednesday",
+      "artistId": "4j7DrazfBZLLD0OrVoAtEe",
+      "createdAt": "2025-12-13T21:23:13.880Z",
+      "updatedAt": "2026-04-16T22:04:26.301Z"
+    }
+  },
+  {
+    "v1AlbumId": "2b813fSxxzp9lcOfnLrrTH",
+    "albumTitle": "Life Is Peachy",
+    "artistName": "Korn",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T02:13:15.895Z",
+        "addedAt": "2025-12-19T01:36:48.138Z",
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "addedAt": "2025-12-19T02:13:16.770Z",
+        "pipelineRole": "transient",
+        "type": "known",
+        "removedAt": "2026-01-11T15:17:53.446Z"
+      },
+      {
+        "removedAt": "2026-01-31T18:48:39.327Z",
+        "pipelineRole": "transient",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "addedAt": "2026-01-11T15:17:54.098Z",
+        "type": "known"
+      },
+      {
+        "type": "known",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-31T18:48:39.851Z",
+        "removedAt": "2026-02-11T19:50:30.861Z",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz"
+      },
+      {
+        "playlistId": "4b9E6jDuJyquJWk69gBLrR",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-02-11T19:50:31.532Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1996",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02520aad97cf61c2590659e79f",
+    "extras": {
+      "artistNameLower": "korn",
+      "artistId": "3RNrq3jvMZxD9ZyoOZbQOD",
+      "createdAt": "2025-12-19T01:36:48.330Z",
+      "updatedAt": "2026-02-11T19:50:31.760Z"
+    }
+  },
+  {
+    "v1AlbumId": "2D7nI0WgwooUvDP9GRLs6V",
+    "albumTitle": "is",
+    "artistName": "My Morning Jacket",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-03-08T12:06:36.249Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "pipelineRole": "source",
+        "addedAt": "2025-12-13T21:31:36.220Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0289635f6970b09f46b74a2888",
+    "extras": {
+      "artistNameLower": "my morning jacket",
+      "artistId": "43O3c6wewpzPKwVaGEEtBM",
+      "createdAt": "2025-12-13T21:31:36.521Z",
+      "updatedAt": "2026-03-08T12:06:35.546Z"
+    }
+  },
+  {
+    "v1AlbumId": "2ITVvrNiINKRiW7wA3w6w6",
+    "albumTitle": "Unlimited Love",
+    "artistName": "Red Hot Chili Peppers",
+    "playlistHistory": [
+      {
+        "type": "known",
+        "removedAt": "2026-01-15T22:10:01.963Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "addedAt": "2026-01-15T22:03:36.969Z"
+      },
+      {
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-15T22:10:02.448Z",
+        "type": "known",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "removedAt": "2026-01-31T22:45:37.326Z"
+      },
+      {
+        "playlistId": "5tRUehBSR1OPDgWCraEFqG",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-01-31T22:45:37.784Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2022",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0297a52e0aeda9d95fb881c56d",
+    "extras": {
+      "artistNameLower": "red hot chili peppers",
+      "artistId": "0L8ExT028jH3ddEcZwqJJ5",
+      "createdAt": "2026-01-15T22:03:37.306Z",
+      "updatedAt": "2026-01-31T22:45:37.910Z"
+    }
+  },
+  {
+    "v1AlbumId": "2OsED4DmBABqdP9NwGUpAu",
+    "albumTitle": "Feral Roots",
+    "artistName": "Rival Sons",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-03-10T00:03:25.144Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2026-03-10T00:19:13.199Z",
+        "type": "new"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-10T00:19:13.985Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2019",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e022eb94491a3d377d793156717",
+    "extras": {
+      "artistNameLower": "rival sons",
+      "artistId": "356c8AN5YWKvz86B4Sb1yf",
+      "createdAt": "2026-03-10T00:03:25.304Z",
+      "updatedAt": "2026-03-10T00:19:13.979Z"
+    }
+  },
+  {
+    "v1AlbumId": "2pHYbuHfScx32v3pu8SarF",
+    "albumTitle": "Outside the Simian Flock",
+    "artistName": "Millionaire",
+    "playlistHistory": [
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:36:09.464Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2002",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02d6f00cf98e7d4107f7da9992",
+    "extras": {
+      "artistId": "3AnH1n9G6Y9TyoPqGNo3Ig",
+      "artistNameLower": "millionaire",
+      "createdAt": "2026-02-14T01:36:09.542Z",
+      "updatedAt": "2026-02-14T01:36:09.542Z"
+    }
+  },
+  {
+    "v1AlbumId": "2qx0YtBEDcbpclLlqzRi2o",
+    "albumTitle": "You'd Prefer An Astronaut",
+    "artistName": "Hum",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2025-12-27T14:05:46.272Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1995",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02f2237ba7c0eb6326738ad6ad",
+    "extras": {
+      "artistNameLower": "hum",
+      "artistId": "6sM2JCBjZprP7JLMTZZSxX",
+      "createdAt": "2025-12-27T14:05:46.460Z",
+      "updatedAt": "2025-12-27T14:05:46.460Z"
+    }
+  },
+  {
+    "v1AlbumId": "2r1yuRwAB0kmidzNuuNmdp",
+    "albumTitle": "Cracker",
+    "artistName": "Cracker",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "addedAt": "2026-03-08T12:04:50.846Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2026-03-08T12:07:30.534Z"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:07:31.399Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1992",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b27364e60737481fa6ec6f6e2816",
+    "extras": {
+      "artistNameLower": "cracker",
+      "artistId": "0ODQJS4mk7rVBJXjdqByX6",
+      "createdAt": "2026-03-08T12:04:50.795Z",
+      "updatedAt": "2026-03-08T12:07:30.984Z"
+    }
+  },
+  {
+    "v1AlbumId": "2rBZC5I5tXgWH2a4mE3L2h",
+    "albumTitle": "American Romance",
+    "artistName": "Lukas Nelson",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "removedAt": "2025-12-13T22:06:11.137Z",
+        "addedAt": "2025-12-13T21:41:10.536Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0236160bfd7bc1cca68fc4cd2c",
+    "extras": {
+      "artistNameLower": "lukas nelson",
+      "artistId": "1oK57qVDixqM7no13U1mK9",
+      "createdAt": "2025-12-13T21:41:10.739Z",
+      "updatedAt": "2025-12-13T22:06:11.179Z"
+    }
+  },
+  {
+    "v1AlbumId": "2RcK2JYcUUEMxJDYnpmFet",
+    "albumTitle": "Superluminal",
+    "artistName": "Flickerstick",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-13T21:41:41.269Z",
+        "pipelineRole": "source",
+        "removedAt": "2026-03-08T12:06:46.428Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02e43ea4b793413c34315229d3",
+    "extras": {
+      "artistNameLower": "flickerstick",
+      "artistId": "4L9a6yuhdvWN4ffJr51nUW",
+      "createdAt": "2025-12-13T21:41:41.471Z",
+      "updatedAt": "2026-03-08T12:06:45.725Z"
+    }
+  },
+  {
+    "v1AlbumId": "2Us9qPHLvLoTl6HkYAPcz2",
+    "albumTitle": "The Shape Of Punk To Come (Deluxe Edition)",
+    "artistName": "Refused",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T01:43:17.874Z",
+        "type": "new",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-19T00:26:40.157Z"
+      },
+      {
+        "removedAt": "2025-12-30T22:43:25.972Z",
+        "addedAt": "2025-12-19T01:43:18.711Z",
+        "pipelineRole": "transient",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "type": "new",
+        "addedAt": "2025-12-30T22:43:26.357Z",
+        "removedAt": "2026-02-13T18:43:19.302Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-13T18:43:19.862Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1998",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e025cc694ed1ca80fd696a0817e",
+    "extras": {
+      "artistNameLower": "refused",
+      "artistId": "5sdxGvwxI1TkTA6Pu2jnTb",
+      "createdAt": "2025-12-19T00:26:40.492Z",
+      "updatedAt": "2026-02-13T18:43:19.878Z"
+    }
+  },
+  {
+    "v1AlbumId": "2w1YJXWMIco6EBf0CovvVN",
+    "albumTitle": "Blackstar",
+    "artistName": "David Bowie",
+    "playlistHistory": [
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new",
+        "pipelineRole": "transient",
+        "removedAt": "2025-12-16T13:37:32.585Z",
+        "addedAt": "2025-12-13T21:17:25.109Z"
+      },
+      {
+        "type": "known",
+        "removedAt": "2026-01-15T22:07:13.875Z",
+        "addedAt": "2025-12-19T00:03:04.840Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "type": "known",
+        "removedAt": "2026-01-31T18:49:15.751Z",
+        "addedAt": "2026-01-15T22:07:14.307Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4b9E6jDuJyquJWk69gBLrR",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-01-31T18:49:16.299Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2016",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e024ff4ced89fcfe48079c11b37",
+    "extras": {
+      "artistNameLower": "david bowie",
+      "artistId": "0oSGxfWSnnOXhD2fKuz2Gy",
+      "updatedAt": "2026-01-31T18:49:15.611Z",
+      "createdAt": "2025-12-13T21:17:25.381Z"
+    }
+  },
+  {
+    "v1AlbumId": "2W4FYloQ0s0Fb8lKawb0iC",
+    "albumTitle": "Automatic Writing",
+    "artistName": "Ataxia",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-01-24T11:48:45.218Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "removedAt": "2026-01-30T18:02:25.087Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "removedAt": "2026-02-08T18:57:12.415Z",
+        "addedAt": "2026-01-30T18:02:25.605Z"
+      }
+    ],
+    "releaseYear": "2004",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02902d4082a5f61075e5fed0aa",
+    "extras": {
+      "artistNameLower": "ataxia",
+      "artistId": "24FHFsVLTOio4dqqVMq5pe",
+      "createdAt": "2026-01-24T11:48:44.709Z",
+      "updatedAt": "2026-02-08T18:57:12.103Z"
+    }
+  },
+  {
+    "v1AlbumId": "2yNaksHgeMQM9Quse463b5",
+    "albumTitle": "Is This It",
+    "artistName": "The Strokes",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-27T14:07:03.282Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2026-01-13T21:27:15.771Z",
+        "pipelineRole": "source"
+      },
+      {
+        "removedAt": "2026-01-25T17:51:39.774Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "addedAt": "2026-01-13T21:27:16.440Z"
+      },
+      {
+        "addedAt": "2026-01-25T17:51:40.211Z",
+        "removedAt": "2026-02-13T18:43:27.832Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "type": "new",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-13T18:43:28.417Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2001",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02a388a3f20d1bf2123249cc79",
+    "extras": {
+      "artistNameLower": "the strokes",
+      "artistId": "0epOFNiUfyON9EYx7Tpr6V",
+      "createdAt": "2025-12-27T14:07:03.500Z",
+      "updatedAt": "2026-02-13T18:43:28.394Z"
+    }
+  },
+  {
+    "v1AlbumId": "38zMhd9RDzHVfklw3BKM7t",
+    "albumTitle": "Planting by the Signs",
+    "artistName": "S.G. Goodman",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:28:47.892Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "removedAt": "2025-12-13T22:03:25.929Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "addedAt": "2025-12-13T22:03:26.882Z",
+        "removedAt": "2025-12-19T00:11:44.330Z",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient"
+      },
+      {
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-19T00:11:45.082Z",
+        "type": "new",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2026-01-30T17:59:53.959Z"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-01-30T17:59:54.564Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02a0e56261f8b5c8fe852e0e5c",
+    "extras": {
+      "artistNameLower": "s.g. goodman",
+      "artistId": "7hzn6FoCsEaUNPnPn7TJWd",
+      "createdAt": "2025-12-13T21:28:48.190Z",
+      "updatedAt": "2026-01-30T17:59:54.540Z"
+    }
+  },
+  {
+    "v1AlbumId": "3e2Q0TkwIIfmWUAssLAJ8U",
+    "albumTitle": "Returning To Myself",
+    "artistName": "Brandi Carlile",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-13T21:29:57.257Z",
+        "removedAt": "2025-12-13T22:05:51.612Z",
+        "pipelineRole": "source"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02a125bad7688fb091599fec96",
+    "extras": {
+      "artistNameLower": "brandi carlile",
+      "artistId": "2sG4zTOLvjKG1PSoOyf5Ej",
+      "createdAt": "2025-12-13T21:29:57.528Z",
+      "updatedAt": "2025-12-13T22:05:51.703Z"
+    }
+  },
+  {
+    "v1AlbumId": "3g8HE8pB8nq6DbHf71I2Wa",
+    "albumTitle": "Black Pumas",
+    "artistName": "Black Pumas",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T20:02:23.016Z",
+        "pipelineRole": "source",
+        "removedAt": "2025-12-13T20:47:11.467Z",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "addedAt": "2025-12-13T20:47:12.177Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new",
+        "pipelineRole": "transient",
+        "removedAt": "2025-12-13T20:47:35.451Z"
+      },
+      {
+        "addedAt": "2025-12-13T20:47:36.331Z",
+        "removedAt": "2025-12-16T13:34:23.132Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3"
+      },
+      {
+        "removedAt": "2026-01-11T15:13:31.766Z",
+        "addedAt": "2025-12-16T13:34:23.890Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho"
+      },
+      {
+        "removedAt": "2026-02-07T20:21:18.438Z",
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-11T15:13:32.358Z",
+        "type": "new"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-02-07T20:21:19.028Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2019",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273975cd7f3dbcbb6f713de7e7b",
+    "extras": {
+      "artistNameLower": "black pumas",
+      "artistId": "6eU0jV2eEZ8XTM7EmlguK6",
+      "createdAt": "2025-12-13T20:02:23.290Z",
+      "updatedAt": "2026-02-07T20:21:19.110Z"
+    }
+  },
+  {
+    "v1AlbumId": "3HFbH1loOUbqCyPsLuHLLh",
+    "albumTitle": "Room On Fire",
+    "artistName": "The Strokes",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2025-12-19T00:36:01.726Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2003",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e020f35726025e0f025da4c688f",
+    "extras": {
+      "artistNameLower": "the strokes",
+      "artistId": "0epOFNiUfyON9EYx7Tpr6V",
+      "createdAt": "2025-12-19T00:36:02.084Z",
+      "updatedAt": "2025-12-19T00:36:02.084Z"
+    }
+  },
+  {
+    "v1AlbumId": "3LVYsDFVGuPE7kNQyXZvgp",
+    "albumTitle": "Slip",
+    "artistName": "Quicksand",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-27T14:06:16.838Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2026-03-08T12:06:57.536Z"
+      }
+    ],
+    "releaseYear": "1993",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02be722dada792bbc6d9f21c10",
+    "extras": {
+      "artistNameLower": "quicksand",
+      "artistId": "1GDjwZ2zwNZizuNJPmH3mE",
+      "createdAt": "2025-12-27T14:06:17.022Z",
+      "updatedAt": "2026-03-08T12:06:56.847Z"
+    }
+  },
+  {
+    "v1AlbumId": "3ny1v2uXTqLvnvLk5TUVCH",
+    "albumTitle": "Future Primitives",
+    "artistName": "The Van Jets",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "addedAt": "2026-02-14T01:23:35.413Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2026-02-14T01:23:58.268Z"
+      },
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:23:58.811Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2017",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0297a161cc0512045a186a3c24",
+    "extras": {
+      "artistId": "4FTPrxr5zwdfmh46OLnNhn",
+      "updatedAt": "2026-02-14T01:23:58.720Z",
+      "artistNameLower": "the van jets",
+      "createdAt": "2026-02-14T01:23:35.575Z"
+    }
+  },
+  {
+    "v1AlbumId": "3OmnatFgQ8o1DlYLp9EpNJ",
+    "albumTitle": "Black Sabbath",
+    "artistName": "Black Sabbath",
+    "playlistHistory": [
+      {
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "addedAt": "2026-01-15T22:12:20.178Z",
+        "pipelineRole": "source",
+        "removedAt": "2026-01-31T22:45:59.142Z"
+      },
+      {
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-01-31T22:45:59.700Z",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "removedAt": "2026-02-08T18:57:34.225Z"
+      },
+      {
+        "playlistId": "3TFi0IivoH8BJgaAzGjTMy",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-02-08T18:57:34.073Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1970",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02e61731abae915074b93416e9",
+    "extras": {
+      "artistNameLower": "black sabbath",
+      "artistId": "5M52tdBnJaKSvOpJGz8mfZ",
+      "createdAt": {
+        "seconds": 1768515140,
+        "nanoseconds": 463000000
+      },
+      "updatedAt": "2026-02-08T18:57:33.916Z"
+    }
+  },
+  {
+    "v1AlbumId": "3RFenjlpdmIfkYATMdkbak",
+    "albumTitle": "Thirteen Tales From Urban Bohemia",
+    "artistName": "The Dandy Warhols",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "removedAt": "2026-01-13T21:28:58.902Z",
+        "type": "new",
+        "addedAt": "2025-12-19T00:40:48.361Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "addedAt": "2026-01-13T21:28:59.555Z",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "removedAt": "2026-02-08T18:57:00.278Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "addedAt": "2026-02-08T18:57:01.060Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "type": "new",
+        "pipelineRole": "transient",
+        "removedAt": "2026-02-13T18:43:32.200Z"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-13T18:43:32.671Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2000",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e029087219d9eeb22ad7a88c2c8",
+    "extras": {
+      "artistNameLower": "the dandy warhols",
+      "artistId": "7siPLyFwRFYQkKgWKJ5Sod",
+      "createdAt": "2025-12-19T00:40:48.694Z",
+      "updatedAt": "2026-02-13T18:43:32.676Z"
+    }
+  },
+  {
+    "v1AlbumId": "3RmEvRS56AW6bkVihyMK0q",
+    "albumTitle": "Betty",
+    "artistName": "Helmet",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2025-12-27T14:06:00.361Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1994",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02f9cbf0cd40391d985b2af57b",
+    "extras": {
+      "artistNameLower": "helmet",
+      "artistId": "0qB0cTENhSUc0feov5qbg0",
+      "createdAt": "2025-12-27T14:06:00.716Z",
+      "updatedAt": "2025-12-27T14:06:00.716Z"
+    }
+  },
+  {
+    "v1AlbumId": "3V4j1tMdQqpq8nwW02UOiW",
+    "albumTitle": "Ocean Rain (Expanded; 2007 Remaster)",
+    "artistName": "Echo & the Bunnymen",
+    "playlistHistory": [
+      {
+        "pipelineRole": "transient",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "addedAt": "2025-12-13T20:58:28.178Z",
+        "type": "new",
+        "removedAt": "2026-01-25T20:19:31.575Z"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-01-25T20:19:32.090Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1984",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0292a84c02e896fcad44c70351",
+    "extras": {
+      "artistNameLower": "echo & the bunnymen",
+      "artistId": "0fgYKF9Avljex0L9Wt5b8Z",
+      "createdAt": "2025-12-13T20:58:28.490Z",
+      "updatedAt": "2026-01-25T20:19:31.987Z"
+    }
+  },
+  {
+    "v1AlbumId": "3ylSrdUwRK2SMt4YIdAJ5q",
+    "albumTitle": "Devil’s Den",
+    "artistName": "Jesse Welles",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:37:55.161Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-13T22:06:22.517Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e022121a033fd02cbf16b918c50",
+    "extras": {
+      "artistNameLower": "jesse welles",
+      "artistId": "366xgdzfRGQoiDRGidGlDJ",
+      "createdAt": "2025-12-13T21:37:55.421Z",
+      "updatedAt": "2025-12-13T22:06:22.556Z"
+    }
+  },
+  {
+    "v1AlbumId": "3Z1vuE98nEZtTDY916Q6CN",
+    "albumTitle": "Diamond City",
+    "artistName": "Will Johnson",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:40:22.609Z",
+        "type": "new",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-13T22:12:06.553Z"
+      },
+      {
+        "addedAt": "2025-12-13T22:12:07.426Z",
+        "removedAt": "2025-12-30T22:42:49.699Z",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient"
+      },
+      {
+        "pipelineRole": "transient",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2026-01-30T18:00:28.379Z",
+        "type": "new",
+        "addedAt": "2025-12-30T22:42:50.202Z"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-01-30T18:00:28.912Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02eb28ddc6b5e2203c817fdff5",
+    "extras": {
+      "artistNameLower": "will johnson",
+      "artistId": "0GkLlslI4LMVTTuUkyQp57",
+      "createdAt": "2025-12-13T21:40:22.813Z",
+      "updatedAt": "2026-01-30T18:00:28.857Z"
+    }
+  },
+  {
+    "v1AlbumId": "43m0WBD9jh3OPymRtPKLY0",
+    "albumTitle": "Traffic From Paradise",
+    "artistName": "Rickie Lee Jones",
+    "playlistHistory": [
+      {
+        "type": "known",
+        "addedAt": "2026-02-13T22:02:22.138Z",
+        "removedAt": "2026-02-13T22:02:44.982Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-13T22:02:45.434Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1993",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02f61a4f4ff2cdfc995c642ad5",
+    "extras": {
+      "artistNameLower": "rickie lee jones",
+      "artistId": "0dYkMe3wK29DulSa0uR8Rq",
+      "createdAt": "2026-02-13T22:02:22.223Z",
+      "updatedAt": "2026-02-13T22:02:45.333Z"
+    }
+  },
+  {
+    "v1AlbumId": "4b0EWRIWecUztiLiaoEN4K",
+    "albumTitle": "Sap",
+    "artistName": "Alice In Chains",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-02-01T15:53:09.714Z",
+        "removedAt": "2026-02-01T17:19:43.289Z",
+        "pipelineRole": "transient",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "type": "known"
+      },
+      {
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "removedAt": "2026-02-08T15:37:40.558Z",
+        "addedAt": "2026-02-01T17:19:44.022Z",
+        "type": "known",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "addedAt": "2026-02-08T15:37:41.364Z",
+        "removedAt": "2026-02-11T19:44:00.995Z",
+        "type": "known",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-11T19:44:02.285Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1992",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e028047e76ac2d48c96104e8ffc",
+    "extras": {
+      "artistNameLower": "alice in chains",
+      "artistId": "64tNsm6TnZe2zpcMVMOoHL",
+      "createdAt": "2026-02-01T15:53:09.718Z",
+      "updatedAt": "2026-02-11T19:44:02.458Z"
+    }
+  },
+  {
+    "v1AlbumId": "4CqepH0gmnNKTgENheRgT7",
+    "albumTitle": "Becoming X",
+    "artistName": "Sneaker Pimps",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-13T21:02:49.542Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "type": "new",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-13T20:54:59.033Z"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2025-12-13T21:02:50.374Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1996",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02bd5b848b692f571fe69541ca",
+    "extras": {
+      "artistNameLower": "sneaker pimps",
+      "artistId": "1EJWNhiYbOyeUHbsS7Kp1P",
+      "createdAt": "2025-12-13T20:54:59.337Z",
+      "updatedAt": "2025-12-13T21:02:50.457Z"
+    }
+  },
+  {
+    "v1AlbumId": "4gWrFYHkS0FA5pGX8hDY7N",
+    "albumTitle": "Chunga's Revenge",
+    "artistName": "Frank Zappa",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-01-15T21:57:44.887Z",
+        "removedAt": "2026-01-15T22:08:39.053Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "pipelineRole": "transient",
+        "type": "known"
+      },
+      {
+        "addedAt": "2026-01-15T22:09:08.029Z",
+        "pipelineRole": "source",
+        "removedAt": "2026-01-15T22:10:33.950Z",
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6"
+      },
+      {
+        "pipelineRole": "transient",
+        "type": "known",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "addedAt": "2026-01-15T22:10:34.337Z",
+        "removedAt": "2026-01-21T20:24:52.850Z"
+      },
+      {
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "pipelineRole": "transient",
+        "type": "known",
+        "removedAt": "2026-01-31T18:48:52.314Z",
+        "addedAt": "2026-01-21T20:24:53.404Z"
+      },
+      {
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-01-31T18:48:52.892Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1970",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02d16c57c1b1b772dbd56f8092",
+    "extras": {
+      "artistNameLower": "frank zappa",
+      "artistId": "6ra4GIOgCZQZMOaUECftGN",
+      "createdAt": "2026-01-15T21:57:45.179Z",
+      "updatedAt": "2026-01-31T18:48:52.196Z"
+    }
+  },
+  {
+    "v1AlbumId": "4nczkBnxvOZNewjhxws5q6",
+    "albumTitle": "Twilight Override",
+    "artistName": "Jeff Tweedy",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T00:13:33.975Z",
+        "addedAt": "2025-12-13T21:34:09.009Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT"
+      },
+      {
+        "addedAt": "2025-12-19T00:13:34.926Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "removedAt": "2025-12-29T14:06:33.928Z",
+        "type": "new"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0270b6dddf7d210f1fc7da7c1e",
+    "extras": {
+      "artistNameLower": "jeff tweedy",
+      "artistId": "2rDxtYUzTAYJJE3Bl3Z5IN",
+      "createdAt": "2025-12-13T21:34:09.272Z",
+      "updatedAt": "2025-12-29T14:06:34.028Z"
+    }
+  },
+  {
+    "v1AlbumId": "4Q1HXCFg84PfQRZlPCA4SH",
+    "albumTitle": "Louder Than Love",
+    "artistName": "Soundgarden",
+    "playlistHistory": [
+      {
+        "type": "known",
+        "removedAt": "2026-01-23T18:45:04.126Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "addedAt": "2026-01-11T15:19:06.713Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-23T18:45:05.103Z",
+        "removedAt": "2026-01-31T21:37:44.125Z",
+        "type": "known"
+      },
+      {
+        "type": "known",
+        "pipelineRole": "transient",
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "removedAt": "2026-02-08T15:18:09.965Z",
+        "addedAt": "2026-01-31T21:37:44.755Z"
+      },
+      {
+        "playlistId": "0tTRhPw6hCJL6UuzZ1Hwlu",
+        "pipelineRole": "terminal",
+        "type": "known",
+        "addedAt": "2026-02-08T15:18:10.528Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1989",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e024afd3baacb2653eff44f640a",
+    "extras": {
+      "artistNameLower": "soundgarden",
+      "artistId": "5xUf6j4upBrXZPg6AI4MRK",
+      "createdAt": "2026-01-11T15:19:07.220Z",
+      "updatedAt": "2026-02-08T15:18:10.271Z"
+    }
+  },
+  {
+    "v1AlbumId": "4Q7cPyiP8cMIlUEHAqeYfd",
+    "albumTitle": "Physical Graffiti (Remaster)",
+    "artistName": "Led Zeppelin",
+    "playlistHistory": [
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "addedAt": "2025-12-13T20:53:34.463Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "removedAt": "2025-12-16T13:33:08.282Z"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2025-12-16T13:33:09.124Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1975",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e025273ac7ada6725bc36a2bcd0",
+    "extras": {
+      "artistNameLower": "led zeppelin",
+      "artistId": "36QJpDe2go2KgaRleHCDTp",
+      "createdAt": "2025-12-13T20:53:34.745Z",
+      "updatedAt": "2025-12-16T13:33:09.233Z"
+    }
+  },
+  {
+    "v1AlbumId": "4WlA8e7ApvU4QFnyC8Hkq2",
+    "albumTitle": "Aqua Vita",
+    "artistName": "Doosu",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-03-08T12:07:02.573Z",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-27T14:06:35.613Z",
+        "pipelineRole": "source"
+      }
+    ],
+    "releaseYear": "1999",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0227f6cfff3e7b82bf06888d26",
+    "extras": {
+      "artistNameLower": "doosu",
+      "artistId": "2iaSMMKUhuTKagWF4ieStP",
+      "createdAt": "2025-12-27T14:06:35.820Z",
+      "updatedAt": "2026-03-08T12:07:01.869Z"
+    }
+  },
+  {
+    "v1AlbumId": "4X8Y79gWo6xm7Osdapg58E",
+    "albumTitle": "The Eraser",
+    "artistName": "Thom Yorke",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T01:34:20.544Z",
+        "addedAt": "2025-12-19T00:44:18.738Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "pipelineRole": "source"
+      },
+      {
+        "removedAt": "2025-12-19T02:13:30.858Z",
+        "type": "known",
+        "addedAt": "2025-12-19T01:37:28.456Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source"
+      },
+      {
+        "type": "known",
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-21T20:12:07.531Z",
+        "addedAt": "2025-12-19T02:13:31.650Z",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4"
+      },
+      {
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-23T18:52:23.212Z",
+        "type": "known",
+        "addedAt": "2026-01-21T20:12:08.148Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT"
+      },
+      {
+        "pipelineRole": "transient",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "addedAt": "2026-01-23T18:52:23.787Z",
+        "type": "known",
+        "removedAt": "2026-01-31T16:58:46.955Z"
+      },
+      {
+        "removedAt": "2026-02-08T15:18:00.972Z",
+        "addedAt": "2026-01-31T16:58:47.512Z",
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "type": "known",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "0tTRhPw6hCJL6UuzZ1Hwlu",
+        "pipelineRole": "terminal",
+        "type": "known",
+        "addedAt": "2026-02-08T15:18:02.029Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2006",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273691b5e122dee32f6dcb7894b",
+    "extras": {
+      "artistNameLower": "thom yorke",
+      "artistId": "4CvTDPKA6W06DRfBnZKrau",
+      "createdAt": "2025-12-19T00:44:19.058Z",
+      "updatedAt": "2026-02-08T15:18:01.798Z"
+    }
+  },
+  {
+    "v1AlbumId": "50jnF0I8eVNWDwhgRpoUkF",
+    "albumTitle": "Following Sea",
+    "artistName": "dEUS",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-02-14T11:59:57.309Z",
+        "removedAt": "2026-02-14T14:17:57.269Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "type": "known",
+        "pipelineRole": "source"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-14T14:17:57.676Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2012",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02010c3ae50535db4f6f128d83",
+    "extras": {
+      "artistNameLower": "deus",
+      "artistId": "3zMir00BoCKhwNTjlT61KN",
+      "createdAt": "2026-02-14T11:59:57.795Z",
+      "updatedAt": "2026-02-14T14:17:57.876Z"
+    }
+  },
+  {
+    "v1AlbumId": "51b5D84cFSEcYwKhGHgio4",
+    "albumTitle": "Rising Sun, Setting Sun",
+    "artistName": "Mintzkov",
+    "playlistHistory": [
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:35:06.377Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2010",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02a71b20986dbbed6d7366ab28",
+    "extras": {
+      "artistId": "0WIle18b5uevJXaeivvj2z",
+      "artistNameLower": "mintzkov",
+      "rymLink": "https://rateyourmusic.com/release/album/mintzkov/rising-sun-setting-sun/",
+      "updatedAt": "2026-02-14T01:35:06.437Z",
+      "createdAt": "2026-02-14T01:35:06.437Z"
+    }
+  },
+  {
+    "v1AlbumId": "52yD51X7yDinwlg6tbCtpP",
+    "albumTitle": "NEVER ENOUGH",
+    "artistName": "Turnstile",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:25:54.422Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "removedAt": "2025-12-16T13:42:40.771Z"
+      },
+      {
+        "type": "new",
+        "removedAt": "2025-12-19T00:10:52.254Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "addedAt": "2025-12-16T13:42:41.611Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "type": "new",
+        "removedAt": "2026-01-09T19:53:02.586Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "addedAt": "2025-12-19T00:10:53.028Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "addedAt": "2026-01-09T19:53:03.012Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "removedAt": "2026-01-11T15:14:50.583Z"
+      },
+      {
+        "addedAt": "2026-01-11T15:14:51.015Z",
+        "pipelineRole": "transient",
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "type": "new",
+        "removedAt": "2026-04-16T22:04:44.172Z"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-04-16T22:04:45.357Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e028386e4a4fb9d20e5008f4d71",
+    "extras": {
+      "artistNameLower": "turnstile",
+      "artistId": "2qnpHrOzdmOo1S4ox3j17x",
+      "createdAt": "2025-12-13T21:25:54.673Z",
+      "updatedAt": "2026-04-16T22:04:45.818Z"
+    }
+  },
+  {
+    "v1AlbumId": "59GwovfBk0Kp2HJw1G7E5Q",
+    "albumTitle": "Angel Dust",
+    "artistName": "Faith No More",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:09:27.017Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "type": "new",
+        "removedAt": "2025-12-16T13:33:39.994Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2025-12-16T13:33:40.740Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1992",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02fba269c78920704d0a3a097d",
+    "extras": {
+      "artistNameLower": "faith no more",
+      "artistId": "6GbCJZrI318Ybm8mY36Of5",
+      "createdAt": "2025-12-13T21:09:27.313Z",
+      "updatedAt": "2025-12-16T13:33:40.842Z"
+    }
+  },
+  {
+    "v1AlbumId": "5fLNoR3OoIbiNhYlkqxcDD",
+    "albumTitle": "Two Parts Viper",
+    "artistName": "'68",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-03-08T12:04:09.730Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new",
+        "pipelineRole": "transient",
+        "addedAt": "2026-02-14T01:37:06.084Z"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:04:10.589Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2017",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e029876ba2b6df8f2100c3659ae",
+    "extras": {
+      "artistId": "51EEn3UICoilrrWVZFz30C",
+      "artistNameLower": "'68",
+      "rymLink": "https://rateyourmusic.com/release/album/68/two-parts-viper/",
+      "updatedAt": "2026-03-08T12:04:10.194Z",
+      "createdAt": "2026-02-14T01:37:06.053Z"
+    }
+  },
+  {
+    "v1AlbumId": "5hbxMCegyQPhpycfjtlW6I",
+    "albumTitle": "Fantastic Planet",
+    "artistName": "Failure",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "addedAt": "2025-12-27T14:05:27.414Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "removedAt": "2026-01-13T21:29:10.790Z"
+      },
+      {
+        "type": "new",
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-30T18:01:48.036Z",
+        "addedAt": "2026-01-13T21:29:11.434Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW"
+      },
+      {
+        "addedAt": "2026-01-30T18:01:48.679Z",
+        "removedAt": "2026-02-08T18:05:54.529Z",
+        "playlistId": "3TFi0IivoH8BJgaAzGjTMy",
+        "pipelineRole": "sink",
+        "type": "new"
+      }
+    ],
+    "releaseYear": "1996",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02dcbdc2e3683a54b5a8132a86",
+    "extras": {
+      "artistNameLower": "failure",
+      "artistId": "3grvcGPaLhfrD5CYsecr4j",
+      "createdAt": "2025-12-27T14:05:27.606Z",
+      "updatedAt": "2026-02-08T18:05:54.312Z"
+    }
+  },
+  {
+    "v1AlbumId": "5lOFvOWAdy9G6p44noRILU",
+    "albumTitle": "Slipknot",
+    "artistName": "Slipknot",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-02-14T01:24:47.896Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2026-02-14T01:24:24.319Z"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-14T01:24:48.375Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1999",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0281e0d9617e70d75e7ae11fa6",
+    "extras": {
+      "artistId": "05fG473iIaoy82BF1aGhL8",
+      "updatedAt": "2026-02-14T01:24:48.262Z",
+      "artistNameLower": "slipknot",
+      "createdAt": "2026-02-14T01:24:24.377Z"
+    }
+  },
+  {
+    "v1AlbumId": "5MqyhhHbT13zsloD3uHhlQ",
+    "albumTitle": "Who's Next (Deluxe Edition)",
+    "artistName": "The Who",
+    "playlistHistory": [
+      {
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-14T01:12:40.911Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1971",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02fe24dcd263c08c6dd84b6e8c",
+    "extras": {
+      "artistId": "67ea9eGLXYMsO2eYQRui3w",
+      "artistNameLower": "the who",
+      "rymLink": "https://rateyourmusic.com/release/album/the-who/whos-next/",
+      "updatedAt": "2026-02-14T01:12:41.079Z",
+      "createdAt": "2026-02-14T01:12:41.079Z"
+    }
+  },
+  {
+    "v1AlbumId": "5vYvX7jM5TAg7fzK1oKySe",
+    "albumTitle": "Motorhead",
+    "artistName": "Motörhead",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "type": "known",
+        "removedAt": "2026-01-15T22:09:39.014Z",
+        "addedAt": "2026-01-15T22:01:18.304Z"
+      },
+      {
+        "removedAt": "2026-01-21T20:23:57.834Z",
+        "addedAt": "2026-01-15T22:09:39.413Z",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known"
+      },
+      {
+        "addedAt": "2026-01-21T20:23:58.433Z",
+        "type": "known",
+        "pipelineRole": "transient",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "removedAt": "2026-01-25T13:34:17.736Z"
+      },
+      {
+        "addedAt": "2026-01-25T13:34:18.286Z",
+        "removedAt": "2026-01-31T22:31:46.613Z",
+        "type": "known",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-01-31T22:31:47.204Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1977",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02ef34cc55e57179462fd60aef",
+    "extras": {
+      "artistNameLower": "motörhead",
+      "artistId": "1DFr97A9HnbV3SKTJFu62M",
+      "createdAt": "2026-01-15T22:01:18.611Z",
+      "updatedAt": "2026-01-31T22:31:46.464Z"
+    }
+  },
+  {
+    "v1AlbumId": "61ocrPSFzK1qiKkicplViT",
+    "albumTitle": "Shah of Time",
+    "artistName": "Fight the Fight",
+    "playlistHistory": [
+      {
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "removedAt": "2026-01-13T21:27:05.948Z",
+        "addedAt": "2026-01-08T22:19:27.809Z"
+      },
+      {
+        "pipelineRole": "transient",
+        "removedAt": "2026-02-08T17:39:27.624Z",
+        "type": "new",
+        "addedAt": "2026-01-13T21:27:06.808Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW"
+      },
+      {
+        "pipelineRole": "sink",
+        "removedAt": "2026-02-08T18:06:00.646Z",
+        "playlistId": "3TFi0IivoH8BJgaAzGjTMy",
+        "type": "new",
+        "addedAt": "2026-02-08T17:39:28.214Z"
+      }
+    ],
+    "releaseYear": "2024",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02de8d88b82aee29381f9f5c6f",
+    "extras": {
+      "artistNameLower": "fight the fight",
+      "artistId": "7AXB6I4MlqHgJXM1yIyjkX",
+      "createdAt": "2026-01-08T22:19:28.030Z",
+      "updatedAt": "2026-02-08T18:06:00.336Z"
+    }
+  },
+  {
+    "v1AlbumId": "6cXzNHCcql2F15q7OP3Sks",
+    "albumTitle": "Cover The Mirrors",
+    "artistName": "Ben Kweller",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "pipelineRole": "source",
+        "addedAt": "2025-12-13T21:21:44.051Z",
+        "removedAt": "2026-03-08T12:06:28.965Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0241e718d90fd287a058030a6e",
+    "extras": {
+      "artistNameLower": "ben kweller",
+      "artistId": "7bhMBjjQhgPX0q9S4Ajncn",
+      "createdAt": "2025-12-13T21:21:44.355Z",
+      "updatedAt": "2026-03-08T12:06:28.340Z"
+    }
+  },
+  {
+    "v1AlbumId": "6FIFqclBriPCb0SjWDaHIk",
+    "albumTitle": "Veckatimest",
+    "artistName": "Grizzly Bear",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T22:44:05.387Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2009",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273f5819f138439b3ac881a2a6b",
+    "extras": {
+      "artistId": "2Jv5eshHtLycR6R8KQCdc4",
+      "artistNameLower": "grizzly bear",
+      "createdAt": "2026-02-14T22:44:05.908Z",
+      "updatedAt": "2026-02-14T22:44:05.908Z"
+    }
+  },
+  {
+    "v1AlbumId": "6FzyAjTK593wROHJt3AFAL",
+    "albumTitle": "Worst Case Scenario",
+    "artistName": "dEUS",
+    "playlistHistory": [
+      {
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2026-03-15T22:28:58.862Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1994",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273f4e65076b36495f6384187aa",
+    "extras": {
+      "artistId": "3zMir00BoCKhwNTjlT61KN",
+      "artistNameLower": "deus",
+      "createdAt": "2026-03-15T22:28:59.277Z",
+      "updatedAt": "2026-03-15T22:28:59.277Z"
+    }
+  },
+  {
+    "v1AlbumId": "6MuDwD3lvWsJyd4I1DSBVd",
+    "albumTitle": "American Thighs",
+    "artistName": "Veruca Salt",
+    "playlistHistory": [
+      {
+        "pipelineRole": "source",
+        "addedAt": "2026-02-14T01:59:57.864Z",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "type": "known",
+        "removedAt": "2026-02-14T14:17:51.909Z"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-14T14:17:52.492Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1994",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0220f74af77faf0bec51665007",
+    "extras": {
+      "artistId": "2QwJQuBekTA4qF7N7uLHDP",
+      "updatedAt": "2026-02-14T14:17:52.829Z",
+      "artistNameLower": "veruca salt",
+      "createdAt": "2026-02-14T01:59:58.020Z"
+    }
+  },
+  {
+    "v1AlbumId": "6OgNgnMcqhcDw01qXlw8el",
+    "albumTitle": "Foxes in the Snow",
+    "artistName": "Jason Isbell",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-13T22:09:25.061Z",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2025-12-13T21:27:34.127Z"
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e020c8bba78844e13dfb423d0d4",
+    "extras": {
+      "artistNameLower": "jason isbell",
+      "artistId": "3Q8wgwyVVv0z4UEh1HB0KY",
+      "createdAt": "2025-12-13T21:27:34.443Z",
+      "updatedAt": "2025-12-13T22:09:25.102Z"
+    }
+  },
+  {
+    "v1AlbumId": "6ouAFvDtaYWB7PdGaRtJGq",
+    "albumTitle": "Megadeth",
+    "artistName": "Megadeth",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-02-07T11:06:16.076Z",
+        "removedAt": "2026-02-08T18:57:50.380Z",
+        "type": "known",
+        "pipelineRole": "transient",
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4"
+      },
+      {
+        "playlistId": "3TFi0IivoH8BJgaAzGjTMy",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-02-08T18:57:50.221Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2026",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e029259659bd5b7332b9bfa8860",
+    "extras": {
+      "artistNameLower": "megadeth",
+      "artistId": "1Yox196W7bzVNZI7RBaPnf",
+      "createdAt": {
+        "seconds": 1770462376,
+        "nanoseconds": 288000000
+      },
+      "updatedAt": "2026-02-08T18:57:50.065Z"
+    }
+  },
+  {
+    "v1AlbumId": "6UwjRSX9RQyNgJ3LwYhr9i",
+    "albumTitle": "72 Seasons",
+    "artistName": "Metallica",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-02-14T01:16:39.669Z",
+        "type": "new",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2026-02-11T20:26:40.574Z",
+        "pipelineRole": "source"
+      },
+      {
+        "addedAt": "2026-02-14T01:16:40.233Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "removedAt": "2026-03-08T12:03:55.544Z"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:03:56.354Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2023",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02cf2420c5c82d351496e8fd9e",
+    "extras": {
+      "artistNameLower": "metallica",
+      "artistId": "2ye2Wgw4gimLv2eAKyk1NB",
+      "createdAt": "2026-02-11T20:26:40.890Z",
+      "updatedAt": "2026-03-08T12:03:56.048Z"
+    }
+  },
+  {
+    "v1AlbumId": "6yjTdaBIgDXAwCl8NpBEyG",
+    "albumTitle": "The Satanist",
+    "artistName": "Behemoth",
+    "playlistHistory": [
+      {
+        "removedAt": "2026-02-14T01:16:48.089Z",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new",
+        "addedAt": "2026-02-11T20:32:15.652Z",
+        "pipelineRole": "source"
+      },
+      {
+        "removedAt": "2026-03-08T12:04:00.694Z",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "addedAt": "2026-02-14T01:16:48.525Z",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-03-08T12:04:01.477Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2014",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02180987ab035f6ae9d4459415",
+    "extras": {
+      "artistNameLower": "behemoth",
+      "artistId": "1MK0sGeyTNkbefYGj673e9",
+      "createdAt": "2026-02-11T20:32:16.059Z",
+      "updatedAt": "2026-03-08T12:04:01.018Z"
+    }
+  },
+  {
+    "v1AlbumId": "73HoiOlintxrZhZHV9zSda",
+    "albumTitle": "Get Some",
+    "artistName": "Snot",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-19T00:28:31.967Z",
+        "type": "new",
+        "pipelineRole": "source",
+        "removedAt": "2025-12-19T01:43:36.393Z"
+      },
+      {
+        "addedAt": "2025-12-19T01:43:36.970Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "removedAt": "2026-01-25T17:51:15.226Z"
+      },
+      {
+        "addedAt": "2026-01-25T17:51:15.766Z",
+        "type": "new",
+        "pipelineRole": "transient",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "removedAt": "2026-02-13T18:43:23.208Z"
+      },
+      {
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "pipelineRole": "transient",
+        "type": "new",
+        "addedAt": "2026-02-13T18:43:23.797Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1997",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02c31acd76454b29586f1121b4",
+    "extras": {
+      "artistNameLower": "snot",
+      "artistId": "6TnlohrPbZ8D0JvJp9S1t8",
+      "createdAt": "2025-12-19T00:28:32.318Z",
+      "updatedAt": "2026-02-13T18:43:23.851Z"
+    }
+  },
+  {
+    "v1AlbumId": "78bpIziExqiI9qztvNFlQu",
+    "albumTitle": "AM",
+    "artistName": "Arctic Monkeys",
+    "playlistHistory": [
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "removedAt": "2025-12-19T00:14:12.800Z",
+        "addedAt": "2025-12-13T21:08:08.418Z",
+        "type": "new"
+      },
+      {
+        "removedAt": "2026-01-11T15:13:44.354Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho",
+        "addedAt": "2025-12-19T00:14:13.669Z"
+      },
+      {
+        "removedAt": "2026-02-07T20:21:29.732Z",
+        "addedAt": "2026-01-11T15:13:44.853Z",
+        "pipelineRole": "transient",
+        "type": "new",
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-02-07T20:21:30.268Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2013",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b2734ae1c4c5c45aabe565499163",
+    "extras": {
+      "artistNameLower": "arctic monkeys",
+      "artistId": "7Ln80lUS6He07XvHI8qqHH",
+      "createdAt": "2025-12-13T21:08:08.699Z",
+      "updatedAt": "2026-02-07T20:21:30.345Z"
+    }
+  },
+  {
+    "v1AlbumId": "7acEciVtnuTzmwKptkjth5",
+    "albumTitle": "Fear Inoculum",
+    "artistName": "TOOL",
+    "playlistHistory": [
+      {
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "removedAt": "2025-12-19T02:11:47.272Z",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-19T00:02:56.466Z",
+        "type": "known"
+      },
+      {
+        "type": "known",
+        "removedAt": "2026-01-25T13:31:58.389Z",
+        "addedAt": "2025-12-19T02:11:48.004Z",
+        "pipelineRole": "transient",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz"
+      },
+      {
+        "addedAt": "2026-01-25T13:31:58.921Z",
+        "type": "known",
+        "removedAt": "2026-02-08T15:17:40.584Z",
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "pipelineRole": "transient"
+      },
+      {
+        "playlistId": "2xltg6AnKSpD52Wqhj7l9f",
+        "pipelineRole": "sink",
+        "type": "known",
+        "addedAt": "2026-02-08T15:17:41.138Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2019",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e021cb671469ff9fa33703410c4",
+    "extras": {
+      "artistNameLower": "tool",
+      "artistId": "2yEwvVSSSUkcLeSTNyHKh8",
+      "createdAt": "2025-12-13T21:05:37.452Z",
+      "updatedAt": "2026-02-08T15:17:40.893Z"
+    }
+  },
+  {
+    "v1AlbumId": "7D7V6M05UIOTjLdqbwRX0w",
+    "albumTitle": "Magma",
+    "artistName": "Gojira",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T01:33:57.734Z",
+        "addedAt": "2025-12-19T00:30:32.829Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "type": "new"
+      }
+    ],
+    "releaseYear": "2016",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02422c622517ea0bd7eda33e08",
+    "extras": {
+      "artistNameLower": "gojira",
+      "artistId": "0GDGKpJFhVpcjIGF8N6Ewt",
+      "createdAt": "2025-12-19T00:30:33.139Z",
+      "updatedAt": "2025-12-19T01:33:57.883Z"
+    }
+  },
+  {
+    "v1AlbumId": "7hS4Yx78GjZlylkpnHsmr4",
+    "albumTitle": "Koloss",
+    "artistName": "Meshuggah",
+    "playlistHistory": [
+      {
+        "addedAt": "2026-02-14T01:19:06.042Z",
+        "removedAt": "2026-02-14T01:19:52.450Z",
+        "pipelineRole": "source",
+        "type": "known",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-14T01:19:52.844Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2012",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0254eb78edf5f8a6d66c1d2f7e",
+    "extras": {
+      "artistNameLower": "meshuggah",
+      "artistId": "3ggwAqZD3lyT2sbovlmfQY",
+      "createdAt": "2026-02-14T01:19:06.039Z",
+      "updatedAt": "2026-02-14T01:19:52.677Z"
+    }
+  },
+  {
+    "v1AlbumId": "7lxHnls3yQNl8B9bILmHj7",
+    "albumTitle": "Traveller",
+    "artistName": "Chris Stapleton",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-03-10T00:18:56.810Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2015",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02540fc1d083eac5bcff8dad21",
+    "extras": {
+      "artistNameLower": "chris stapleton",
+      "artistId": "4YLtscXsxbVgi031ovDDdh",
+      "createdAt": "2026-03-10T00:18:56.898Z",
+      "updatedAt": "2026-03-10T00:18:56.898Z"
+    }
+  },
+  {
+    "v1AlbumId": "7LZsSMEraR5F9Me6njnIMB",
+    "albumTitle": "Jailbreak",
+    "artistName": "Thin Lizzy",
+    "playlistHistory": [
+      {
+        "removedAt": "2025-12-19T01:34:39.042Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "addedAt": "2025-12-19T01:07:23.363Z",
+        "type": "new"
+      },
+      {
+        "removedAt": "2025-12-19T02:13:22.360Z",
+        "addedAt": "2025-12-19T01:37:14.708Z",
+        "pipelineRole": "source",
+        "playlistId": "379HsJGvOAqPNNPVi9s7A6",
+        "type": "known"
+      },
+      {
+        "playlistId": "2J5BXlvJcrEFPU8fhPOVg4",
+        "type": "known",
+        "removedAt": "2026-01-11T15:18:02.544Z",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-19T02:13:24.076Z"
+      },
+      {
+        "addedAt": "2026-01-11T15:18:03.315Z",
+        "playlistId": "6f6RmPylPjuLzYDdrHiJsT",
+        "type": "known",
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-23T17:53:18.337Z"
+      },
+      {
+        "type": "known",
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-31T22:31:35.940Z",
+        "addedAt": "2026-01-23T17:53:18.873Z",
+        "playlistId": "3NlpevP1xMxV7kJGHlRvbz"
+      },
+      {
+        "playlistId": "4sg1byVDzTpmF84vBe6cco",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-01-31T22:31:36.487Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1976",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02969b39bdb1cf1dad16d6514f",
+    "extras": {
+      "artistNameLower": "thin lizzy",
+      "artistId": "6biWAmrHyiMkX49LkycGqQ",
+      "createdAt": "2025-12-19T01:07:23.714Z",
+      "updatedAt": "2026-01-31T22:31:35.740Z"
+    }
+  },
+  {
+    "v1AlbumId": "7mYw7l4p7Q3W9N1aLSWXZF",
+    "albumTitle": "Everything Must Go",
+    "artistName": "Goose",
+    "playlistHistory": [
+      {
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "pipelineRole": "source",
+        "addedAt": "2025-12-13T21:38:33.613Z",
+        "type": "new",
+        "removedAt": "2025-12-13T22:00:22.341Z"
+      },
+      {
+        "removedAt": "2026-01-18T12:24:51.562Z",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-13T22:00:23.019Z",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "type": "new"
+      },
+      {
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "removedAt": "2026-01-25T19:58:14.863Z",
+        "type": "new",
+        "addedAt": "2026-01-18T12:24:52.112Z"
+      },
+      {
+        "playlistId": "0DyB2bH6A84noNck5pGeeI",
+        "pipelineRole": "sink",
+        "type": "new",
+        "addedAt": "2026-01-25T19:58:15.844Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e022e3b16dab257ffa773dff58e",
+    "extras": {
+      "artistNameLower": "goose",
+      "artistId": "5tkITWzssc9z9hu7ZEOCXz",
+      "createdAt": "2025-12-13T21:38:33.904Z",
+      "updatedAt": "2026-01-25T19:58:15.846Z"
+    }
+  },
+  {
+    "v1AlbumId": "7n8ZhTHwFTpKF5u584a53t",
+    "albumTitle": "Billboard Heart",
+    "artistName": "Deep Sea Diver",
+    "playlistHistory": [
+      {
+        "addedAt": "2025-12-13T21:39:44.663Z",
+        "pipelineRole": "source",
+        "playlistId": "0FtSa9TQvf9maMANEkNenT",
+        "removedAt": "2025-12-16T13:42:54.441Z",
+        "type": "new"
+      },
+      {
+        "removedAt": "2025-12-30T22:43:07.599Z",
+        "type": "new",
+        "playlistId": "5aomJKl1qPvamZGKdBjnzW",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-16T13:42:55.056Z"
+      },
+      {
+        "type": "new",
+        "removedAt": "2026-01-09T19:53:26.760Z",
+        "playlistId": "0uOC8YXZXYTyEcmbyI2Zn3",
+        "pipelineRole": "transient",
+        "addedAt": "2025-12-30T22:43:07.983Z"
+      },
+      {
+        "removedAt": "2026-01-11T15:15:32.379Z",
+        "type": "new",
+        "addedAt": "2026-01-09T19:53:27.121Z",
+        "pipelineRole": "transient",
+        "playlistId": "4IebPfQEwE5L3MU3ohHKho"
+      },
+      {
+        "playlistId": "6NJnMyArrRSMIpNDjJIepH",
+        "pipelineRole": "transient",
+        "addedAt": "2026-01-11T15:15:32.886Z",
+        "type": "new",
+        "removedAt": "2026-04-16T22:04:51.110Z"
+      },
+      {
+        "playlistId": "1m4h4SDS6VVduilfhvyMY9",
+        "pipelineRole": "terminal",
+        "type": "new",
+        "addedAt": "2026-04-16T22:04:52.323Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2025",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e0265458cb2ba62c608edc097a1",
+    "extras": {
+      "artistNameLower": "deep sea diver",
+      "artistId": "6CD0HbcaKmuVB3NHJJgSdH",
+      "createdAt": "2025-12-13T21:39:44.965Z",
+      "updatedAt": "2026-04-16T22:04:52.780Z"
+    }
+  }
+]

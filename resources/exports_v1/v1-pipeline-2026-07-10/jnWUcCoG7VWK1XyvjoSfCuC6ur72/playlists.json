@@ -1,0 +1,226 @@
+[
+  {
+    "v1PlaylistId": "0DD1J6q5QBd2nzHlB0iKpG",
+    "pipelineRole": "sink",
+    "group": "known",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "21oyk8aWEC229yTWKnd4"
+  },
+  {
+    "v1PlaylistId": "0JKPso7ACSmMc9NNWUzDQ6",
+    "pipelineRole": "transient",
+    "group": "new",
+    "nextStagePlaylistId": "5f7wsu5iZAf0VUhhKoJn",
+    "terminationPlaylistId": "8rrAQu5BitCWSX0ubQkb",
+    "firestoreDocId": "VbUxpfFZavnrD3cwiuFo"
+  },
+  {
+    "v1PlaylistId": "0PLm8YxaKVhjqUaOhujKzk",
+    "pipelineRole": "transient",
+    "group": "known",
+    "nextStagePlaylistId": "PMafiyXKONzPP25fT4mC",
+    "terminationPlaylistId": "GPMFvMyc2QCpWodmMrXW",
+    "firestoreDocId": "K0iX8Nci0wQ1Hhc0eoh3"
+  },
+  {
+    "v1PlaylistId": "0VTCrZI7NMzqmQP07c4Yvp",
+    "pipelineRole": "terminal",
+    "group": "aufoo",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "Y4rGhjv93F0QuwHBLboI"
+  },
+  {
+    "v1PlaylistId": "0YYmnrL1rgdAusVoxJbETw",
+    "pipelineRole": "sink",
+    "group": "aufoo",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "FvLTEqanLqVdGHlFfc8X"
+  },
+  {
+    "v1PlaylistId": "1E0K27FshVpPXuvZYHaOZx",
+    "pipelineRole": "sink",
+    "group": "aufoo",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "5VKbGJrlwA8GmmrXwubN"
+  },
+  {
+    "v1PlaylistId": "1o6uNnEe2vWdGkX5azoLEF",
+    "pipelineRole": "sink",
+    "group": "new",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "3AVXm2t1CiRPyV0nM4Bh"
+  },
+  {
+    "v1PlaylistId": "2YuK0rgxUgVquocFMeeVXF",
+    "pipelineRole": "transient",
+    "group": "known",
+    "nextStagePlaylistId": "K0iX8Nci0wQ1Hhc0eoh3",
+    "terminationPlaylistId": "n9BFMZRYK2pNf79AXlFS",
+    "firestoreDocId": "FpWGgHsZ2CH6N7ioGGoQ"
+  },
+  {
+    "v1PlaylistId": "2kNmtSF2ndUsYCOSSvcnmj",
+    "pipelineRole": "transient",
+    "group": "known",
+    "nextStagePlaylistId": "870BJAlPGrJ3JvMSq4A5",
+    "terminationPlaylistId": "21oyk8aWEC229yTWKnd4",
+    "firestoreDocId": "PMafiyXKONzPP25fT4mC"
+  },
+  {
+    "v1PlaylistId": "2tmqzXyCSHUeFWSdPF6UuC",
+    "pipelineRole": "transient",
+    "group": "new",
+    "nextStagePlaylistId": "VbUxpfFZavnrD3cwiuFo",
+    "terminationPlaylistId": "3AVXm2t1CiRPyV0nM4Bh",
+    "firestoreDocId": "g2yG4RdWXpRbhjAcvMST"
+  },
+  {
+    "v1PlaylistId": "3BUpSXAvxd05UkBil8JYWe",
+    "pipelineRole": "transient",
+    "group": "new",
+    "nextStagePlaylistId": "g2yG4RdWXpRbhjAcvMST",
+    "terminationPlaylistId": "ZUWJUZyWHhxzq5yyYSX6",
+    "firestoreDocId": "gC9VcAhK6r6FP7t7aaDN"
+  },
+  {
+    "v1PlaylistId": "3et9otGGsiXslIlfNGsZvX",
+    "pipelineRole": "source",
+    "group": "known",
+    "nextStagePlaylistId": "w5Yg3m0fr1iSJ265KHCt",
+    "terminationPlaylistId": null,
+    "firestoreDocId": "eRCxZSmQdQ1OxYPC5wdH"
+  },
+  {
+    "v1PlaylistId": "50mWTRVvyIC3lUjTJ3r5KV",
+    "pipelineRole": "source",
+    "group": "new",
+    "nextStagePlaylistId": "Z7evQTAhDyiDbWKzdSmX",
+    "terminationPlaylistId": null,
+    "firestoreDocId": "9lsBONl1DM6Mj3XAwb70"
+  },
+  {
+    "v1PlaylistId": "53VM2f4uc7yaGlDi1sEXYg",
+    "pipelineRole": "terminal",
+    "group": "known",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "870BJAlPGrJ3JvMSq4A5"
+  },
+  {
+    "v1PlaylistId": "5TgzUv2bjIqSTtpBG4JGLc",
+    "pipelineRole": "source",
+    "group": "aufoo",
+    "nextStagePlaylistId": "RKFDxYLklBkacQeN0GCU",
+    "terminationPlaylistId": null,
+    "firestoreDocId": "hYfTqAZnDq7WQxr3f1Hx"
+  },
+  {
+    "v1PlaylistId": "5ki4dlB8rNoPXq1QrfVYzD",
+    "pipelineRole": "transient",
+    "group": "RYM 2025",
+    "nextStagePlaylistId": "Clqb5IpqLPMOV04HNNor",
+    "terminationPlaylistId": "MFr1CkslVCZ3khotPgMC",
+    "firestoreDocId": "nXbLQ9YU0WEHzB9aBJMO"
+  },
+  {
+    "v1PlaylistId": "67lIAfdpjpYSvruBVFuP9N",
+    "pipelineRole": "transient",
+    "group": "new",
+    "nextStagePlaylistId": "gC9VcAhK6r6FP7t7aaDN",
+    "terminationPlaylistId": "AMEtSjK99SYdAGMWKriE",
+    "firestoreDocId": "Z7evQTAhDyiDbWKzdSmX"
+  },
+  {
+    "v1PlaylistId": "6Dt4ZffstlsA1OR9ZP3qiA",
+    "pipelineRole": "transient",
+    "group": "aufoo",
+    "nextStagePlaylistId": "Y4rGhjv93F0QuwHBLboI",
+    "terminationPlaylistId": "5VKbGJrlwA8GmmrXwubN",
+    "firestoreDocId": "PCTcpiX3kaoqDP0ec3Zs"
+  },
+  {
+    "v1PlaylistId": "6LPO8pVjeuK2PbhvXxmlHe",
+    "pipelineRole": "transient",
+    "group": "known",
+    "nextStagePlaylistId": "FpWGgHsZ2CH6N7ioGGoQ",
+    "terminationPlaylistId": "7v5udaEKudTmryVU1xNH",
+    "firestoreDocId": "w5Yg3m0fr1iSJ265KHCt"
+  },
+  {
+    "v1PlaylistId": "6TvZMfizsMW9JWgDoQ7VcJ",
+    "pipelineRole": "sink",
+    "group": "known",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "7v5udaEKudTmryVU1xNH"
+  },
+  {
+    "v1PlaylistId": "6pLxu15QzGhPXRt3jNa2wu",
+    "pipelineRole": "sink",
+    "group": "new",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "8rrAQu5BitCWSX0ubQkb"
+  },
+  {
+    "v1PlaylistId": "6qYBjYYFTTt0FhBXsgJ3W9",
+    "pipelineRole": "transient",
+    "group": "aufoo",
+    "nextStagePlaylistId": "PCTcpiX3kaoqDP0ec3Zs",
+    "terminationPlaylistId": "FvLTEqanLqVdGHlFfc8X",
+    "firestoreDocId": "RKFDxYLklBkacQeN0GCU"
+  },
+  {
+    "v1PlaylistId": "6t7Ftpes0Wp2THxA4olWLC",
+    "pipelineRole": "terminal",
+    "group": "new",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "5f7wsu5iZAf0VUhhKoJn"
+  },
+  {
+    "v1PlaylistId": "706yqvtJBouaFyRwvSEAlb",
+    "pipelineRole": "sink",
+    "group": "known",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "GPMFvMyc2QCpWodmMrXW"
+  },
+  {
+    "v1PlaylistId": "7MtaYD7nXvMu4jSEHBJZeT",
+    "pipelineRole": "sink",
+    "group": "known",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "n9BFMZRYK2pNf79AXlFS"
+  },
+  {
+    "v1PlaylistId": "7a3qMfves1XspMyfmHcbsx",
+    "pipelineRole": "sink",
+    "group": "new",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "ZUWJUZyWHhxzq5yyYSX6"
+  },
+  {
+    "v1PlaylistId": "7vSwn18GVrnLzJTD4Oy3ib",
+    "pipelineRole": "source",
+    "group": "RYM 2025",
+    "nextStagePlaylistId": "nXbLQ9YU0WEHzB9aBJMO",
+    "terminationPlaylistId": "",
+    "firestoreDocId": "lAvUWT0fbZreD32i9qTy"
+  },
+  {
+    "v1PlaylistId": "7zdATiJXMzfRaAAfb5nJA1",
+    "pipelineRole": "sink",
+    "group": "new",
+    "nextStagePlaylistId": null,
+    "terminationPlaylistId": null,
+    "firestoreDocId": "AMEtSjK99SYdAGMWKriE"
+  }
+]
