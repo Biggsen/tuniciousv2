@@ -10,6 +10,8 @@ export interface StagedTrack {
 
 export type StagedAlbumStatus = 'pending' | 'in-library' | 'imported' | 'skipped'
 
+export type StagedAlbumSource = 'csv' | 'v1'
+
 export interface StagedAlbum {
   id: string
   albumUri: string
@@ -20,6 +22,7 @@ export interface StagedAlbum {
   tracks: StagedTrack[]
   status: StagedAlbumStatus
   libraryAlbumId?: string
+  source?: StagedAlbumSource
 }
 
 export type TrackMatchQuality = 'exact' | 'partial' | 'mismatch' | 'missing-csv' | 'missing-mb'

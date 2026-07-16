@@ -15,11 +15,11 @@ function makeAlbum(overrides: Partial<Album> & Pick<Album, 'id' | 'title' | 'art
     id: overrides.id,
     title: overrides.title,
     artist: overrides.artist,
-    artistId: 'artist-1',
-    artistIds: ['artist-1'],
-    releaseMbid: `release-${overrides.id}`,
-    tracks: [],
-    importedAt: new Date('2026-01-01T00:00:00.000Z'),
+    artistId: overrides.artistId ?? 'artist-1',
+    artistIds: overrides.artistIds ?? ['artist-1'],
+    releaseMbid: overrides.releaseMbid ?? `release-${overrides.id}`,
+    tracks: overrides.tracks ?? [],
+    importedAt: overrides.importedAt ?? new Date('2026-01-01T00:00:00.000Z'),
   }
 }
 
@@ -71,8 +71,24 @@ describe('buildAlbumPickerItemFromAlbum', () => {
       artistLower: 'the mars volta',
       titleTokens: ['frances', 'the', 'mute'],
       artistTokens: ['the', 'mars', 'volta'],
+      trackIds: [],
+      artistIds: ['artist-1'],
     })
     expect(projection).not.toHaveProperty('tracks')
+  })
+
+  it('projects track ids for library resolve status', () => {
+    const album = makeAlbum({
+      id: 'a2',
+      title: 'Leviathan',
+      artist: 'Mastodon',
+      tracks: [
+        { id: 't1', trackNumber: '1', title: 'Blood and Thunder', lengthMs: 1000 },
+        { id: 't2', trackNumber: '2', title: 'I Am Ahab', lengthMs: 1000 },
+      ],
+    })
+
+    expect(buildAlbumPickerItemFromAlbum(album).trackIds).toEqual(['t1', 't2'])
   })
 })
 

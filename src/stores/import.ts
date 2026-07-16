@@ -2,13 +2,21 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { markAlbumsInLibrary } from '@/lib/import/matchLibrary'
-import { matchPlaylistFromFilename } from '@/lib/import/matchPlaylistFromFilename'
+import {
+  matchPlaylistFromFilename,
+  matchPlaylistFromNormalizedName,
+} from '@/lib/import/matchPlaylistFromFilename'
 import { mergeStagedAlbums, parseSpotifyExportCsv } from '@/lib/import/parseSpotifyCsv'
+import {
+  stageAlbumsFromRepo,
+  type V1FunnelGroup,
+} from '@/lib/import/v1ExportRepo'
 import { firstPendingId, nextPendingAfter } from '@/lib/import/queueNavigation'
-import type { StagedAlbum } from '@/lib/import/types'
+import type { StagedAlbum, StagedAlbumSource } from '@/lib/import/types'
 import { listAlbums } from '@/lib/album/firestore'
 import { addAlbumToPlaylist, listPlaylists } from '@/lib/playlist/firestore'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import type { Album, Playlist } from '@/types/library'
 
 function preserveResolvedStatus(merged: StagedAlbum[], previous: StagedAlbum[]): StagedAlbum[] {
@@ -41,6 +49,7 @@ export const useImportStore = defineStore('import', () => {
   const syncError = ref<string | null>(null)
   const syncingInLibrary = ref(false)
   const automationEnabled = ref(false)
+  const importSource = ref<StagedAlbumSource | null>(null)
 
   const hasSession = computed(() => albums.value.length > 0)
 
@@ -93,7 +102,14 @@ export const useImportStore = defineStore('import', () => {
     await addAlbumToPlaylist(uid, syncPlaylistId.value, libraryAlbumId)
   }
 
-  async function matchLibraryAndPlaylists(uid: string, filenameForDetect: string | null) {
+  async function matchLibraryAndPlaylists(
+    uid: string,
+    options: {
+      filenameForDetect?: string | null
+      playlistNameHint?: string | null
+      syncPlaylistIdOverride?: string | null
+    } = {},
+  ) {
     matchingLibrary.value = true
 
     try {
@@ -103,10 +119,25 @@ export const useImportStore = defineStore('import', () => {
       albums.value = markAlbumsInLibrary(albums.value, library)
       ensurePendingSelection()
 
-      if (filenameForDetect) {
-        const detected = matchPlaylistFromFilename(filenameForDetect, loadedPlaylists)
-        autoDetectedPlaylistId.value = detected?.id ?? null
-        syncPlaylistId.value = detected?.id ?? null
+      if (options.syncPlaylistIdOverride) {
+        const exists = loadedPlaylists.some((playlist) => playlist.id === options.syncPlaylistIdOverride)
+        if (exists) {
+          autoDetectedPlaylistId.value = options.syncPlaylistIdOverride
+          syncPlaylistId.value = options.syncPlaylistIdOverride
+          return
+        }
+      }
+
+      let detected: Playlist | null = null
+      if (options.playlistNameHint) {
+        detected = matchPlaylistFromNormalizedName(options.playlistNameHint, loadedPlaylists)
+      } else if (options.filenameForDetect) {
+        detected = matchPlaylistFromFilename(options.filenameForDetect, loadedPlaylists)
+      }
+
+      if (detected) {
+        autoDetectedPlaylistId.value = detected.id
+        syncPlaylistId.value = detected.id
       }
     } catch (err) {
       parseError.value =
@@ -143,6 +174,7 @@ export const useImportStore = defineStore('import', () => {
         : merged
 
       albums.value = next
+      importSource.value = 'csv'
       sourceLabel.value =
         files.length === 1 ? files[0].name : `${files.length} files (${files.map((f) => f.name).join(', ')})`
 
@@ -165,7 +197,51 @@ export const useImportStore = defineStore('import', () => {
       return
     }
 
-    await matchLibraryAndPlaylists(uid, filenameForDetect)
+    await matchLibraryAndPlaylists(uid, { filenameForDetect })
+  }
+
+  async function loadV1FromRepo(
+    group: V1FunnelGroup,
+    v1PlaylistId: string,
+  ): Promise<void> {
+    parsing.value = true
+    parseError.value = null
+    syncError.value = null
+
+    const uid = useAuthStore().user?.uid
+    if (!uid) {
+      parseError.value = 'Sign in required to load the v1 export.'
+      parsing.value = false
+      return
+    }
+
+    try {
+      const { staged, stage, group: loadedGroup } = await stageAlbumsFromRepo({
+        v2Uid: uid,
+        group,
+        v1PlaylistId,
+      })
+
+      if (!staged.length) {
+        parseError.value = `No albums currently on “${stage.name}” in the v1 export.`
+        return
+      }
+
+      albums.value = staged
+      importSource.value = 'v1'
+      sourceLabel.value = `v1 · ${loadedGroup} · ${stage.name} (${staged.length} albums)`
+      autoDetectedPlaylistId.value = null
+      syncPlaylistId.value = null
+
+      await matchLibraryAndPlaylists(uid, {
+        syncPlaylistIdOverride: stage.v2PlaylistId,
+        playlistNameHint: stage.name,
+      })
+    } catch (err) {
+      parseError.value = err instanceof Error ? err.message : 'Failed to load v1 export'
+    } finally {
+      parsing.value = false
+    }
   }
 
   function markInLibrary(albumUri: string, libraryAlbumId: string, advance = false) {
@@ -190,6 +266,7 @@ export const useImportStore = defineStore('import', () => {
 
   async function handleImported(payload: { albumUri: string; libraryAlbumId: string }) {
     markImported(payload.albumUri, payload.libraryAlbumId)
+    useLibraryStore().invalidate()
 
     if (!syncPlaylistId.value) return
 
@@ -264,6 +341,7 @@ export const useImportStore = defineStore('import', () => {
     syncError.value = null
     syncingInLibrary.value = false
     automationEnabled.value = false
+    importSource.value = null
   }
 
   return {
@@ -282,6 +360,7 @@ export const useImportStore = defineStore('import', () => {
     syncError,
     syncingInLibrary,
     automationEnabled,
+    importSource,
     syncableAlbums,
     hasSession,
     selectedAlbum,
@@ -291,6 +370,7 @@ export const useImportStore = defineStore('import', () => {
     skippedCount,
     displayedAlbums,
     loadFiles,
+    loadV1FromRepo,
     markInLibrary,
     handleImported,
     syncInLibraryAlbums,

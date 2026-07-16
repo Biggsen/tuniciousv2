@@ -29,11 +29,20 @@ const pageTitle = computed(() => {
   return typeof title === 'string' ? title : 'Tunicious'
 })
 
+const isLibraryRoute = computed(() => String(route.name ?? '') === 'library')
+
 const mainPaddingClass = computed(() => {
   if (playback.showPlayerBar) {
     return 'pb-44 md:pb-24'
   }
   return 'max-md:pb-20 md:pb-6'
+})
+
+const mainClass = computed(() => {
+  if (isLibraryRoute.value) {
+    return 'min-h-0 flex-1 overflow-hidden'
+  }
+  return ['min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-6', mainPaddingClass.value]
 })
 
 function isActive(name: string) {
@@ -50,9 +59,9 @@ function isActive(name: string) {
 </script>
 
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex h-svh overflow-hidden">
     <aside
-      class="hidden w-56 shrink-0 flex-col border-r border-border bg-surface-raised md:flex"
+      class="hidden h-full w-56 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-raised md:flex"
     >
       <div class="border-b border-border px-5 py-6">
         <p class="text-lg font-semibold tracking-tight">Tunicious</p>
@@ -87,9 +96,9 @@ function isActive(name: string) {
       </nav>
     </aside>
 
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <header
-        class="flex items-center justify-between gap-4 border-b border-border px-4 py-4 md:px-8 md:py-5"
+        class="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-4 py-4 md:px-8 md:py-5"
       >
         <div class="min-w-0 md:hidden">
           <p class="text-xs font-medium uppercase tracking-wider text-accent">Tunicious</p>
@@ -104,7 +113,7 @@ function isActive(name: string) {
         </button>
       </header>
 
-      <main class="flex-1 px-4 py-5 md:px-8 md:py-6" :class="mainPaddingClass">
+      <main :class="mainClass">
         <RouterView />
       </main>
 

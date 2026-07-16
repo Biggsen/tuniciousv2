@@ -1,77 +1,99 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import ArtistAvatar from '@/components/artist/ArtistAvatar.vue'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
-import { listAlbums } from '@/lib/album/firestore'
-import { listArtists } from '@/lib/artist/firestore'
+import type { LibraryAlbumCard } from '@/lib/album/firestore'
 import { matchesLibrarySearch } from '@/lib/library/search'
 import { loadUnresolvedOnlyFilter, saveUnresolvedOnlyFilter } from '@/lib/library/persist'
 import {
   albumLibraryCardClasses,
   albumResolveStatus,
 } from '@/lib/youtube/albumResolve'
-import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
-import type { Album, Artist } from '@/types/library'
-import type { TrackYouTubeMapping } from '@/types/youtube'
 
 type LibrarySearchMode = 'album' | 'artist'
 
+const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
+const library = useLibraryStore()
 const playback = usePlaybackStore()
 
-const albums = ref<Album[]>([])
-const artists = ref<Artist[]>([])
-const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
-const loading = ref(true)
-const error = ref<string | null>(null)
 const query = ref('')
-const mode = ref<LibrarySearchMode>('album')
+const bootstrapping = ref(true)
+const mode = ref<LibrarySearchMode>(
+  route.query.mode === 'artist' ? 'artist' : 'album',
+)
 const unresolvedOnly = ref(loadUnresolvedOnlyFilter())
 
 watch(unresolvedOnly, (value) => {
   saveUnresolvedOnlyFilter(value)
 })
 
+function syncModeToRoute(next: LibrarySearchMode) {
+  const current = route.query.mode === 'artist' ? 'artist' : 'album'
+  if (current === next) return
+  void router.replace({
+    name: 'library',
+    query: next === 'artist' ? { mode: 'artist' } : {},
+  })
+}
+
+watch(mode, (value) => {
+  syncModeToRoute(value)
+  if (value === 'artist' && auth.user) {
+    void library.ensureArtists(auth.user.uid)
+  }
+})
+
+watch(
+  () => route.query.mode,
+  (value) => {
+    const next: LibrarySearchMode = value === 'artist' ? 'artist' : 'album'
+    if (mode.value !== next) mode.value = next
+  },
+)
+
+const loading = computed(
+  () =>
+    bootstrapping.value ||
+    library.albumsLoading ||
+    (mode.value === 'artist' && library.artistsLoading && library.artists.length === 0),
+)
+
 const filteredAlbums = computed(() => {
-  let list = albums.value.filter((album) =>
+  let list = library.cards.filter((album) =>
     matchesLibrarySearch(query.value, album.title, album.artist, album.albumYear),
   )
 
   if (unresolvedOnly.value) {
-    list = list.filter((album) => albumResolveStatus(album, mappings.value) !== 'resolved')
-  } else {
-    list = list.filter((album) => albumResolveStatus(album, mappings.value) === 'resolved')
+    list = list.filter((album) => albumResolveStatus(album, library.mappings) !== 'resolved')
   }
 
   return list
 })
 
 const filteredArtists = computed(() =>
-  artists.value.filter((artist) =>
+  library.artists.filter((artist) =>
     matchesLibrarySearch(query.value, artist.name, artist.sortName, artist.scrobbleName),
   ),
 )
 
-const hasLibrary = computed(() => albums.value.length > 0 || artists.value.length > 0)
+const hasLibrary = computed(() => library.cards.length > 0 || library.artists.length > 0)
 const showEmpty = computed(
-  () => !loading.value && !error.value && !hasLibrary.value,
-)
-const hasPlayableAlbums = computed(() =>
-  albums.value.some((album) => albumResolveStatus(album, mappings.value) === 'resolved'),
+  () => !loading.value && !library.error && !hasLibrary.value,
 )
 
 const showNoResults = computed(() => {
-  if (loading.value || error.value) return false
+  if (loading.value || library.error) return false
   if (mode.value === 'album') {
-    if (filteredAlbums.value.length) return false
-    if (query.value.trim() || unresolvedOnly.value) return true
-    return albums.value.length > 0 && !hasPlayableAlbums.value
+    return filteredAlbums.value.length === 0 && (query.value.trim() || unresolvedOnly.value)
   }
   if (!query.value.trim()) return false
   return !filteredArtists.value.length
@@ -85,14 +107,11 @@ const noResultsMessage = computed(() => {
     return `No unresolved albums match "${query.value.trim()}".`
   }
   if (unresolvedOnly.value) return 'No unresolved albums.'
-  if (query.value.trim()) {
-    return `No playable albums match "${query.value.trim()}".`
-  }
-  return 'No playable albums yet. Turn on Unresolved only to see albums still being resolved.'
+  return `No albums match "${query.value.trim()}".`
 })
 
-function resolveStatus(album: Album) {
-  return albumResolveStatus(album, mappings.value)
+function resolveStatus(album: LibraryAlbumCard) {
+  return albumResolveStatus(album, library.mappings)
 }
 
 function isPlayingAlbum(albumId: string): boolean {
@@ -100,41 +119,38 @@ function isPlayingAlbum(albumId: string): boolean {
   return playback.currentItem?.albumId === albumId
 }
 
+const scrollPaddingClass = computed(() => {
+  if (playback.showPlayerBar) {
+    return 'pb-44 md:pb-24'
+  }
+  return 'max-md:pb-20 md:pb-6'
+})
+
 onMounted(async () => {
-  if (!auth.user) return
+  if (!auth.user) {
+    bootstrapping.value = false
+    return
+  }
 
   try {
-    const [loadedAlbums, loadedArtists] = await Promise.all([
-      listAlbums(auth.user.uid),
-      listArtists(auth.user.uid),
-    ])
-    albums.value = loadedAlbums
-    artists.value = loadedArtists
-
-    const trackIds = loadedAlbums.flatMap((album) => album.tracks.map((track) => track.id))
-    mappings.value = await getMappingsForTrackIds(auth.user.uid, trackIds)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load library'
+    await library.ensureAlbums(auth.user.uid)
+    if (mode.value === 'artist') {
+      await library.ensureArtists(auth.user.uid)
+    }
+  } catch {
+    // Error surfaced via library.error
   } finally {
-    loading.value = false
+    bootstrapping.value = false
   }
 })
 </script>
 
 <template>
-  <div>
-    <p v-if="showEmpty" class="text-sm text-text-muted">
-      No albums yet. Browse the
-      <RouterLink to="/explorer" class="text-accent hover:underline">Explorer</RouterLink>
-      and import a release, or
-      <RouterLink to="/import" class="text-accent hover:underline">import from a Spotify export</RouterLink>.
-    </p>
-
-    <ExplorerLoading v-if="loading" />
-    <ExplorerError v-else-if="error" :message="error" />
-
-    <template v-else-if="hasLibrary">
-      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+  <div class="flex h-full min-h-0 flex-col">
+    <template v-if="hasLibrary && !loading && !library.error">
+      <div
+        class="flex shrink-0 flex-col gap-4 border-b border-border bg-surface px-4 py-4 lg:flex-row lg:items-center lg:justify-between md:px-8"
+      >
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
@@ -183,61 +199,86 @@ onMounted(async () => {
         />
       </div>
 
-      <p v-if="showNoResults" class="text-sm text-text-muted">
-        {{ noResultsMessage }}
+      <div
+        class="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-6"
+        :class="scrollPaddingClass"
+      >
+        <p v-if="showNoResults" class="text-sm text-text-muted">
+          {{ noResultsMessage }}
+        </p>
+
+        <ul
+          v-else-if="mode === 'album'"
+          class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+        >
+          <li v-for="album in filteredAlbums" :key="album.id">
+            <RouterLink
+              :to="{ name: 'album-detail', params: { id: album.id } }"
+              class="group flex h-full flex-col overflow-hidden rounded-xl border transition-colors"
+              :class="albumLibraryCardClasses(resolveStatus(album), isPlayingAlbum(album.id))"
+            >
+              <div class="aspect-square w-full overflow-hidden bg-surface/80">
+                <img
+                  v-if="pickAlbumCoverSmall(album)"
+                  :src="pickAlbumCoverSmall(album)"
+                  :alt="album.title"
+                  loading="lazy"
+                  decoding="async"
+                  class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                />
+                <div
+                  v-else
+                  class="flex h-full w-full items-center justify-center text-xs text-text-muted"
+                >
+                  No art
+                </div>
+              </div>
+              <div class="flex flex-1 flex-col p-3">
+                <p
+                  class="line-clamp-2 text-sm font-medium leading-snug"
+                  :class="isPlayingAlbum(album.id) ? 'text-accent' : ''"
+                >{{ album.title }}</p>
+                <p class="mt-1 truncate text-xs text-text-muted">{{ album.artist }}</p>
+                <p v-if="album.albumYear" class="mt-1 text-[11px] text-text-muted/70">
+                  {{ album.albumYear }}
+                </p>
+              </div>
+            </RouterLink>
+          </li>
+        </ul>
+
+        <ul v-else class="divide-y divide-border rounded-xl border border-border">
+          <li v-for="artist in filteredArtists" :key="artist.id">
+            <RouterLink
+              :to="{
+                name: 'artist-detail',
+                params: { id: artist.id },
+                query: { mode: 'artist' },
+              }"
+              class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/5"
+            >
+              <ArtistAvatar :artist="artist" size="sm" rounded="full" />
+              <span class="font-medium">{{ artist.name }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+      </div>
+    </template>
+
+    <div
+      v-else
+      class="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-6"
+      :class="scrollPaddingClass"
+    >
+      <p v-if="showEmpty" class="text-sm text-text-muted">
+        No albums yet. Browse the
+        <RouterLink to="/explorer" class="text-accent hover:underline">Explorer</RouterLink>
+        and import a release, or
+        <RouterLink to="/import" class="text-accent hover:underline">import from a Spotify export</RouterLink>.
       </p>
 
-      <ul
-        v-else-if="mode === 'album'"
-        class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-      >
-        <li v-for="album in filteredAlbums" :key="album.id">
-          <RouterLink
-            :to="{ name: 'album-detail', params: { id: album.id } }"
-            class="group flex h-full flex-col overflow-hidden rounded-xl border transition-colors"
-            :class="albumLibraryCardClasses(resolveStatus(album), isPlayingAlbum(album.id))"
-          >
-            <div class="aspect-square w-full overflow-hidden bg-surface/80">
-              <img
-                v-if="pickAlbumCoverSmall(album)"
-                :src="pickAlbumCoverSmall(album)"
-                :alt="album.title"
-                loading="lazy"
-                decoding="async"
-                class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-              />
-              <div
-                v-else
-                class="flex h-full w-full items-center justify-center text-xs text-text-muted"
-              >
-                No art
-              </div>
-            </div>
-            <div class="flex flex-1 flex-col p-3">
-              <p
-                class="line-clamp-2 text-sm font-medium leading-snug"
-                :class="isPlayingAlbum(album.id) ? 'text-accent' : ''"
-              >{{ album.title }}</p>
-              <p class="mt-1 truncate text-xs text-text-muted">{{ album.artist }}</p>
-              <p v-if="album.albumYear" class="mt-1 text-[11px] text-text-muted/70">
-                {{ album.albumYear }}
-              </p>
-            </div>
-          </RouterLink>
-        </li>
-      </ul>
-
-      <ul v-else class="divide-y divide-border rounded-xl border border-border">
-        <li v-for="artist in filteredArtists" :key="artist.id">
-          <RouterLink
-            :to="{ name: 'artist-detail', params: { id: artist.id } }"
-            class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/5"
-          >
-            <ArtistAvatar :artist="artist" size="sm" rounded="full" />
-            <span class="font-medium">{{ artist.name }}</span>
-          </RouterLink>
-        </li>
-      </ul>
-    </template>
+      <ExplorerLoading v-else-if="loading" />
+      <ExplorerError v-else-if="library.error" :message="library.error" />
+    </div>
   </div>
 </template>

@@ -17,6 +17,7 @@ import {
   yearFromDate,
 } from '@/lib/musicbrainz/format'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import type { Album } from '@/types/library'
 import type { MbReleaseDetail, MbTrack } from '@/lib/musicbrainz/types'
 
@@ -108,6 +109,7 @@ async function importToLibrary() {
 
   try {
     const album = await importReleaseToLibrary(auth.user.uid, mbid(), userAgent.value)
+    useLibraryStore().invalidate()
     libraryAlbum.value = album
     router.push({ name: 'album-detail', params: { id: album.id } })
   } catch (err) {

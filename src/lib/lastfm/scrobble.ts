@@ -12,7 +12,7 @@ import {
   syncTrackPlaycountFromLastfm,
 } from '@/lib/sessions/firestore'
 import { getUserProfile } from '@/lib/userProfile'
-import type { PlaylistMember } from '@/types/library'
+import type { Album, PlaylistMember } from '@/types/library'
 import type { PlaybackQueueItem } from '@/types/playback'
 
 async function getLastfmConnection(uid: string) {
@@ -118,26 +118,33 @@ async function syncPlaycountForTrack(
   }
 }
 
-export async function refreshLibraryPlaycounts(uid: string): Promise<number> {
+export async function refreshAlbumPlaycounts(uid: string, album: Album): Promise<number> {
   const connection = await getLastfmConnection(uid)
   if (!connection?.username) return 0
 
+  const artist = await resolveScrobbleArtist(uid, album.id, album.artist)
+  let synced = 0
+
+  for (const libraryTrack of album.tracks) {
+    try {
+      const track = normalizeForLastfm(libraryTrack.title)
+      const playcount = await fetchTrackPlaycount(artist, track, connection.username)
+      await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, playcount)
+      synced++
+    } catch {
+      // Skip tracks Last.fm cannot match.
+    }
+  }
+
+  return synced
+}
+
+export async function refreshLibraryPlaycounts(uid: string): Promise<number> {
   const albums = await listAlbums(uid)
   let synced = 0
 
   for (const album of albums) {
-    const artist = await resolveScrobbleArtist(uid, album.id, album.artist)
-
-    for (const libraryTrack of album.tracks) {
-      try {
-        const track = normalizeForLastfm(libraryTrack.title)
-        const playcount = await fetchTrackPlaycount(artist, track, connection.username)
-        await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, playcount)
-        synced++
-      } catch {
-        // Skip tracks Last.fm cannot match.
-      }
-    }
+    synced += await refreshAlbumPlaycounts(uid, album)
   }
 
   return synced
@@ -147,24 +154,10 @@ export async function refreshPlaylistPlaycounts(
   uid: string,
   members: PlaylistMember[],
 ): Promise<number> {
-  const connection = await getLastfmConnection(uid)
-  if (!connection?.username) return 0
-
   let synced = 0
 
   for (const member of members) {
-    const artist = await resolveScrobbleArtist(uid, member.album.id, member.album.artist)
-
-    for (const libraryTrack of member.album.tracks) {
-      try {
-        const track = normalizeForLastfm(libraryTrack.title)
-        const playcount = await fetchTrackPlaycount(artist, track, connection.username)
-        await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, playcount)
-        synced++
-      } catch {
-        // Skip tracks Last.fm cannot match.
-      }
-    }
+    synced += await refreshAlbumPlaycounts(uid, member.album)
   }
 
   return synced

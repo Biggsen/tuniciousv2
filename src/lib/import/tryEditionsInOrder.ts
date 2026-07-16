@@ -31,6 +31,8 @@ export function editionsToTry(
 }
 
 export function isReleaseAlignedWithAlbum(album: StagedAlbum, release: MbReleaseDetail): boolean {
+  if (album.source === 'v1') return true
+
   const mbTracks = release.media?.flatMap((medium) => medium.tracks ?? []) ?? []
   const rows = compareTracklists(album.tracks, mbTracks)
   return isTracklistFullyAlignedByPosition(rows)

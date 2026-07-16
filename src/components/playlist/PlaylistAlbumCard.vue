@@ -5,10 +5,13 @@ import { RouterLink } from 'vue-router'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
+import { useAuthStore } from '@/stores/auth'
 import type { PlaylistMember } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
+
+const auth = useAuthStore()
 
 const props = defineProps<{
   member: PlaylistMember
@@ -34,6 +37,8 @@ const emit = defineEmits<{
 const menuOpen = ref(false)
 
 const album = computed(() => props.member.album)
+
+const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
 
 const resolveStats = computed(() =>
   countAlbumResolvedTracks(album.value, props.mappings),
@@ -222,7 +227,7 @@ function actionLabel(action: WorkflowAction): string {
             MusicBrainz
           </RouterLink>
           <a
-            :href="lastfmAlbumUrl(album.artist, album.title)"
+            :href="lastfmAlbumUrl(album.artist, album.title, lastfmUsername)"
             target="_blank"
             rel="noopener noreferrer"
             class="font-medium text-text-muted transition-colors hover:text-accent"

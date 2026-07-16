@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { matchPlaylistFromFilename, normalizeCsvFilename } from '@/lib/import/matchPlaylistFromFilename'
+import { matchPlaylistFromFilename, matchPlaylistFromNormalizedName, normalizeCsvFilename } from '@/lib/import/matchPlaylistFromFilename'
 import type { Playlist } from '@/types/library'
 
 function playlist(id: string, name: string): Playlist {
@@ -51,5 +51,12 @@ describe('matchPlaylistFromFilename', () => {
 
   it('returns null when nothing matches', () => {
     expect(matchPlaylistFromFilename('mystery.csv', playlists)).toBeNull()
+  })
+})
+
+describe('matchPlaylistFromNormalizedName', () => {
+  it('matches stage hint without CSV filename', () => {
+    const playlists = [playlist('p1', 'New - Queued'), playlist('p2', 'New - Curious')]
+    expect(matchPlaylistFromNormalizedName('Queued', playlists)?.id).toBe('p1')
   })
 })

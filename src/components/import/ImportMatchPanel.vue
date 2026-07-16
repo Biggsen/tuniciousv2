@@ -6,7 +6,7 @@ import TrackCompareTable from '@/components/import/TrackCompareTable.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { useMusicBrainzUserAgent } from '@/composables/useMusicBrainzUserAgent'
-import { compareTracklists, isTracklistFullyAlignedByPosition, tracklistMatchPercent } from '@/lib/import/compareTracks'
+import { compareTracklists, tracklistMatchPercent } from '@/lib/import/compareTracks'
 import { findLibraryMatch, isStagedAlbumResolved } from '@/lib/import/matchLibrary'
 import { getPrimaryIsrc } from '@/lib/import/parseSpotifyCsv'
 import { pickBestRelease } from '@/lib/import/suggestRelease'
@@ -75,6 +75,12 @@ let autoImportToken = 0
 let loadSuggestionToken = 0
 
 const autoAdvancePending = ref(false)
+/** Run automation for the current album only (no queue advance). */
+const singleAlbumAutomation = ref(false)
+
+const automationActive = computed(
+  () => importStore.automationEnabled || singleAlbumAutomation.value,
+)
 
 function isActiveSuggestion(token: number, album: StagedAlbum): boolean {
   return token === loadSuggestionToken && props.album?.id === album.id
@@ -83,6 +89,10 @@ function isActiveSuggestion(token: number, album: StagedAlbum): boolean {
 function cancelAutoImport() {
   autoImportToken++
   autoImportPending.value = false
+}
+
+function clearSingleAlbumAutomation() {
+  singleAlbumAutomation.value = false
 }
 
 function delay(ms: number): Promise<void> {
@@ -98,8 +108,10 @@ const flatMbTracks = computed(() => {
   return selectedRelease.value.media.flatMap((medium) => medium.tracks ?? [])
 })
 
+const isV1Source = computed(() => props.album?.source === 'v1')
+
 const compareRows = computed(() => {
-  if (!props.album || !selectedRelease.value) return []
+  if (!props.album || !selectedRelease.value || isV1Source.value) return []
   return compareTracklists(props.album.tracks, flatMbTracks.value)
 })
 
@@ -125,6 +137,10 @@ const suggestionSourceLabel = computed(() => {
 })
 
 const autoImportedLabel = computed(() => {
+  if (isV1Source.value) {
+    if (suggestionSource.value === 'search') return 'auto-imported from title search match'
+    return null
+  }
   if (matchPercent.value !== 100) return null
   if (suggestionSource.value === 'isrc') return 'auto-imported from ISRC match'
   if (suggestionSource.value === 'search') return 'auto-imported from title search match'
@@ -142,14 +158,11 @@ async function maybeAutoImportIfAligned(
   album: StagedAlbum,
   token: number,
 ): Promise<boolean> {
-  if (!importStore.automationEnabled) return false
+  if (!automationActive.value) return false
   if (!isActiveSuggestion(token, album) || album.status !== 'pending') return false
   if (!suggestionSource.value || !isAutomatedSource(suggestionSource.value)) return false
   if (libraryAlbum.value || importing.value) return false
-
-  const mbTracks = release.media?.flatMap((medium) => medium.tracks ?? []) ?? []
-  const rows = compareTracklists(album.tracks, mbTracks)
-  if (!isTracklistFullyAlignedByPosition(rows)) return false
+  if (!isReleaseAlignedWithAlbum(album, release)) return false
 
   const autoToken = ++autoImportToken
   autoImportPending.value = true
@@ -176,6 +189,7 @@ async function maybeAutoImportIfAligned(
     if (autoToken === autoImportToken) {
       autoImportPending.value = false
     }
+    clearSingleAlbumAutomation()
   }
 }
 
@@ -229,7 +243,9 @@ async function loadRelease(
     if (!isActiveSuggestion(token, album)) return 'inactive'
 
     if (libraryAlbum.value && album.status === 'pending' && isAutomatedSource(source)) {
-      importStore.markInLibrary(album.albumUri, libraryAlbum.value.id, importStore.automationEnabled)
+      const advance = importStore.automationEnabled
+      importStore.markInLibrary(album.albumUri, libraryAlbum.value.id, advance)
+      clearSingleAlbumAutomation()
       return 'in-library'
     }
 
@@ -237,11 +253,9 @@ async function loadRelease(
       const titleMatch = findLibraryMatch(album, importStore.libraryAlbums)
       if (titleMatch) {
         libraryAlbum.value = titleMatch
-        importStore.markInLibrary(
-          album.albumUri,
-          titleMatch.id,
-          isAutomatedSource(source) && importStore.automationEnabled,
-        )
+        const advance = isAutomatedSource(source) && importStore.automationEnabled
+        importStore.markInLibrary(album.albumUri, titleMatch.id, advance)
+        clearSingleAlbumAutomation()
         return isAutomatedSource(source) ? 'in-library' : 'needs-manual'
       }
     }
@@ -297,7 +311,7 @@ async function tryAutomatedEditions(
 }
 
 async function trySearchFallback(album: StagedAlbum, token: number): Promise<ReleaseLoadResult> {
-  if (!importStore.automationEnabled) return 'needs-manual'
+  if (!automationActive.value) return 'needs-manual'
   if (!isActiveSuggestion(token, album)) return 'inactive'
 
   try {
@@ -318,8 +332,12 @@ async function trySearchFallback(album: StagedAlbum, token: number): Promise<Rel
 
 async function runSearchTierThenAdvance(album: StagedAlbum, token: number) {
   const searchResult = await trySearchFallback(album, token)
-  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') return
+  if (!isActiveSuggestion(token, album) || props.album?.status !== 'pending') {
+    clearSingleAlbumAutomation()
+    return
+  }
   if (searchResult === 'needs-manual') {
+    clearSingleAlbumAutomation()
     await maybeAutoAdvance(album, token)
   }
 }
@@ -370,7 +388,7 @@ async function loadSuggestion(album: StagedAlbum) {
       if (!isActiveSuggestion(token, album)) return
 
       const releases = detail.releases ?? []
-      if (importStore.automationEnabled) {
+      if (automationActive.value) {
         isrcResult = await tryAutomatedEditions(releases, album, 'isrc', token)
       } else {
         const best = pickBestRelease(releases, album)
@@ -490,6 +508,7 @@ watch(
       autoAdvancePending.value = false
       return
     }
+    clearSingleAlbumAutomation()
     if (props.album?.status === 'pending') {
       void loadSuggestion(props.album)
     }
@@ -500,6 +519,7 @@ watch(
   () => props.album?.id ?? null,
   (albumId) => {
     cancelAutoImport()
+    clearSingleAlbumAutomation()
     if (!albumId || !props.album) {
       selectedRelease.value = null
       error.value = null
@@ -509,6 +529,17 @@ watch(
   },
   { immediate: true },
 )
+
+async function runAutoThisAlbum() {
+  if (!props.album || props.album.status !== 'pending') return
+  if (importStore.automationEnabled || singleAlbumAutomation.value) return
+
+  singleAlbumAutomation.value = true
+  await loadSuggestion(props.album)
+  if (props.album?.status === 'pending' && !autoImportPending.value) {
+    clearSingleAlbumAutomation()
+  }
+}
 </script>
 
 <template>
@@ -524,22 +555,46 @@ watch(
             <h2 class="text-lg font-semibold">{{ album.albumName }}</h2>
             <p class="mt-1 text-sm text-text-muted">{{ album.albumArtist }}</p>
             <p class="mt-1 text-xs text-text-muted">
-              {{ album.tracks.length }} tracks from CSV
+              <template v-if="isV1Source">
+                No Spotify tracklist — matching by title, artist, year
+              </template>
+              <template v-else>
+                {{ album.tracks.length }} tracks from CSV
+              </template>
               <template v-if="album.releaseDate"> · {{ album.releaseDate }}</template>
               <template v-if="primaryIsrc"> · ISRC {{ primaryIsrc }}</template>
             </p>
           </div>
-          <button
-            v-if="album.status === 'pending'"
-            type="button"
-            class="shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-            @click="emit('skip', album.albumUri)"
-          >
-            Skip
-          </button>
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              v-if="album.status === 'pending'"
+              type="button"
+              class="rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+              :disabled="
+                loading ||
+                importing ||
+                autoImportPending ||
+                singleAlbumAutomation ||
+                importStore.automationEnabled
+              "
+              @click="runAutoThisAlbum"
+            >
+              {{
+                singleAlbumAutomation || autoImportPending ? 'Auto…' : 'Auto this'
+              }}
+            </button>
+            <button
+              v-if="album.status === 'pending'"
+              type="button"
+              class="rounded-lg border border-border px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+              @click="emit('skip', album.albumUri)"
+            >
+              Skip
+            </button>
+          </div>
         </div>
 
-        <details class="mt-4">
+        <details v-if="!isV1Source && album.tracks.length" class="mt-4">
           <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-text-muted">
             CSV tracklist
           </summary>
@@ -564,7 +619,7 @@ watch(
           v-if="autoAdvancePending"
           class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-100"
         >
-          No 100% match — moving to next album…
+          No {{ isV1Source ? 'usable title match' : '100% match' }} — moving to next album…
         </p>
 
         <template v-else>
@@ -645,16 +700,25 @@ watch(
               v-if="autoImportPending"
               class="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200"
             >
-              100% aligned by position — importing…
+              <template v-if="isV1Source">Title match ready — importing…</template>
+              <template v-else>100% aligned by position — importing…</template>
             </p>
 
             <p v-if="importError" class="mb-3 text-sm text-red-300">{{ importError }}</p>
 
-            <TrackCompareTable :rows="compareRows" :match-percent="matchPercent" />
+            <TrackCompareTable
+              v-if="!isV1Source"
+              :rows="compareRows"
+              :match-percent="matchPercent"
+            />
           </div>
 
-          <div v-else-if="!primaryIsrc" class="mb-4 text-sm text-text-muted">
+          <div v-else-if="!primaryIsrc && !isV1Source" class="mb-4 text-sm text-text-muted">
             No ISRC on track 1 — search MusicBrainz manually below.
+          </div>
+
+          <div v-else-if="isV1Source && !selectedRelease" class="mb-4 text-sm text-text-muted">
+            Search MusicBrainz by title and artist below.
           </div>
 
           <div class="border-t border-border pt-4">

@@ -2,6 +2,7 @@ import {
   collection,
   deleteField,
   doc,
+  documentId,
   getDoc,
   getDocs,
   query,
@@ -155,6 +156,48 @@ export async function listArtists(uid: string): Promise<Artist[]> {
   )
 
   return base.map((artist) => withPrefs(artist, prefsByArtistId.get(artist.id) ?? null))
+}
+
+const FIRESTORE_IN_QUERY_LIMIT = 30
+const ARTIST_READ_CONCURRENCY = 8
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
+/** Load only the given artist ids (library-scoped), not the global artists catalog. */
+export async function listArtistsByIds(uid: string, artistIds: string[]): Promise<Artist[]> {
+  const uniqueIds = [...new Set(artistIds.filter(Boolean))]
+  if (uniqueIds.length === 0) return []
+
+  const byId = new Map<string, Artist>()
+  const chunks = chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)
+  for (let i = 0; i < chunks.length; i += ARTIST_READ_CONCURRENCY) {
+    const batch = chunks.slice(i, i + ARTIST_READ_CONCURRENCY)
+    const snapshots = await Promise.all(
+      batch.map((chunk) =>
+        getDocs(query(artistsCollection(), where(documentId(), 'in', chunk))),
+      ),
+    )
+    for (const snapshot of snapshots) {
+      for (const docSnap of snapshot.docs) {
+        byId.set(docSnap.id, toArtist(docSnap.id, docSnap.data() as ArtistDocument))
+      }
+    }
+  }
+
+  const prefsSnapshot = await getDocs(artistPrefsCollection(uid))
+  const prefsByArtistId = new Map(
+    prefsSnapshot.docs.map((docSnap) => [docSnap.id, docSnap.data() as ArtistPrefsDocument]),
+  )
+
+  return [...byId.values()]
+    .map((artist) => withPrefs(artist, prefsByArtistId.get(artist.id) ?? null))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export async function setArtistPreferredYouTubeChannel(

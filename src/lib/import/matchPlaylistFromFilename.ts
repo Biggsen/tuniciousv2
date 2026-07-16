@@ -21,6 +21,15 @@ export function matchPlaylistFromFilename(
   playlists: Playlist[],
 ): Playlist | null {
   const fileNorm = normalizeCsvFilename(filename)
+  return matchPlaylistFromNormalizedName(fileNorm, playlists)
+}
+
+/** Match a user playlist by a display name hint (e.g. "Queued" from "New Queued"). */
+export function matchPlaylistFromNormalizedName(
+  nameHint: string,
+  playlists: Playlist[],
+): Playlist | null {
+  const fileNorm = normalizePlaylistName(nameHint.replace(/_/g, ' '))
   if (!fileNorm || !playlists.length) return null
 
   for (const playlist of playlists) {

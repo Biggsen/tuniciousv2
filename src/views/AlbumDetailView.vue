@@ -13,7 +13,10 @@ import {
 import { formatDuration } from '@/lib/musicbrainz/format'
 import { getAlbumById } from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
+import { isLastfmConnected, refreshAlbumPlaycounts } from '@/lib/lastfm/scrobble'
+import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
+import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
 import { deleteMappingsForTrackIds, getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { parsePlaylistIdFromInput } from '@/lib/youtube/parseUrl'
 import {
@@ -22,12 +25,15 @@ import {
 } from '@/lib/youtube/playlistResolve'
 import { resolveAllAlbumTracks } from '@/lib/youtube/resolve'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import type { Album, Artist } from '@/types/library'
+import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
 const auth = useAuthStore()
+const library = useLibraryStore()
 const playback = usePlaybackStore()
 
 const backLink = computed(() => {
@@ -47,6 +53,7 @@ const backLink = computed(() => {
 const album = ref<Album | null>(null)
 const primaryArtist = ref<Artist | null>(null)
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
+const playStats = ref<Map<string, TrackPlayStats>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
 const resolvingAll = ref(false)
@@ -56,6 +63,9 @@ const playlistProgress = ref('')
 const playlistInput = ref('')
 const playlistMessage = ref<string | null>(null)
 const playError = ref<string | null>(null)
+const lastfmConnected = ref(false)
+const refreshingPlaycounts = ref(false)
+const playcountMessage = ref<string | null>(null)
 
 const resolveContext = computed(() => {
   if (!album.value) return null
@@ -69,12 +79,22 @@ const resolvedCount = computed(() => {
 
 const artistName = computed(() => primaryArtist.value?.name ?? album.value?.artist ?? '')
 
+const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
+
 async function loadMappings() {
   if (!auth.user || !album.value) return
-  mappings.value = await getMappingsForTrackIds(
-    auth.user.uid,
-    album.value.tracks.map((track) => track.id),
-  )
+  const trackIds = album.value.tracks.map((track) => track.id)
+  const [loadedMappings, loadedStats] = await Promise.all([
+    getMappingsForTrackIds(auth.user.uid, trackIds),
+    getTrackPlayStatsMap(auth.user.uid, trackIds),
+  ])
+  mappings.value = loadedMappings
+  playStats.value = loadedStats
+  library.upsertMappings(loadedMappings.values())
+}
+
+function trackPlaycount(trackId: string): number {
+  return playStats.value.get(trackId)?.playcount ?? 0
 }
 
 async function load() {
@@ -90,6 +110,7 @@ async function load() {
       return
     }
     primaryArtist.value = await getArtistById(auth.user.uid, album.value.artistId)
+    lastfmConnected.value = await isLastfmConnected(auth.user.uid)
     await loadMappings()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load album'
@@ -98,12 +119,32 @@ async function load() {
   }
 }
 
+async function handleRefreshPlaycounts() {
+  if (!auth.user || !album.value || !lastfmConnected.value) return
+
+  refreshingPlaycounts.value = true
+  playcountMessage.value = null
+  error.value = null
+
+  try {
+    const synced = await refreshAlbumPlaycounts(auth.user.uid, album.value)
+    await loadMappings()
+    playcountMessage.value = `Synced playcounts for ${synced}/${album.value.tracks.length} tracks`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to refresh playcounts'
+  } finally {
+    refreshingPlaycounts.value = false
+  }
+}
+
 function onMappingUpdated(trackId: string, mapping: TrackYouTubeMapping | null) {
   const next = new Map(mappings.value)
   if (mapping) {
     next.set(trackId, mapping)
+    library.upsertMappings([mapping])
   } else {
     next.delete(trackId)
+    library.removeMappingTrackIds([trackId])
   }
   mappings.value = next
 }
@@ -119,11 +160,10 @@ async function handleClearAllResolves() {
   playlistMessage.value = null
 
   try {
-    await deleteMappingsForTrackIds(
-      auth.user.uid,
-      album.value.tracks.map((track) => track.id),
-    )
+    const trackIds = album.value.tracks.map((track) => track.id)
+    await deleteMappingsForTrackIds(auth.user.uid, trackIds)
     mappings.value = new Map()
+    library.removeMappingTrackIds(trackIds)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to clear resolves'
   }
@@ -361,6 +401,32 @@ onMounted(load)
           <p class="mt-3 text-xs text-text-muted">
             Imported {{ album.importedAt.toLocaleDateString() }}
           </p>
+          <div
+            class="mt-3 flex max-w-xs items-center justify-between gap-2 rounded-lg bg-surface-raised px-3 py-2 text-xs"
+          >
+            <RouterLink
+              :to="{ name: 'explorer-release', params: { mbid: album.releaseMbid } }"
+              class="font-medium text-text-muted transition-colors hover:text-accent"
+            >
+              MusicBrainz
+            </RouterLink>
+            <a
+              :href="lastfmAlbumUrl(artistName, album.title, lastfmUsername)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-text-muted transition-colors hover:text-accent"
+            >
+              Last.fm
+            </a>
+            <a
+              :href="rymSearchUrl(artistName, album.title)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-text-muted transition-colors hover:text-accent"
+            >
+              RYM
+            </a>
+          </div>
           <p class="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <span
               class="rounded-full px-2 py-0.5 text-xs"
@@ -389,6 +455,15 @@ onMounted(load)
               @click="handlePlay"
             >
               Play
+            </button>
+            <button
+              v-if="lastfmConnected"
+              type="button"
+              class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+              :disabled="refreshingPlaycounts"
+              @click="handleRefreshPlaycounts"
+            >
+              {{ refreshingPlaycounts ? 'Refreshing…' : 'Refresh playcounts' }}
             </button>
             <button
               type="button"
@@ -439,6 +514,9 @@ onMounted(load)
           <p v-if="playlistMessage" class="mt-2 text-xs text-emerald-300">
             {{ playlistMessage }}
           </p>
+          <p v-if="playcountMessage" class="mt-2 text-xs text-emerald-300">
+            {{ playcountMessage }}
+          </p>
         </div>
       </header>
 
@@ -456,7 +534,7 @@ onMounted(load)
         <li
           v-for="(track, index) in album.tracks"
           :key="track.id"
-          class="flex items-center gap-3 px-4 py-3 text-sm transition-colors"
+          class="grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
           :class="isCurrentTrack(track.id) ? 'bg-accent/10' : ''"
         >
           <button
@@ -488,6 +566,12 @@ onMounted(load)
             </p>
             <p class="text-xs text-text-muted tabular-nums">{{ formatDuration(track.lengthMs) }}</p>
           </div>
+          <span
+            class="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted"
+            :title="`${trackPlaycount(track.id)} plays`"
+          >
+            {{ trackPlaycount(track.id) }}
+          </span>
           <TrackResolvePanel
             v-if="auth.user"
             :uid="auth.user.uid"

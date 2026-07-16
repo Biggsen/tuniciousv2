@@ -3,6 +3,7 @@ import {
   type DocumentData,
   type UpdateData,
   doc,
+  documentId,
   deleteField,
   endAt,
   getDoc,
@@ -56,6 +57,9 @@ export interface AlbumPickerItem {
   artistLower: string
   titleTokens?: string[]
   artistTokens?: string[]
+  /** Lightweight track ids for resolve-status without loading full album docs. */
+  trackIds?: string[]
+  artistIds?: string[]
 }
 
 interface AlbumPickerItemDocument {
@@ -69,7 +73,23 @@ interface AlbumPickerItemDocument {
   artistLower: string
   titleTokens?: string[]
   artistTokens?: string[]
+  trackIds?: string[]
+  artistIds?: string[]
 }
+
+/** Library grid card — picker fields scoped to the signed-in user's album_entries. */
+export interface LibraryAlbumCard {
+  id: string
+  title: string
+  artist: string
+  albumYear?: string
+  coverUrlSmall?: string
+  trackIds: string[]
+  artistIds: string[]
+}
+
+const FIRESTORE_IN_QUERY_LIMIT = 30
+const ALBUM_READ_CONCURRENCY = 8
 
 export interface AlbumPickerCursor {
   titleLower: string
@@ -108,6 +128,14 @@ export function resetAlbumPickerSyncGateForTests(): void {
   albumPickerSyncedUids.clear()
 }
 
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
 function toAlbumPickerItem(id: string, data: AlbumPickerItemDocument): AlbumPickerItem {
   return {
     id,
@@ -120,12 +148,26 @@ function toAlbumPickerItem(id: string, data: AlbumPickerItemDocument): AlbumPick
     artistLower: data.artistLower,
     titleTokens: data.titleTokens,
     artistTokens: data.artistTokens,
+    trackIds: Array.isArray(data.trackIds) ? data.trackIds : undefined,
+    artistIds: Array.isArray(data.artistIds) ? data.artistIds : undefined,
   }
+}
+
+function pickerNeedsTrackProjection(data: AlbumPickerItemDocument | undefined): boolean {
+  if (!data) return true
+  if (!Array.isArray(data.titleTokens) || !Array.isArray(data.artistTokens)) return true
+  if (!Array.isArray(data.trackIds)) return true
+  return false
 }
 
 export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unknown> {
   const titleLower = normalizeAlbumPickerText(album.title)
   const artistLower = normalizeAlbumPickerText(album.artist)
+  const artistIds = album.artistIds?.length
+    ? album.artistIds
+    : album.artistId
+      ? [album.artistId]
+      : []
   return omitUndefined({
     id: album.id,
     title: album.title,
@@ -137,6 +179,8 @@ export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unkn
     artistLower,
     titleTokens: tokenizeAlbumPickerText(titleLower),
     artistTokens: tokenizeAlbumPickerText(artistLower),
+    trackIds: album.tracks.map((track) => track.id),
+    artistIds,
   })
 }
 
@@ -223,9 +267,8 @@ export async function syncMissingAlbumPickerItems(uid: string): Promise<number> 
   )
   const albumsToUpsert = sourceAlbums.filter((album) => {
     const existing = pickerDocsById.get(album.id)
-    if (!existing) return true
     if (!existingIds.has(album.id)) return true
-    return !Array.isArray(existing.titleTokens) || !Array.isArray(existing.artistTokens)
+    return pickerNeedsTrackProjection(existing)
   })
 
   for (let index = 0; index < albumsToUpsert.length; index += ALBUM_PICKER_WRITE_CHUNK) {
@@ -398,6 +441,114 @@ export async function listAlbums(uid: string): Promise<Album[]> {
   const snapshot = await getDocs(albumsCollection(uid))
   return snapshot.docs
     .map((docSnap) => toAlbum(docSnap.id, docSnap.data() as AlbumDocument))
+    .sort((a, b) => a.title.localeCompare(b.title))
+}
+
+export async function listUserAlbumEntryIds(uid: string): Promise<string[]> {
+  const snapshot = await getDocs(collection(getFirestoreDb(), 'users', uid, 'album_entries'))
+  return snapshot.docs.map((docSnap) => docSnap.id)
+}
+
+async function getAlbumsByIds(uid: string, albumIds: string[]): Promise<Map<string, Album>> {
+  void uid
+  const result = new Map<string, Album>()
+  const uniqueIds = [...new Set(albumIds)]
+  if (uniqueIds.length === 0) return result
+
+  const chunks = chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)
+  for (let i = 0; i < chunks.length; i += ALBUM_READ_CONCURRENCY) {
+    const batch = chunks.slice(i, i + ALBUM_READ_CONCURRENCY)
+    const snapshots = await Promise.all(
+      batch.map((chunk) =>
+        getDocs(query(albumsCollection(uid), where(documentId(), 'in', chunk))),
+      ),
+    )
+    for (const snapshot of snapshots) {
+      for (const docSnap of snapshot.docs) {
+        result.set(docSnap.id, toAlbum(docSnap.id, docSnap.data() as AlbumDocument))
+      }
+    }
+  }
+
+  return result
+}
+
+async function getAlbumPickerItemsByIds(
+  uid: string,
+  albumIds: string[],
+): Promise<Map<string, AlbumPickerItem>> {
+  const result = new Map<string, AlbumPickerItem>()
+  const uniqueIds = [...new Set(albumIds)]
+  if (uniqueIds.length === 0) return result
+
+  const chunks = chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)
+  for (let i = 0; i < chunks.length; i += ALBUM_READ_CONCURRENCY) {
+    const batch = chunks.slice(i, i + ALBUM_READ_CONCURRENCY)
+    const snapshots = await Promise.all(
+      batch.map((chunk) =>
+        getDocs(query(albumPickerCollection(uid), where(documentId(), 'in', chunk))),
+      ),
+    )
+    for (const snapshot of snapshots) {
+      for (const docSnap of snapshot.docs) {
+        result.set(
+          docSnap.id,
+          toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
+        )
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Ensures album_picker docs exist (with trackIds) for the given album ids only —
+ * scoped to the user's library, not the global catalog.
+ */
+export async function ensureAlbumPickerForAlbumIds(
+  uid: string,
+  albumIds: string[],
+): Promise<number> {
+  const uniqueIds = [...new Set(albumIds)]
+  if (uniqueIds.length === 0) return 0
+
+  const existing = await getAlbumPickerItemsByIds(uid, uniqueIds)
+  const missingIds = uniqueIds.filter((id) => {
+    const item = existing.get(id)
+    return !item || !Array.isArray(item.trackIds)
+  })
+  if (missingIds.length === 0) return 0
+
+  const albums = await getAlbumsByIds(uid, missingIds)
+  const toUpsert = [...albums.values()]
+  for (let index = 0; index < toUpsert.length; index += ALBUM_PICKER_WRITE_CHUNK) {
+    const chunk = toUpsert.slice(index, index + ALBUM_PICKER_WRITE_CHUNK)
+    await Promise.all(chunk.map((album) => upsertAlbumPickerItem(uid, album)))
+  }
+  return toUpsert.length
+}
+
+/** User-scoped library grid: album_entries → album_picker cards (no full track payloads). */
+export async function listUserLibraryCards(uid: string): Promise<LibraryAlbumCard[]> {
+  const entryIds = await listUserAlbumEntryIds(uid)
+  if (entryIds.length === 0) return []
+
+  await ensureAlbumPickerForAlbumIds(uid, entryIds)
+  const pickers = await getAlbumPickerItemsByIds(uid, entryIds)
+
+  return entryIds
+    .map((id) => pickers.get(id))
+    .filter((item): item is AlbumPickerItem => Boolean(item))
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      artist: item.artist,
+      albumYear: item.albumYear,
+      coverUrlSmall: item.coverUrlSmall,
+      trackIds: item.trackIds ?? [],
+      artistIds: item.artistIds ?? [],
+    }))
     .sort((a, b) => a.title.localeCompare(b.title))
 }
 

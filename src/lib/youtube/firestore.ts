@@ -19,6 +19,8 @@ import type { TrackYouTubeMapping, TrackYouTubeMappingDocument } from '@/types/y
 
 const FIRESTORE_IN_QUERY_LIMIT = 30
 const FIRESTORE_BATCH_LIMIT = 500
+/** Parallel `documentId in` chunks — sequential was ~160 RTT for a large library. */
+const MAPPING_QUERY_CONCURRENCY = 8
 
 function youtubeMappingsCollection(uid: string) {
   void uid
@@ -67,11 +69,17 @@ export async function getMappingsForTrackIds(
   if (uniqueIds.length === 0) return map
 
   const col = youtubeMappingsCollection(uid)
+  const chunks = chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)
 
-  for (const chunk of chunkArray(uniqueIds, FIRESTORE_IN_QUERY_LIMIT)) {
-    const snapshot = await getDocs(query(col, where(documentId(), 'in', chunk)))
-    for (const docSnap of snapshot.docs) {
-      map.set(docSnap.id, toMapping(docSnap.id, docSnap.data() as TrackYouTubeMappingDocument))
+  for (let i = 0; i < chunks.length; i += MAPPING_QUERY_CONCURRENCY) {
+    const batch = chunks.slice(i, i + MAPPING_QUERY_CONCURRENCY)
+    const snapshots = await Promise.all(
+      batch.map((chunk) => getDocs(query(col, where(documentId(), 'in', chunk)))),
+    )
+    for (const snapshot of snapshots) {
+      for (const docSnap of snapshot.docs) {
+        map.set(docSnap.id, toMapping(docSnap.id, docSnap.data() as TrackYouTubeMappingDocument))
+      }
     }
   }
 

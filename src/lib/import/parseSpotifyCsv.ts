@@ -155,6 +155,7 @@ export function parseSpotifyExportCsv(text: string): StagedAlbum[] {
       imageUrl: row['Album Image URL'].trim() || undefined,
       tracks: [track],
       status: 'pending',
+      source: 'csv',
     })
   }
 
@@ -182,6 +183,7 @@ export function mergeStagedAlbums(albums: StagedAlbum[]): StagedAlbum[] {
       ...existing,
       tracks: sortTracks(tracks),
       imageUrl: existing.imageUrl ?? album.imageUrl,
+      source: existing.source ?? album.source,
     })
   }
 

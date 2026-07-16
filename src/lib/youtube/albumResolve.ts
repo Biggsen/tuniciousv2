@@ -3,18 +3,33 @@ import type { TrackYouTubeMapping } from '@/types/youtube'
 
 export type AlbumResolveStatus = 'resolved' | 'partial' | 'unresolved'
 
+type AlbumResolveInput =
+  | Pick<Album, 'tracks'>
+  | { trackIds: string[] }
+
+type MappingLookup = Map<string, TrackYouTubeMapping> | Set<string>
+
+function trackIdsFromAlbum(album: AlbumResolveInput): string[] {
+  return 'trackIds' in album ? album.trackIds : album.tracks.map((track) => track.id)
+}
+
+function hasMapping(mappings: MappingLookup, trackId: string): boolean {
+  return mappings.has(trackId)
+}
+
 export function countAlbumResolvedTracks(
-  album: Pick<Album, 'tracks'>,
-  mappings: Map<string, TrackYouTubeMapping>,
+  album: AlbumResolveInput,
+  mappings: MappingLookup,
 ): { resolved: number; total: number } {
-  const total = album.tracks.length
-  const resolved = album.tracks.filter((track) => mappings.has(track.id)).length
+  const trackIds = trackIdsFromAlbum(album)
+  const total = trackIds.length
+  const resolved = trackIds.filter((trackId) => hasMapping(mappings, trackId)).length
   return { resolved, total }
 }
 
 export function albumResolveStatus(
-  album: Pick<Album, 'tracks'>,
-  mappings: Map<string, TrackYouTubeMapping>,
+  album: AlbumResolveInput,
+  mappings: MappingLookup,
 ): AlbumResolveStatus {
   const { resolved, total } = countAlbumResolvedTracks(album, mappings)
   if (total === 0 || resolved === 0) return 'unresolved'

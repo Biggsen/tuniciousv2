@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
@@ -23,6 +23,19 @@ const scrobbleName = ref('')
 const savingScrobbleName = ref(false)
 const scrobbleNameSaved = ref(false)
 const scrobbleNameError = ref<string | null>(null)
+
+const backLink = computed(() => {
+  if (route.query.mode === 'artist') {
+    return {
+      to: { name: 'library', query: { mode: 'artist' } },
+      label: 'Library',
+    }
+  }
+  return {
+    to: { name: 'library' },
+    label: 'Library',
+  }
+})
 
 onMounted(async () => {
   if (!auth.user) return
@@ -72,6 +85,13 @@ async function saveScrobbleName() {
     <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="artist">
+      <RouterLink
+        :to="backLink.to"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-text"
+      >
+        ← {{ backLink.label }}
+      </RouterLink>
+
       <header class="mb-6 flex items-center gap-5">
         <ArtistAvatar :artist="artist" size="lg" rounded="full" />
         <div class="min-w-0">
