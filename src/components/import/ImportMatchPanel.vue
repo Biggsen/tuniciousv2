@@ -3,18 +3,20 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import TrackCompareTable from '@/components/import/TrackCompareTable.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { useMusicBrainzUserAgent } from '@/composables/useMusicBrainzUserAgent'
 import { compareTracklists, tracklistMatchPercent } from '@/lib/import/compareTracks'
-import { findLibraryMatch, isStagedAlbumResolved } from '@/lib/import/matchLibrary'
+import { findLibraryAlbumsByArtist, findLibraryMatch, isStagedAlbumResolved } from '@/lib/import/matchLibrary'
 import { getPrimaryIsrc } from '@/lib/import/parseSpotifyCsv'
+import { IMPORT_SKIP_REASONS } from '@/lib/import/skipReasons'
 import { pickBestRelease } from '@/lib/import/suggestRelease'
 import {
   editionsToTry,
   isReleaseAlignedWithAlbum,
 } from '@/lib/import/tryEditionsInOrder'
-import type { StagedAlbum } from '@/lib/import/types'
+import type { ImportSkipDetails, ImportSkipReason, StagedAlbum } from '@/lib/import/types'
 import {
   AlbumAlreadyImportedError,
   findAlbumByReleaseMbid,
@@ -27,11 +29,12 @@ import {
   lookupIsrc,
   searchReleaseGroups,
 } from '@/lib/musicbrainz/api'
-import { MusicBrainzError } from '@/lib/musicbrainz/client'
+import { formatMusicBrainzUserMessage, MusicBrainzError } from '@/lib/musicbrainz/client'
 import {
   formatArtistCredit,
   formatCountry,
   formatReleaseEditionLabel,
+  releaseTrackCount,
   yearFromDate,
 } from '@/lib/musicbrainz/format'
 import { useAuthStore } from '@/stores/auth'
@@ -45,12 +48,55 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   imported: [payload: { albumUri: string; libraryAlbumId: string }]
-  skip: [albumUri: string]
+  skip: [payload: { albumUri: string } & ImportSkipDetails]
 }>()
 
 const auth = useAuthStore()
 const importStore = useImportStore()
 const { userAgent } = useMusicBrainzUserAgent()
+
+const skipDialogOpen = ref(false)
+const skipReason = ref<ImportSkipReason>('edition-not-listed')
+const skipNote = ref('')
+const skipReplacementId = ref('')
+
+const showSkipReplacement = computed(
+  () => skipReason.value === 'edition-not-listed' || skipReason.value === 'other',
+)
+
+const skipReplacementOptions = computed(() => {
+  if (!props.album) return []
+  const byArtist = findLibraryAlbumsByArtist(props.album, importStore.libraryAlbums)
+  if (byArtist.length) return byArtist
+  return [...importStore.libraryAlbums]
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, 80)
+})
+
+function openSkipDialog() {
+  skipReason.value = 'edition-not-listed'
+  skipNote.value = ''
+  skipReplacementId.value = ''
+  skipDialogOpen.value = true
+}
+
+function formatSkipReplacementOption(libAlbum: Album): string {
+  const year = libAlbum.albumYear ? ` (${libAlbum.albumYear})` : ''
+  return `${libAlbum.title}${year} — ${libAlbum.artist}`
+}
+
+function confirmSkip() {
+  if (!props.album) return
+  emit('skip', {
+    albumUri: props.album.albumUri,
+    reason: skipReason.value,
+    note: skipNote.value.trim() || undefined,
+    libraryAlbumId: showSkipReplacement.value
+      ? skipReplacementId.value || undefined
+      : undefined,
+  })
+  skipDialogOpen.value = false
+}
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -118,6 +164,11 @@ const compareRows = computed(() => {
 const matchPercent = computed(() => tracklistMatchPercent(compareRows.value))
 
 const primaryIsrc = computed(() => (props.album ? getPrimaryIsrc(props.album) : undefined))
+
+const artistLibraryAlbums = computed(() => {
+  if (!props.album) return []
+  return findLibraryAlbumsByArtist(props.album, importStore.libraryAlbums)
+})
 
 type SuggestionSource = 'isrc' | 'search' | 'manual'
 
@@ -269,12 +320,14 @@ async function loadRelease(
     return 'needs-manual'
   } catch (err) {
     if (!isActiveSuggestion(token, album)) return 'inactive'
-    error.value =
-      err instanceof MusicBrainzError
-        ? `MusicBrainz error (${err.status})`
-        : err instanceof Error
-          ? err.message
-          : 'Failed to load release'
+    const message = formatMusicBrainzUserMessage(err, 'Failed to load release')
+    if (source === 'manual') {
+      // Keep the search/editions UI visible — do not replace the whole panel.
+      searchError.value = message
+      error.value = null
+    } else {
+      error.value = message
+    }
     return isAutomatedSource(source) ? 'needs-manual' : 'inactive'
   } finally {
     loadingEdition.value = false
@@ -404,12 +457,7 @@ async function loadSuggestion(album: StagedAlbum) {
     if (err instanceof MusicBrainzError && err.status === 404) {
       isrcNotFound = true
     } else {
-      error.value =
-        err instanceof MusicBrainzError
-          ? `MusicBrainz error (${err.status})`
-          : err instanceof Error
-            ? err.message
-            : 'ISRC lookup failed'
+      error.value = formatMusicBrainzUserMessage(err, 'ISRC lookup failed')
     }
   } finally {
     if (isActiveSuggestion(token, album)) {
@@ -428,6 +476,8 @@ async function compareManualRelease(releaseId: string) {
   if (!props.album) return
   const token = ++loadSuggestionToken
   cancelAutoImport()
+  searchError.value = null
+  error.value = null
   await loadRelease(releaseId, 'manual', props.album, token)
 }
 
@@ -443,12 +493,7 @@ async function runSearch() {
   try {
     searchResults.value = await searchReleaseGroups(term, userAgent.value)
   } catch (err) {
-    searchError.value =
-      err instanceof MusicBrainzError
-        ? `MusicBrainz error (${err.status})`
-        : err instanceof Error
-          ? err.message
-          : 'Search failed'
+    searchError.value = formatMusicBrainzUserMessage(err, 'Search failed')
   } finally {
     searching.value = false
   }
@@ -457,18 +502,14 @@ async function runSearch() {
 async function openReleaseGroup(result: MbReleaseGroupSearchResult) {
   loadingEdition.value = true
   searchError.value = null
+  error.value = null
 
   try {
     const group = await getReleaseGroup(result.id, userAgent.value)
     browsingGroupTitle.value = group.title
     browsingReleases.value = group.releases ?? []
   } catch (err) {
-    searchError.value =
-      err instanceof MusicBrainzError
-        ? `MusicBrainz error (${err.status})`
-        : err instanceof Error
-          ? err.message
-          : 'Failed to load editions'
+    searchError.value = formatMusicBrainzUserMessage(err, 'Failed to load editions')
   } finally {
     loadingEdition.value = false
   }
@@ -587,7 +628,7 @@ async function runAutoThisAlbum() {
               v-if="album.status === 'pending'"
               type="button"
               class="rounded-lg border border-border px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-              @click="emit('skip', album.albumUri)"
+              @click="openSkipDialog"
             >
               Skip
             </button>
@@ -609,6 +650,38 @@ async function runAutoThisAlbum() {
             </li>
           </ol>
         </details>
+
+        <div
+          v-if="artistLibraryAlbums.length"
+          class="mt-4 rounded-lg border border-border bg-surface/50 px-3 py-2.5"
+        >
+          <p class="text-xs font-medium uppercase tracking-wider text-text-muted">
+            {{ artistLibraryAlbums.length }}
+            album{{ artistLibraryAlbums.length === 1 ? '' : 's' }}
+            by {{ album.albumArtist }} in library
+          </p>
+          <ul class="mt-2 max-h-32 space-y-1 overflow-y-auto text-sm">
+            <li
+              v-for="libAlbum in artistLibraryAlbums"
+              :key="libAlbum.id"
+              class="flex items-baseline justify-between gap-2"
+            >
+              <RouterLink
+                :to="{ name: 'album-detail', params: { id: libAlbum.id } }"
+                class="min-w-0 truncate transition-colors hover:text-accent"
+                :class="album.libraryAlbumId === libAlbum.id ? 'font-medium text-accent' : ''"
+              >
+                {{ libAlbum.title }}
+              </RouterLink>
+              <span
+                v-if="libAlbum.albumYear"
+                class="shrink-0 text-xs text-text-muted tabular-nums"
+              >
+                {{ libAlbum.albumYear }}
+              </span>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto p-4">
@@ -763,6 +836,10 @@ async function runAutoThisAlbum() {
                         <template v-if="release.date">{{ release.date }}</template>
                         <template v-if="release.country"> · {{ formatCountry(release.country) }}</template>
                         <template v-if="release.status"> · {{ release.status }}</template>
+                        <template v-if="releaseTrackCount(release) != null">
+                          · {{ releaseTrackCount(release) }}
+                          track{{ releaseTrackCount(release) === 1 ? '' : 's' }}
+                        </template>
                       </span>
                     </span>
                     <span class="text-xs text-text-muted">Compare →</span>
@@ -793,5 +870,65 @@ async function runAutoThisAlbum() {
         </template>
       </div>
     </template>
+
+    <ConfirmDialog
+      :open="skipDialogOpen"
+      :title="album ? `Skip “${album.albumName}”?` : 'Skip album?'"
+      message="Choose why you’re skipping this export row. If you imported a different edition instead, link it so playlist sync can still pick it up."
+      confirm-label="Skip album"
+      @confirm="confirmSkip"
+      @cancel="skipDialogOpen = false"
+    >
+      <fieldset class="space-y-2">
+        <legend class="sr-only">Skip reason</legend>
+        <label
+          v-for="option in IMPORT_SKIP_REASONS"
+          :key="option.value"
+          class="flex cursor-pointer gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-white/5"
+          :class="skipReason === option.value ? 'border-accent/50 bg-accent/10' : ''"
+        >
+          <input
+            v-model="skipReason"
+            type="radio"
+            class="mt-0.5"
+            :value="option.value"
+            name="import-skip-reason"
+          />
+          <span>
+            <span class="font-medium">{{ option.label }}</span>
+            <span class="mt-0.5 block text-xs text-text-muted">{{ option.hint }}</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <label v-if="showSkipReplacement" class="mt-4 block text-sm">
+        <span class="text-text-muted">Replacement in library (optional)</span>
+        <select
+          v-model="skipReplacementId"
+          class="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="">None</option>
+          <option
+            v-for="libAlbum in skipReplacementOptions"
+            :key="libAlbum.id"
+            :value="libAlbum.id"
+          >
+            {{ formatSkipReplacementOption(libAlbum) }}
+          </option>
+        </select>
+      </label>
+
+      <label class="mt-4 block text-sm">
+        <span class="text-text-muted">Note (optional)</span>
+        <input
+          v-model="skipNote"
+          type="text"
+          class="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          :placeholder="
+            skipReason === 'edition-not-listed' ? 'e.g. used Deluxe instead' : 'Optional detail'
+          "
+        />
+      </label>
+    </ConfirmDialog>
   </div>
 </template>

@@ -1,5 +1,5 @@
 import type { Album } from '@/types/library'
-import type { PipelineRole, RatingSource, StarRating, Stage } from '@/types/pipeline'
+import type { PipelineRole, StarRating, Stage } from '@/types/pipeline'
 
 export type AlbumRatingDisplayState =
   | 'unrated'
@@ -27,10 +27,9 @@ export function isSubmittedToEvaluation(album: RatingAlbumFields): boolean {
 }
 
 /**
- * Display/edit rules without requiring an open membership fetch.
- * Uses submission + ratingSource as a proxy for stage role:
- * - submitted + not pipeline-sourced → in evaluation (source/transient)
- * - submitted + pipeline-sourced → rated in pipeline (sink/terminal)
+ * Display/edit rules for §7.4.
+ * Prefer explicit `pipelineRole` / `stageName` when known (open StageMembership);
+ * otherwise infer from submission + ratingSource.
  */
 export function resolveAlbumRatingDisplay(
   album: RatingAlbumFields,
@@ -39,7 +38,12 @@ export function resolveAlbumRatingDisplay(
   const submitted = isSubmittedToEvaluation(album)
   const role = options.pipelineRole
 
-  if (role === 'source' || role === 'transient' || (submitted && album.ratingSource !== 'pipeline')) {
+  const inSourceOrTransient =
+    role === 'source' ||
+    role === 'transient' ||
+    (role === undefined && submitted && album.ratingSource !== 'pipeline')
+
+  if (inSourceOrTransient) {
     return {
       state: 'in-evaluation',
       editable: false,
@@ -49,12 +53,17 @@ export function resolveAlbumRatingDisplay(
     }
   }
 
-  if (role === 'sink' || role === 'terminal' || (submitted && album.ratingSource === 'pipeline')) {
+  const onRatedExit =
+    role === 'sink' ||
+    role === 'terminal' ||
+    (role === undefined && submitted && album.ratingSource === 'pipeline')
+
+  if (onRatedExit) {
     return {
       state: 'rated-in-pipeline',
       editable: false,
       rating: album.rating,
-      label: 'From evaluation',
+      label: options.stageName ? `From evaluation · ${options.stageName}` : 'From evaluation',
       stageName: options.stageName,
     }
   }

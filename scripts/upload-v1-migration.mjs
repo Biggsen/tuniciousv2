@@ -3,8 +3,11 @@
  *
  * Usage:
  *   node scripts/upload-v1-migration.mjs
+ *   node scripts/upload-v1-migration.mjs --group=known
  *
  * Defaults to the jnWUc… export, group "new", and uid-map → v2 user.
+ * New and Known can both be staged: albums share one collection (migration
+ * status is preserved on re-upload); meta + playlist map are per-group.
  */
 import { createRequire } from 'node:module'
 import fs from 'node:fs'
@@ -25,8 +28,13 @@ const projectId = process.env.FIREBASE_PROJECT_ID ?? 'tunicious-40e1b'
 const exportRoot =
   process.env.V1_EXPORT_DIR ??
   path.join(__dirname, '../resources/exports_v1/v1-pipeline-2026-07-10')
-const group = process.env.V1_MIGRATION_GROUP ?? 'new'
+const groupArg = process.argv.find((arg) => arg.startsWith('--group='))?.split('=')[1]
+const group = groupArg ?? process.env.V1_MIGRATION_GROUP ?? 'new'
 const BATCH_LIMIT = 400
+
+if (group !== 'new' && group !== 'known') {
+  throw new Error(`Invalid group "${group}". Use new or known.`)
+}
 
 const options = {
   project: projectId,
@@ -60,7 +68,11 @@ async function main() {
 
   const userDir = path.join(exportRoot, v1Uid)
   const albums = loadJson(path.join(userDir, 'albums.json'))
-  const playlistMap = loadJson(path.join(userDir, `playlist-id-map-${group}.json`))
+  const mapPath = path.join(userDir, `playlist-id-map-${group}.json`)
+  if (!fs.existsSync(mapPath)) {
+    throw new Error(`Missing ${mapPath}`)
+  }
+  const playlistMap = loadJson(mapPath)
   const spotifyIds = new Set(Object.keys(playlistMap.stages ?? {}))
 
   const filtered = albums.filter((album) =>
@@ -71,6 +83,11 @@ async function main() {
 
   console.log(`Uploading group="${group}" for v1=${v1Uid} → v2=${v2Uid}`)
   console.log(`Albums in export: ${albums.length}; matching group: ${filtered.length}`)
+  if (!playlistMap.v2PipelineId) {
+    console.warn(
+      `Warning: playlist-id-map-${group}.json has no v2PipelineId yet — link the ${group} evaluation funnel before Apply.`,
+    )
+  }
 
   const db = await getAdminDb()
   const col = db.collection('users').doc(v2Uid).collection('v1_migration_albums')
@@ -81,6 +98,7 @@ async function main() {
     const batch = db.batch()
     for (const album of chunk) {
       const ref = col.doc(album.v1AlbumId)
+      // Omit migration so re-upload / other-group upload does not reset progress.
       batch.set(
         ref,
         {
@@ -91,9 +109,6 @@ async function main() {
           albumCover: album.albumCover ?? null,
           playlistHistory: album.playlistHistory ?? [],
           extras: album.extras ?? null,
-          migration: {
-            status: 'pending',
-          },
         },
         { merge: true },
       )
@@ -103,7 +118,22 @@ async function main() {
     console.log(`  wrote ${Math.min(i + chunk.length, filtered.length)} / ${filtered.length}`)
   }
 
-  await db.collection('users').doc(v2Uid).collection('v1_migration').doc('meta').set({
+  // Seed pending migration only on docs that lack a status.
+  for (let i = 0; i < filtered.length; i += BATCH_LIMIT) {
+    const chunk = filtered.slice(i, i + BATCH_LIMIT)
+    const refs = chunk.map((album) => col.doc(album.v1AlbumId))
+    const snaps = await db.getAll(...refs)
+    const batch = db.batch()
+    let seeded = 0
+    for (const snap of snaps) {
+      if (!snap.exists || snap.get('migration.status')) continue
+      batch.set(snap.ref, { migration: { status: 'pending' } }, { merge: true })
+      seeded++
+    }
+    if (seeded > 0) await batch.commit()
+  }
+
+  const metaPayload = {
     v1Uid,
     v2Uid,
     group,
@@ -111,16 +141,15 @@ async function main() {
     albumCount: filtered.length,
     sourceExport: path.relative(path.join(__dirname, '..'), userDir).replaceAll('\\', '/'),
     uploadedAt: FieldValue.serverTimestamp(),
-  })
+  }
 
-  await db
-    .collection('users')
-    .doc(v2Uid)
-    .collection('v1_migration')
-    .doc(`playlist_map_${group}`)
-    .set(playlistMap)
+  const migrationCol = db.collection('users').doc(v2Uid).collection('v1_migration')
+  await migrationCol.doc(`meta_${group}`).set(metaPayload)
+  // Legacy single meta doc = last uploaded group (older clients).
+  await migrationCol.doc('meta').set(metaPayload)
+  await migrationCol.doc(`playlist_map_${group}`).set(playlistMap)
 
-  console.log(`Done. Staged ${written} albums + meta + playlist_map_${group}`)
+  console.log(`Done. Staged ${written} albums + meta_${group} + playlist_map_${group}`)
 }
 
 main().catch((error) => {

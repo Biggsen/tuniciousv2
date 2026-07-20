@@ -48,6 +48,21 @@ export function findLibraryMatch(album: StagedAlbum, library: Album[]): Album | 
   return findMatchInIndex(album, buildLibraryIndex(library))
 }
 
+/** All library albums whose artist matches the staged import row (fuzzy). */
+export function findLibraryAlbumsByArtist(
+  album: StagedAlbum,
+  library: Album[],
+): Album[] {
+  return library
+    .filter((candidate) => artistsMatch(album.albumArtist, candidate.artist))
+    .sort((a, b) => {
+      const yearA = a.albumYear ?? ''
+      const yearB = b.albumYear ?? ''
+      if (yearA !== yearB) return yearB.localeCompare(yearA)
+      return a.title.localeCompare(b.title)
+    })
+}
+
 export function markAlbumsInLibrary(staged: StagedAlbum[], library: Album[]): StagedAlbum[] {
   const index = buildLibraryIndex(library)
 

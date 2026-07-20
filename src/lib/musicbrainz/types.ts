@@ -20,6 +20,7 @@ export interface MbReleaseRef {
   status?: string
   'artist-credit'?: MbArtistCredit[]
   'release-group'?: MbReleaseGroupRef
+  media?: MbMedium[]
 }
 
 export interface MbRecording {

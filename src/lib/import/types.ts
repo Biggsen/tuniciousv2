@@ -12,6 +12,19 @@ export type StagedAlbumStatus = 'pending' | 'in-library' | 'imported' | 'skipped
 
 export type StagedAlbumSource = 'csv' | 'v1'
 
+/** Why a staged album was skipped during import. */
+export type ImportSkipReason =
+  | 'edition-not-listed'
+  | 'artist-not-on-mb'
+  | 'other'
+
+export interface ImportSkipDetails {
+  reason: ImportSkipReason
+  note?: string
+  /** Library album used instead of the export title (wrong edition / substitute). */
+  libraryAlbumId?: string
+}
+
 export interface StagedAlbum {
   id: string
   albumUri: string
@@ -25,6 +38,8 @@ export interface StagedAlbum {
   status: StagedAlbumStatus
   libraryAlbumId?: string
   source?: StagedAlbumSource
+  skipReason?: ImportSkipReason
+  skipNote?: string
 }
 
 export type TrackMatchQuality = 'exact' | 'partial' | 'mismatch' | 'missing-csv' | 'missing-mb'

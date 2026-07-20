@@ -60,6 +60,8 @@ export interface Album {
   ratedAt?: Date
   importedAt: Date
   importedBy?: string
+  archivedAt?: Date
+  archivedBy?: string
 }
 
 export interface AlbumDocument {
@@ -85,6 +87,8 @@ export interface AlbumDocument {
   ratedAt?: Timestamp
   importedAt: Timestamp
   importedBy?: string
+  archivedAt?: Timestamp
+  archivedBy?: string
 }
 
 /** Per-user relationship and state for a canonical album. */

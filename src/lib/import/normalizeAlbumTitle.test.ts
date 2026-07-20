@@ -26,4 +26,16 @@ describe('albumTitleMatchKeys', () => {
       normalizeAlbumTitleForMatch('Fang Island'),
     )
   })
+
+  it('treats & and And as the same title', () => {
+    expect(normalizeAlbumTitleForMatch('Unsung Prophets & Dead Messiahs')).toBe(
+      normalizeAlbumTitleForMatch('Unsung Prophets And Dead Messiahs'),
+    )
+  })
+
+  it('treats decorative parentheses as part of the word', () => {
+    expect(normalizeAlbumTitleForMatch('Sovereign Nose of (Y)our Arrogant Face')).toBe(
+      normalizeAlbumTitleForMatch('Sovereign Nose Of Your Arrogant Face'),
+    )
+  })
 })

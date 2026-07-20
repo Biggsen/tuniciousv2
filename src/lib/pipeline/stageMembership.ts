@@ -6,6 +6,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -129,6 +130,7 @@ export async function openStageMembership(
     pipelineId: string
     stageId: string
     pipelineRole: PipelineRole
+    addedAt?: Date
   },
 ): Promise<StageMembership> {
   const id = crypto.randomUUID()
@@ -140,7 +142,7 @@ export async function openStageMembership(
     pipelineId: input.pipelineId,
     stageId: input.stageId,
     pipelineRole: input.pipelineRole,
-    addedAt: serverTimestamp(),
+    addedAt: input.addedAt ? Timestamp.fromDate(input.addedAt) : serverTimestamp(),
     removedAt: null,
   })
 

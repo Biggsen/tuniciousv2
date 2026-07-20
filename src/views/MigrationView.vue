@@ -7,11 +7,15 @@ import { applyV1AlbumHistory } from '@/lib/migrate/v1MigrationApply'
 import { dryRunMatchV1Albums } from '@/lib/migrate/v1MigrationMatch'
 import {
   countV1MigrationAlbums,
+  filterAlbumsForGroup,
   getV1MigrationMeta,
   getV1PlaylistIdMap,
+  listAvailableV1MigrationGroups,
   listV1MigrationAlbums,
   updateV1MigrationAlbumState,
+  type V1MigrationGroup,
 } from '@/lib/migrate/v1MigrationFirestore'
+import { backfillMissingStageMemberships } from '@/lib/pipeline/backfillMissingStageMemberships'
 import { backfillPlaylistMemberAddedAtFromStages } from '@/lib/pipeline/backfillPlaylistMemberAddedAt'
 import { backfillRatedExitRatings } from '@/lib/pipeline/backfillRatedExitRatings'
 import { useAuthStore } from '@/stores/auth'
@@ -28,14 +32,21 @@ const error = ref<string | null>(null)
 const message = ref<string | null>(null)
 const meta = ref<V1MigrationMeta | null>(null)
 const playlistMap = ref<V1PlaylistIdMap | null>(null)
-const albums = ref<V1MigrationAlbum[]>([])
+const allAlbums = ref<V1MigrationAlbum[]>([])
 const counts = ref<V1MigrationCounts | null>(null)
+const availableGroups = ref<V1MigrationGroup[]>([])
+const selectedGroup = ref<V1MigrationGroup>('new')
 
 const dryRunning = ref(false)
 const applying = ref(false)
 const applyProgress = ref('')
 const backfillingRatings = ref(false)
 const backfillingAddedAt = ref(false)
+const backfillingMemberships = ref(false)
+
+const albums = computed(() =>
+  filterAlbumsForGroup(allAlbums.value, selectedGroup.value, playlistMap.value),
+)
 
 const reviewAlbums = computed(() =>
   albums.value.filter(
@@ -50,22 +61,39 @@ const mapReady = computed(() => {
   return Object.values(playlistMap.value.stages).every((stage) => Boolean(stage.v2StageId))
 })
 
+const groupLabel = computed(() =>
+  selectedGroup.value === 'known' ? 'Known' : 'New',
+)
+
 async function refresh() {
   if (!auth.user) return
   loading.value = true
   error.value = null
   try {
     const uid = auth.user.uid
-    meta.value = await getV1MigrationMeta(uid)
-    const group = meta.value?.group ?? 'new'
-    playlistMap.value = await getV1PlaylistIdMap(uid, group)
-    albums.value = await listV1MigrationAlbums(uid)
-    counts.value = await countV1MigrationAlbums(uid)
+    availableGroups.value = await listAvailableV1MigrationGroups(uid)
+    if (
+      availableGroups.value.length &&
+      !availableGroups.value.includes(selectedGroup.value)
+    ) {
+      selectedGroup.value = availableGroups.value[0]
+    }
+
+    meta.value = await getV1MigrationMeta(uid, selectedGroup.value)
+    playlistMap.value = await getV1PlaylistIdMap(uid, selectedGroup.value)
+    allAlbums.value = await listV1MigrationAlbums(uid)
+    counts.value = await countV1MigrationAlbums(albums.value)
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
     loading.value = false
   }
+}
+
+async function selectGroup(group: V1MigrationGroup) {
+  if (selectedGroup.value === group) return
+  selectedGroup.value = group
+  await refresh()
 }
 
 async function runDryRun() {
@@ -133,7 +161,7 @@ async function applyMapped() {
   }
   if (
     !window.confirm(
-      `Apply pipeline history for ${toApply.length} mapped album(s) into the New funnel? This writes stage_memberships.`,
+      `Apply pipeline history for ${toApply.length} mapped album(s) into the ${groupLabel.value} funnel? This writes stage_memberships.`,
     )
   ) {
     return
@@ -152,7 +180,7 @@ async function applyMapped() {
         uid: auth.user.uid,
         album,
         playlistMap: playlistMap.value,
-        group: meta.value.group,
+        group: selectedGroup.value,
       })
       if (result.ok) {
         ok++
@@ -229,6 +257,31 @@ async function runBackfillPlaylistAddedAt() {
   }
 }
 
+async function runBackfillMissingMemberships() {
+  if (!auth.user) return
+  if (
+    !window.confirm(
+      'Create StageMembership for albums on stage playlists that have no open membership (e.g. import sync without funnel entry)? Safe to re-run.',
+    )
+  ) {
+    return
+  }
+
+  backfillingMemberships.value = true
+  error.value = null
+  message.value = null
+  try {
+    const result = await backfillMissingStageMemberships(auth.user.uid)
+    playlistDetail.invalidate()
+    library.invalidate()
+    message.value = `Missing stage memberships: ${result.created} created, ${result.skipped} already ok, ${result.skippedOtherStage} skipped (open elsewhere).`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    backfillingMemberships.value = false
+  }
+}
+
 onMounted(() => {
   void refresh()
 })
@@ -245,8 +298,9 @@ onMounted(() => {
       <h1 class="text-2xl font-semibold tracking-tight">Migration</h1>
       <p class="max-w-2xl text-sm text-text-muted">
         Review staged v1 funnel history, match albums to the v2 library, then apply
-        <code class="text-text">StageMembership</code> rows. Staging is uploaded with
-        <code class="text-text">npm run migrate:upload-v1</code>.
+        <code class="text-text">StageMembership</code> rows. Staging:
+        <code class="text-text">npm run migrate:upload-v1</code> (New) or
+        <code class="text-text">npm run migrate:upload-v1:known</code> (Known).
       </p>
     </header>
 
@@ -262,11 +316,38 @@ onMounted(() => {
     </p>
 
     <section v-if="!loading" class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
-      <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">Setup</h2>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">Setup</h2>
+        <div v-if="availableGroups.length > 1" class="flex gap-2">
+          <button
+            v-for="group in availableGroups"
+            :key="group"
+            type="button"
+            class="rounded-lg border px-3 py-1 text-sm capitalize transition-colors"
+            :class="
+              selectedGroup === group
+                ? 'border-accent/50 bg-accent/15 text-accent'
+                : 'border-border text-text-muted hover:bg-white/5 hover:text-text'
+            "
+            @click="selectGroup(group)"
+          >
+            {{ group }}
+          </button>
+        </div>
+        <p v-else-if="availableGroups.length === 1" class="text-xs capitalize text-text-muted">
+          Funnel: {{ availableGroups[0] }}
+        </p>
+      </div>
       <dl class="grid gap-2 text-sm sm:grid-cols-2">
         <div>
           <dt class="text-text-muted">Staging</dt>
-          <dd>{{ meta ? `${meta.albumCount} albums · group “${meta.group}”` : 'Not uploaded yet' }}</dd>
+          <dd>
+            {{
+              meta
+                ? `${albums.length} albums · group “${selectedGroup}”`
+                : 'Not uploaded yet for this group'
+            }}
+          </dd>
         </div>
         <div>
           <dt class="text-text-muted">v1 → v2 uid</dt>
@@ -277,8 +358,15 @@ onMounted(() => {
         <div>
           <dt class="text-text-muted">Pipeline map</dt>
           <dd>
-            <span v-if="mapReady" class="text-emerald-300">Linked ({{ playlistMap?.v2PipelineName ?? 'New' }})</span>
-            <span v-else class="text-amber-200">Missing or incomplete</span>
+            <span v-if="mapReady" class="text-emerald-300">
+              Linked ({{ playlistMap?.v2PipelineName ?? groupLabel }})
+            </span>
+            <span v-else class="text-amber-200">
+              Missing or incomplete
+              <template v-if="selectedGroup === 'known'">
+                — create/link the Known evaluation funnel, then re-upload the map
+              </template>
+            </span>
           </dd>
         </div>
         <div>
@@ -289,6 +377,8 @@ onMounted(() => {
       <p v-if="!meta" class="text-sm text-text-muted">
         From the repo root run
         <code class="text-text">npm run migrate:upload-v1</code>
+        or
+        <code class="text-text">npm run migrate:upload-v1:known</code>
         (requires <code class="text-text">firebase login</code>), then refresh.
       </p>
       <button
@@ -340,44 +430,101 @@ onMounted(() => {
       <p v-if="applyProgress" class="self-center text-sm text-text-muted">{{ applyProgress }}</p>
     </section>
 
-    <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
-      <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
-        Playlist date added
-      </h2>
-      <p class="max-w-2xl text-sm text-text-muted">
-        CSV sync wrote sync-time timestamps on playlist members. This copies each open
-        <code class="text-text">StageMembership.addedAt</code> (from v1
-        <code class="text-text">playlistHistory</code>) onto the matching stage playlist membership
-        so “Date added” sorts correctly.
-      </p>
-      <button
-        type="button"
-        class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
-        :disabled="backfillingAddedAt || backfillingRatings || applying || dryRunning || loading"
-        @click="runBackfillPlaylistAddedAt"
+    <details class="group rounded-xl border border-border bg-surface-raised/60">
+      <summary
+        class="cursor-pointer list-none px-4 py-3 text-sm font-medium text-text-muted marker:content-none [&::-webkit-details-marker]:hidden"
       >
-        {{ backfillingAddedAt ? 'Backfilling…' : 'Backfill playlist addedAt from stages' }}
-      </button>
-    </section>
+        <span class="flex items-center justify-between gap-3">
+          <span class="uppercase tracking-wide">Maintenance backfills</span>
+          <span class="text-xs font-normal normal-case tracking-normal group-open:hidden">
+            Show tools
+          </span>
+          <span class="hidden text-xs font-normal normal-case tracking-normal group-open:inline">
+            Hide tools
+          </span>
+        </span>
+      </summary>
+      <div class="space-y-3 border-t border-border p-4">
+        <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+          <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
+            Missing stage memberships
+          </h2>
+          <p class="max-w-2xl text-sm text-text-muted">
+            Import/CSV sync used to add albums to stage playlists without opening a
+            <code class="text-text">StageMembership</code>. Those albums show on the playlist but have no
+            pipeline history. This opens the missing rows (and evaluation submission when needed).
+          </p>
+          <button
+            type="button"
+            class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
+            :disabled="
+              backfillingMemberships ||
+              backfillingAddedAt ||
+              backfillingRatings ||
+              applying ||
+              dryRunning ||
+              loading
+            "
+            @click="runBackfillMissingMemberships"
+          >
+            {{ backfillingMemberships ? 'Backfilling…' : 'Backfill missing stage memberships' }}
+          </button>
+        </section>
 
-    <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
-      <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
-        Rated-exit ratings
-      </h2>
-      <p class="max-w-2xl text-sm text-text-muted">
-        Migrated albums on 1★–4★ / Wonderful may be missing stars. This writes
-        <code class="text-text">rating</code> from each stage’s
-        <code class="text-text">outcomeRating</code> for open memberships only.
-      </p>
-      <button
-        type="button"
-        class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
-        :disabled="backfillingRatings || backfillingAddedAt || applying || dryRunning || loading"
-        @click="runBackfillRatedExits"
-      >
-        {{ backfillingRatings ? 'Backfilling…' : 'Backfill sink / terminal ratings' }}
-      </button>
-    </section>
+        <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+          <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
+            Playlist date added
+          </h2>
+          <p class="max-w-2xl text-sm text-text-muted">
+            CSV sync wrote sync-time timestamps on playlist members. This copies each open
+            <code class="text-text">StageMembership.addedAt</code> (from v1
+            <code class="text-text">playlistHistory</code>) onto the matching stage playlist membership
+            so “Date added” sorts correctly.
+          </p>
+          <button
+            type="button"
+            class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
+            :disabled="
+              backfillingAddedAt ||
+              backfillingMemberships ||
+              backfillingRatings ||
+              applying ||
+              dryRunning ||
+              loading
+            "
+            @click="runBackfillPlaylistAddedAt"
+          >
+            {{ backfillingAddedAt ? 'Backfilling…' : 'Backfill playlist addedAt from stages' }}
+          </button>
+        </section>
+
+        <section class="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+          <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">
+            Rated-exit ratings
+          </h2>
+          <p class="max-w-2xl text-sm text-text-muted">
+            Migrated albums on 1★–4★ / Wonderful may be missing stars. This writes
+            <code class="text-text">rating</code> from each stage’s
+            <code class="text-text">outcomeRating</code> for open memberships only.
+          </p>
+          <button
+            type="button"
+            class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100 disabled:opacity-50"
+            :disabled="
+              backfillingRatings ||
+              backfillingAddedAt ||
+              backfillingMemberships ||
+              applying ||
+              dryRunning ||
+              loading
+            "
+            @click="runBackfillRatedExits"
+          >
+            {{ backfillingRatings ? 'Backfilling…' : 'Backfill sink / terminal ratings' }}
+          </button>
+        </section>
+      </div>
+    </details>
 
     <section v-if="reviewAlbums.length" class="space-y-3">
       <h2 class="text-sm font-medium uppercase tracking-wide text-text-muted">

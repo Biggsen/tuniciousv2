@@ -301,7 +301,12 @@ export async function undoLastWorkflowStep(
 
 export async function handleStagePlaylistAdd(
   uid: string,
-  input: { playlistId: string; albumId: string; confirmedOverwrite?: boolean },
+  input: {
+    playlistId: string
+    albumId: string
+    confirmedOverwrite?: boolean
+    addedAt?: Date
+  },
 ): Promise<void> {
   const context = await loadStageGraphForPlaylist(uid, input.playlistId)
   let albumForSubmission: NonNullable<Awaited<ReturnType<typeof getAlbumById>>> | null = null
@@ -324,7 +329,10 @@ export async function handleStagePlaylistAdd(
     }
   }
 
-  await addAlbumToPlaylist(uid, input.playlistId, input.albumId)
+  await addAlbumToPlaylist(uid, input.playlistId, input.albumId, {
+    addedAt: input.addedAt,
+    repairAddedAt: Boolean(input.addedAt),
+  })
   if (!context || !isSafeWorkflowTemplate(context.graph.pipeline.templateId)) return
 
   const { graph, stage } = context
@@ -344,6 +352,7 @@ export async function handleStagePlaylistAdd(
     pipelineId: graph.pipeline.id,
     stageId: stage.id,
     pipelineRole: stage.pipelineRole,
+    addedAt: input.addedAt,
   })
 
   if (isEvaluationPipeline(graph.stages)) {

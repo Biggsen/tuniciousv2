@@ -16,7 +16,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | 1 — Evaluation template bootstrap | Complete | Set up funnel; Evaluation + Filter templates; map stages to existing or new playlists |
 | 2 — Playlist grouping UI | Complete | Collapsible groups; delete funnel with confirm; flat list for other playlists |
 | 3 — Pipeline workflow engine | Complete | Stage playlist Start/Yes/No/Undo with membership + playlist sync; evaluation legacy rows guarded until migration |
-| 4 — Rating & submission | In progress | Manual stars, submission confirm, auto-rate on rated exits, display states |
+| 4 — Rating & submission | Complete | Manual stars, submission confirm, auto-rate on rated exits, §7.4 display states |
 | 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |
 
 ---
@@ -516,9 +516,11 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 - Manual stars on library / album detail (gated)
 - Submission confirm + stash on evaluation enter
 - Auto-rate on `outcomeRating` land
-- Display states (§7.4)
+- Display states (§7.4) with stage-aware labels
 
 **Done when:** Manual, submitted, auto-rated, and in-evaluation displays match spec.
+
+**Status:** Complete
 
 **Estimate:** 2–3 days
 
@@ -543,14 +545,14 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 - [ ] Stage playlists appear in collapsible group on `/playlists`
 - [ ] Add album to Queued → submission; Start → Curious
 - [ ] Yes/No through transients; lands on correct sink or Wonderful
-- [ ] Auto-rate on sink/terminal; manual rating disabled while in funnel
-- [ ] Manual rating on library/album when not in funnel
-- [ ] Remove from transient/source restores `ratingBeforeSubmission`
-- [ ] Remove from sink/terminal retains rating
-- [ ] One-level undo; undo out of sink clears rating
-- [ ] Re-add to Queued after completion works with submission confirm
+- [x] Auto-rate on sink/terminal; manual rating disabled while in funnel
+- [x] Manual rating on library/album when not in funnel
+- [x] Remove from transient/source restores `ratingBeforeSubmission`
+- [x] Remove from sink/terminal retains rating
+- [x] One-level undo; undo out of sink clears rating
+- [x] Re-add to Queued after completion works with submission confirm
 - [ ] Delete pipeline keeps playlists; memberships closed; rating cleanup correct
-- [ ] Play stage playlist uses existing playback engine
+- [x] Play stage playlist uses existing playback engine
 
 ---
 

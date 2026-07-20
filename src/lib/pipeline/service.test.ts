@@ -152,7 +152,10 @@ describe('listPlaylistWorkflowStates', () => {
 describe('handleStagePlaylistAdd', () => {
   it('opens membership for safe filter funnel add', async () => {
     await handleStagePlaylistAdd('user-1', { playlistId: 'playlist-inbox', albumId: 'album-1' })
-    expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1')
+    expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1', {
+      addedAt: undefined,
+      repairAddedAt: false,
+    })
     expect(mockOpenMembership).toHaveBeenCalled()
   })
 })

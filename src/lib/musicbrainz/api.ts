@@ -62,7 +62,7 @@ export async function getReleaseGroup(
   userAgent?: string,
 ): Promise<MbReleaseGroupDetail> {
   return musicBrainzFetch<MbReleaseGroupDetail>(
-    `release-group/${mbid}?${searchParams({ inc: 'releases+artist-credits' })}`,
+    `release-group/${mbid}?${searchParams({ inc: 'releases+artist-credits+media' })}`,
     userAgent,
   )
 }

@@ -9,8 +9,12 @@ import AlbumRatingStars from '@/components/album/AlbumRatingStars.vue'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { updateAlbumRating, type LibraryAlbumCard } from '@/lib/album/firestore'
 import { matchesLibrarySearch } from '@/lib/library/search'
-import { loadUnresolvedOnlyFilter, saveUnresolvedOnlyFilter } from '@/lib/library/persist'
+import { loadUnresolvedOnlyFilter, loadLibrarySearchQuery, saveUnresolvedOnlyFilter, saveLibrarySearchQuery } from '@/lib/library/persist'
 import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
+import {
+  listAlbumEvaluationStageContexts,
+  type AlbumEvaluationStageContext,
+} from '@/lib/pipeline/ratingContext'
 import {
   albumLibraryCardClasses,
   albumResolveStatus,
@@ -28,7 +32,9 @@ const auth = useAuthStore()
 const library = useLibraryStore()
 const playback = usePlaybackStore()
 
-const query = ref('')
+const evaluationByAlbumId = ref<Map<string, AlbumEvaluationStageContext>>(new Map())
+
+const query = ref(loadLibrarySearchQuery())
 const bootstrapping = ref(true)
 const mode = ref<LibrarySearchMode>(
   route.query.mode === 'artist' ? 'artist' : 'album',
@@ -37,6 +43,10 @@ const unresolvedOnly = ref(loadUnresolvedOnlyFilter())
 
 watch(unresolvedOnly, (value) => {
   saveUnresolvedOnlyFilter(value)
+})
+
+watch(query, (value) => {
+  saveLibrarySearchQuery(value)
 })
 
 function syncModeToRoute(next: LibrarySearchMode) {
@@ -123,7 +133,11 @@ function isPlayingAlbum(albumId: string): boolean {
 }
 
 function ratingDisplayFor(album: LibraryAlbumCard) {
-  return resolveAlbumRatingDisplay(album)
+  const stage = evaluationByAlbumId.value.get(album.id)
+  return resolveAlbumRatingDisplay(album, {
+    stageName: stage?.stageName,
+    pipelineRole: stage?.pipelineRole,
+  })
 }
 
 async function handleLibraryRatingChange(album: LibraryAlbumCard, next: StarRating | null) {
@@ -163,6 +177,7 @@ onMounted(async () => {
 
   try {
     await library.ensureAlbums(auth.user.uid)
+    evaluationByAlbumId.value = await listAlbumEvaluationStageContexts(auth.user.uid)
     if (mode.value === 'artist') {
       await library.ensureArtists(auth.user.uid)
     }
@@ -220,12 +235,23 @@ onMounted(async () => {
           </button>
         </div>
 
-        <input
-          v-model="query"
-          type="search"
-          class="w-full max-w-md rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent/50"
-          :placeholder="mode === 'album' ? 'Filter albums or artists…' : 'Filter artists…'"
-        />
+        <div class="relative w-full max-w-md">
+          <input
+            v-model="query"
+            type="search"
+            class="w-full rounded-lg border border-border bg-surface py-2 pr-9 pl-3 text-sm outline-none focus:border-accent/50 [&::-webkit-search-cancel-button]:hidden"
+            :placeholder="mode === 'album' ? 'Filter albums or artists…' : 'Filter artists…'"
+          />
+          <button
+            v-if="query"
+            type="button"
+            class="absolute top-1/2 right-2 -translate-y-1/2 rounded px-1.5 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            aria-label="Clear search"
+            @click="query = ''"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <div

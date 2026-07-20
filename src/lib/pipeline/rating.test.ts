@@ -36,6 +36,30 @@ describe('resolveAlbumRatingDisplay', () => {
     })
     expect(display.state).toBe('manual')
     expect(display.editable).toBe(true)
+    expect(display.label).toBe('Your rating')
+  })
+
+  it('uses stage name when role context is provided', () => {
+    const display = resolveAlbumRatingDisplay(
+      {
+        rating: 4,
+        ratingSource: 'manual',
+        ratingSubmittedPipelineId: 'pipe-1',
+      },
+      { stageName: 'Curious', pipelineRole: 'transient' },
+    )
+    expect(display.state).toBe('in-evaluation')
+    expect(display.label).toBe('Evaluating · Curious')
+  })
+
+  it('shows rated-out as editable after leaving the funnel', () => {
+    const display = resolveAlbumRatingDisplay({
+      rating: 2,
+      ratingSource: 'pipeline',
+    })
+    expect(display.state).toBe('rated-out')
+    expect(display.editable).toBe(true)
+    expect(display.label).toBe('From evaluation')
   })
 })
 

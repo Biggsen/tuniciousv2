@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore'
 
 import { buildAlbumFromRelease } from '@/lib/album/buildFromRelease'
+import { isAlbumArchived, restoreArchivedAlbum } from '@/lib/album/archive'
 import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
 import { ensureArtistImages } from '@/lib/artist/syncImages'
@@ -61,6 +62,7 @@ export interface AlbumPickerItem {
   /** Lightweight track ids for resolve-status without loading full album docs. */
   trackIds?: string[]
   artistIds?: string[]
+  archivedAt?: Date
 }
 
 interface AlbumPickerItemDocument {
@@ -77,6 +79,7 @@ interface AlbumPickerItemDocument {
   artistTokens?: string[]
   trackIds?: string[]
   artistIds?: string[]
+  archivedAt?: AlbumDocument['archivedAt']
 }
 
 /** Library grid card — picker fields scoped to the signed-in user's album_entries. */
@@ -156,6 +159,7 @@ function toAlbumPickerItem(id: string, data: AlbumPickerItemDocument): AlbumPick
     artistTokens: data.artistTokens,
     trackIds: Array.isArray(data.trackIds) ? data.trackIds : undefined,
     artistIds: Array.isArray(data.artistIds) ? data.artistIds : undefined,
+    archivedAt: data.archivedAt?.toDate(),
   }
 }
 
@@ -189,6 +193,7 @@ export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unkn
     artistTokens: tokenizeAlbumPickerText(artistLower),
     trackIds: album.tracks.map((track) => track.id),
     artistIds,
+    archivedAt: album.archivedAt,
   })
 }
 
@@ -318,9 +323,11 @@ export async function listAlbumPickerItems(
         : query(albumPickerCollection(uid), ...constraints),
     )
 
-    const all = snapshot.docs.map((docSnap) =>
-      toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
-    )
+    const all = snapshot.docs
+      .map((docSnap) =>
+        toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument),
+      )
+      .filter((item) => !item.archivedAt)
     const items = all.slice(0, pageSize)
     const last = items.length > 0 ? items[items.length - 1] : undefined
     const nextCursor =
@@ -385,7 +392,7 @@ export async function listAlbumPickerItems(
       [...titleTokenMatches, ...titlePrefixMatches],
       [...artistTokenMatches, ...artistPrefixMatches],
       pageSize,
-    ),
+    ).filter((item) => !item.archivedAt),
   }
 }
 
@@ -412,6 +419,8 @@ function toAlbum(id: string, data: AlbumDocument): Album {
     ratedAt: data.ratedAt?.toDate(),
     importedAt: data.importedAt.toDate(),
     importedBy: data.importedBy,
+    archivedAt: data.archivedAt?.toDate(),
+    archivedBy: data.archivedBy,
   }
 }
 
@@ -445,11 +454,18 @@ export async function getAlbumById(uid: string, albumId: string): Promise<Album 
   }
 }
 
-export async function listAlbums(uid: string): Promise<Album[]> {
+export async function listAlbums(
+  uid: string,
+  options: { includeArchived?: boolean } = {},
+): Promise<Album[]> {
   const snapshot = await getDocs(albumsCollection(uid))
-  return snapshot.docs
-    .map((docSnap) => toAlbum(docSnap.id, docSnap.data() as AlbumDocument))
-    .sort((a, b) => a.title.localeCompare(b.title))
+  const albums = snapshot.docs.map((docSnap) =>
+    toAlbum(docSnap.id, docSnap.data() as AlbumDocument),
+  )
+  const visible = options.includeArchived
+    ? albums
+    : albums.filter((album) => !isAlbumArchived(album))
+  return visible.sort((a, b) => a.title.localeCompare(b.title))
 }
 
 export async function listUserAlbumEntryIds(uid: string): Promise<string[]> {
@@ -607,24 +623,25 @@ export async function listUserLibraryCards(uid: string): Promise<LibraryAlbumCar
   const pickers = await getAlbumPickerItemsByIds(uid, entryIds)
 
   return entryIds
-    .map((id) => {
+    .flatMap((id) => {
       const item = pickers.get(id)
-      if (!item) return null
+      if (!item || item.archivedAt) return []
       const entry = entries.get(id)
-      return {
-        id: item.id,
-        title: item.title,
-        artist: item.artist,
-        albumYear: item.albumYear,
-        coverUrlSmall: item.coverUrlSmall,
-        trackIds: item.trackIds ?? [],
-        artistIds: item.artistIds ?? [],
-        rating: entry?.rating,
-        ratingSource: entry?.ratingSource,
-        ratingSubmittedPipelineId: entry?.ratingSubmittedPipelineId,
-      } satisfies LibraryAlbumCard
+      return [
+        {
+          id: item.id,
+          title: item.title,
+          artist: item.artist,
+          albumYear: item.albumYear,
+          coverUrlSmall: item.coverUrlSmall,
+          trackIds: item.trackIds ?? [],
+          artistIds: item.artistIds ?? [],
+          rating: entry?.rating,
+          ratingSource: entry?.ratingSource,
+          ratingSubmittedPipelineId: entry?.ratingSubmittedPipelineId,
+        } satisfies LibraryAlbumCard,
+      ]
     })
-    .filter((card): card is LibraryAlbumCard => Boolean(card))
     .sort((a, b) => a.title.localeCompare(b.title))
 }
 
@@ -645,6 +662,13 @@ export async function importReleaseToLibrary(
   const existing = await findAlbumByReleaseMbid(uid, releaseMbid)
   if (existing) {
     await ensureAlbumEntry(uid, existing.id)
+    if (isAlbumArchived(existing)) {
+      await restoreArchivedAlbum(existing.id)
+      const restored = await getAlbumById(uid, existing.id)
+      if (!restored) throw new Error('Album not found after restore')
+      await upsertAlbumPickerItem(uid, restored)
+      return restored
+    }
     throw new AlbumAlreadyImportedError(existing.id)
   }
 

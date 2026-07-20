@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import {
+  listArchivedAlbums,
+  unarchiveAlbum,
+  type ArchivedAlbumSummary,
+} from '@/lib/album/archive'
+import { isAdminUid } from '@/lib/auth/admin'
 import {
   completeLastfmConnect,
   connectLastfm,
@@ -14,8 +20,17 @@ import { refreshArtistImageUrls } from '@/lib/artist/refreshImageUrls'
 import { getDefaultMusicBrainzUserAgent } from '@/lib/musicbrainz/userAgent'
 import { updateUserSettings } from '@/lib/userProfile'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 
 const auth = useAuthStore()
+const library = useLibraryStore()
+
+const isAdmin = computed(() => isAdminUid(auth.user?.uid))
+const archivedAlbums = ref<ArchivedAlbumSummary[]>([])
+const archivedLoading = ref(false)
+const archivedError = ref<string | null>(null)
+const archivedMessage = ref<string | null>(null)
+const restoringAlbumId = ref<string | null>(null)
 
 const musicbrainzUserAgent = ref('')
 const saving = ref(false)
@@ -42,6 +57,47 @@ const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.username))
 const memberSince = computed(() => {
   const date = auth.profile?.createdAt
   return date ? date.toLocaleDateString(undefined, { dateStyle: 'long' }) : '—'
+})
+
+async function loadArchivedAlbums() {
+  if (!isAdmin.value) return
+
+  archivedLoading.value = true
+  archivedError.value = null
+  try {
+    archivedAlbums.value = await listArchivedAlbums()
+  } catch (err) {
+    archivedError.value = err instanceof Error ? err.message : 'Failed to load archived albums'
+  } finally {
+    archivedLoading.value = false
+  }
+}
+
+async function handleRestoreArchived(albumId: string) {
+  if (!auth.user) return
+
+  restoringAlbumId.value = albumId
+  archivedMessage.value = null
+  archivedError.value = null
+
+  try {
+    await unarchiveAlbum(auth.user.uid, albumId)
+    archivedAlbums.value = archivedAlbums.value.filter((album) => album.id !== albumId)
+    library.invalidate()
+    archivedMessage.value = 'Album restored to the library.'
+  } catch (err) {
+    archivedError.value = err instanceof Error ? err.message : 'Failed to restore album'
+  } finally {
+    restoringAlbumId.value = null
+  }
+}
+
+onMounted(() => {
+  void loadArchivedAlbums()
+})
+
+watch(isAdmin, (value) => {
+  if (value) void loadArchivedAlbums()
 })
 
 watch(
@@ -206,6 +262,13 @@ async function handleRefreshArtistImages() {
           <dd class="mt-0.5">{{ auth.profile?.email ?? '—' }}</dd>
         </div>
         <div class="sm:col-span-2">
+          <dt class="text-text-muted">User ID</dt>
+          <dd class="mt-0.5 font-mono text-xs">{{ auth.user?.uid ?? '—' }}</dd>
+          <p v-if="!isAdmin" class="mt-1 text-xs text-text-muted">
+            Set <code class="text-text">VITE_ADMIN_UIDS</code> to this value in <code class="text-text">.env</code> to enable archive tools.
+          </p>
+        </div>
+        <div class="sm:col-span-2">
           <dt class="text-text-muted">Member since</dt>
           <dd class="mt-0.5">{{ memberSince }}</dd>
         </div>
@@ -306,6 +369,54 @@ async function handleRefreshArtistImages() {
       <p v-if="coverError" class="mt-3 text-sm text-red-300">{{ coverError }}</p>
       <p v-if="artistImageMessage" class="mt-3 text-sm text-emerald-400">{{ artistImageMessage }}</p>
       <p v-if="artistImageError" class="mt-3 text-sm text-red-300">{{ artistImageError }}</p>
+    </section>
+
+    <section
+      v-if="isAdmin"
+      class="rounded-xl border border-border bg-surface-raised/50 p-6"
+    >
+      <h2 class="text-lg font-medium">Archived albums</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Albums hidden from the library. Permanent purge from the database can come later once
+        reference checks are in place.
+      </p>
+
+      <p v-if="archivedLoading" class="mt-4 text-sm text-text-muted">Loading archived albums…</p>
+      <p v-else-if="archivedAlbums.length === 0" class="mt-4 text-sm text-text-muted">
+        No archived albums.
+      </p>
+      <ul v-else class="mt-4 divide-y divide-border rounded-xl border border-border">
+        <li
+          v-for="album in archivedAlbums"
+          :key="album.id"
+          class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
+        >
+          <div class="min-w-0">
+            <RouterLink
+              :to="{ name: 'album-detail', params: { id: album.id } }"
+              class="font-medium transition-colors hover:text-accent"
+            >
+              {{ album.title }}
+            </RouterLink>
+            <p class="mt-0.5 text-xs text-text-muted">
+              {{ album.artist }}
+              <template v-if="album.albumYear"> · {{ album.albumYear }}</template>
+              · archived {{ album.archivedAt.toLocaleDateString() }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:bg-white/5 disabled:opacity-50"
+            :disabled="restoringAlbumId === album.id"
+            @click="handleRestoreArchived(album.id)"
+          >
+            {{ restoringAlbumId === album.id ? 'Restoring…' : 'Restore' }}
+          </button>
+        </li>
+      </ul>
+
+      <p v-if="archivedMessage" class="mt-3 text-sm text-emerald-400">{{ archivedMessage }}</p>
+      <p v-if="archivedError" class="mt-3 text-sm text-red-300">{{ archivedError }}</p>
     </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">

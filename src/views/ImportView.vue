@@ -18,8 +18,10 @@ import {
   loadV1ImportSelection,
   saveV1ImportSelection,
 } from '@/lib/import/persistV1Selection'
+import { importSkipReasonLabel } from '@/lib/import/skipReasons'
 import { useAuthStore } from '@/stores/auth'
 import { useImportStore } from '@/stores/import'
+import type { ImportSkipDetails } from '@/lib/import/types'
 
 const auth = useAuthStore()
 const importStore = useImportStore()
@@ -36,6 +38,7 @@ const {
   importedCount,
   pendingCount,
   skippedCount,
+  skippedAlbums,
   displayedAlbums,
   playlists,
   syncPlaylistId,
@@ -69,6 +72,16 @@ const openAlbumCountHint = computed(() => {
   if (!stage) return null
   return stage.name
 })
+
+function libraryAlbumTitle(albumId: string | undefined): string | null {
+  if (!albumId) return null
+  return importStore.libraryAlbums.find((album) => album.id === albumId)?.title ?? null
+}
+
+function handleSkip(payload: { albumUri: string } & ImportSkipDetails) {
+  const { albumUri, ...details } = payload
+  importStore.skipAlbum(albumUri, details)
+}
 
 async function refreshV1Stages(preferredStageId?: string | null) {
   if (!v1Uid.value) return
@@ -478,9 +491,43 @@ function handleClearSession() {
         <ImportMatchPanel
           :album="selectedAlbum"
           @imported="importStore.handleImported($event)"
-          @skip="importStore.skipAlbum($event)"
+          @skip="handleSkip"
         />
       </div>
+
+      <details
+        v-if="skippedAlbums.length"
+        class="mt-4 rounded-xl border border-border bg-surface-raised/40 px-4 py-3"
+      >
+        <summary class="cursor-pointer text-sm font-medium text-text-muted">
+          {{ skippedAlbums.length }} skipped this session
+        </summary>
+        <ul class="mt-3 divide-y divide-border text-sm">
+          <li
+            v-for="album in skippedAlbums"
+            :key="album.id"
+            class="flex flex-wrap items-baseline justify-between gap-2 py-2"
+          >
+            <div class="min-w-0">
+              <p class="font-medium">{{ album.albumName }}</p>
+              <p class="text-xs text-text-muted">{{ album.albumArtist }}</p>
+            </div>
+            <div class="max-w-sm text-right text-xs text-text-muted">
+              <p>{{ importSkipReasonLabel(album.skipReason) }}</p>
+              <p v-if="album.skipNote" class="mt-0.5">{{ album.skipNote }}</p>
+              <p v-if="album.libraryAlbumId" class="mt-0.5">
+                Replacement:
+                <RouterLink
+                  :to="{ name: 'album-detail', params: { id: album.libraryAlbumId } }"
+                  class="text-accent hover:underline"
+                >
+                  {{ libraryAlbumTitle(album.libraryAlbumId) ?? 'view album' }}
+                </RouterLink>
+              </p>
+            </div>
+          </li>
+        </ul>
+      </details>
     </template>
   </div>
 </template>

@@ -47,6 +47,27 @@ export function formatCountry(country: string | undefined): string {
   return country.toUpperCase()
 }
 
+/** Total tracks across media; uses per-medium track-count when present. */
+export function releaseTrackCount(release: {
+  media?: Array<{ 'track-count'?: number; tracks?: unknown[] }>
+}): number | undefined {
+  const media = release.media
+  if (!media?.length) return undefined
+
+  let total = 0
+  let sawCount = false
+  for (const medium of media) {
+    if (typeof medium['track-count'] === 'number') {
+      total += medium['track-count']
+      sawCount = true
+    } else if (Array.isArray(medium.tracks)) {
+      total += medium.tracks.length
+      sawCount = true
+    }
+  }
+  return sawCount ? total : undefined
+}
+
 /** Short label for a specific release when RG title is often identical. */
 export function formatReleaseEditionLabel(
   release: { title: string; date?: string; country?: string; status?: string },

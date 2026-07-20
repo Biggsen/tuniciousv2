@@ -101,6 +101,10 @@ export const useLibraryStore = defineStore('library', () => {
     )
   }
 
+  function removeCard(albumId: string): void {
+    cards.value = cards.value.filter((card) => card.id !== albumId)
+  }
+
   return {
     cards,
     mappings,
@@ -114,5 +118,6 @@ export const useLibraryStore = defineStore('library', () => {
     upsertMappings,
     removeMappingTrackIds,
     patchCardRating,
+    removeCard,
   }
 })

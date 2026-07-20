@@ -12,9 +12,10 @@ import {
   type V1FunnelGroup,
 } from '@/lib/import/v1ExportRepo'
 import { firstPendingId, nextPendingAfter } from '@/lib/import/queueNavigation'
-import type { StagedAlbum, StagedAlbumSource } from '@/lib/import/types'
+import type { ImportSkipDetails, StagedAlbum, StagedAlbumSource } from '@/lib/import/types'
 import { listAlbums } from '@/lib/album/firestore'
-import { addAlbumToPlaylist, listPlaylists } from '@/lib/playlist/firestore'
+import { handleStagePlaylistAdd } from '@/lib/pipeline/service'
+import { listPlaylists } from '@/lib/playlist/firestore'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import type { Album, Playlist } from '@/types/library'
@@ -28,6 +29,8 @@ function preserveResolvedStatus(merged: StagedAlbum[], previous: StagedAlbum[]):
         ...album,
         status: existing.status,
         libraryAlbumId: existing.libraryAlbumId,
+        skipReason: existing.skipReason,
+        skipNote: existing.skipNote,
       }
     }
     return album
@@ -64,12 +67,16 @@ export const useImportStore = defineStore('import', () => {
   const inLibraryAlbums = computed(() => albums.value.filter((album) => album.status === 'in-library'))
   const importedCount = computed(() => albums.value.filter((album) => album.status === 'imported').length)
   const pendingCount = computed(() => albums.value.filter((album) => album.status === 'pending').length)
-  const skippedCount = computed(() => albums.value.filter((album) => album.status === 'skipped').length)
+  const skippedAlbums = computed(() => albums.value.filter((album) => album.status === 'skipped'))
+  const skippedCount = computed(() => skippedAlbums.value.length)
 
   const syncableAlbums = computed(() =>
     albums.value.filter(
       (album) =>
-        (album.status === 'in-library' || album.status === 'imported') && album.libraryAlbumId,
+        Boolean(album.libraryAlbumId) &&
+        (album.status === 'in-library' ||
+          album.status === 'imported' ||
+          album.status === 'skipped'),
     ),
   )
 
@@ -102,9 +109,13 @@ export const useImportStore = defineStore('import', () => {
     const addedAt = addedAtIso ? new Date(addedAtIso) : undefined
     const validAddedAt =
       addedAt && Number.isFinite(addedAt.getTime()) ? addedAt : undefined
-    await addAlbumToPlaylist(uid, syncPlaylistId.value, libraryAlbumId, {
+    // Stage playlists also get StageMembership + evaluation submission;
+    // plain playlists only get playlist membership.
+    await handleStagePlaylistAdd(uid, {
+      playlistId: syncPlaylistId.value,
+      albumId: libraryAlbumId,
+      confirmedOverwrite: true,
       addedAt: validAddedAt,
-      repairAddedAt: Boolean(validAddedAt),
     })
   }
 
@@ -318,9 +329,17 @@ export const useImportStore = defineStore('import', () => {
     automationEnabled.value = false
   }
 
-  function skipAlbum(albumUri: string) {
+  function skipAlbum(albumUri: string, details: ImportSkipDetails) {
     albums.value = albums.value.map((album) =>
-      album.albumUri === albumUri ? { ...album, status: 'skipped' } : album,
+      album.albumUri === albumUri
+        ? {
+            ...album,
+            status: 'skipped',
+            skipReason: details.reason,
+            skipNote: details.note?.trim() || undefined,
+            libraryAlbumId: details.libraryAlbumId ?? album.libraryAlbumId,
+          }
+        : album,
     )
     advanceAfterAlbum(albumUri)
   }
@@ -374,6 +393,7 @@ export const useImportStore = defineStore('import', () => {
     inLibraryAlbums,
     importedCount,
     pendingCount,
+    skippedAlbums,
     skippedCount,
     displayedAlbums,
     loadFiles,

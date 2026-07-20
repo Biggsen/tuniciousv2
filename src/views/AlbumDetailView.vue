@@ -1,21 +1,28 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import AlbumPipelineHistory from '@/components/album/AlbumPipelineHistory.vue'
 import AlbumRatingStars from '@/components/album/AlbumRatingStars.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TrackResolvePanel from '@/components/youtube/TrackResolvePanel.vue'
 import {
   clearArtistPreferredYouTubeChannel,
   getArtistById,
 } from '@/lib/artist/firestore'
 import { formatDuration } from '@/lib/musicbrainz/format'
+import { archiveAlbum, isAlbumArchived, unarchiveAlbum } from '@/lib/album/archive'
 import { getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
+import { isAdminUid } from '@/lib/auth/admin'
 import { isLastfmConnected, refreshAlbumPlaycounts } from '@/lib/lastfm/scrobble'
 import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
+import {
+  getAlbumEvaluationStageContext,
+  type AlbumEvaluationStageContext,
+} from '@/lib/pipeline/ratingContext'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
 import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
@@ -35,6 +42,7 @@ import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const library = useLibraryStore()
 const playback = usePlaybackStore()
@@ -69,6 +77,11 @@ const playError = ref<string | null>(null)
 const lastfmConnected = ref(false)
 const refreshingPlaycounts = ref(false)
 const playcountMessage = ref<string | null>(null)
+const archiveDialogOpen = ref(false)
+const archiving = ref(false)
+
+const isAdmin = computed(() => isAdminUid(auth.user?.uid))
+const isArchived = computed(() => (album.value ? isAlbumArchived(album.value) : false))
 
 const resolveContext = computed(() => {
   if (!album.value) return null
@@ -84,8 +97,15 @@ const artistName = computed(() => primaryArtist.value?.name ?? album.value?.arti
 
 const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
 
+const evaluationStage = ref<AlbumEvaluationStageContext | null>(null)
+
 const ratingDisplay = computed(() =>
-  album.value ? resolveAlbumRatingDisplay(album.value) : null,
+  album.value
+    ? resolveAlbumRatingDisplay(album.value, {
+        stageName: evaluationStage.value?.stageName,
+        pipelineRole: evaluationStage.value?.pipelineRole,
+      })
+    : null,
 )
 
 async function handleRatingChange(next: StarRating | null) {
@@ -137,6 +157,7 @@ async function load() {
     }
     primaryArtist.value = await getArtistById(auth.user.uid, album.value.artistId)
     lastfmConnected.value = await isLastfmConnected(auth.user.uid)
+    evaluationStage.value = await getAlbumEvaluationStageContext(auth.user.uid, album.value.id)
     await loadMappings()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load album'
@@ -364,6 +385,41 @@ async function handleResolveAll() {
   }
 }
 
+async function handleArchive() {
+  if (!auth.user || !album.value) return
+
+  archiving.value = true
+  error.value = null
+
+  try {
+    await archiveAlbum(auth.user.uid, album.value.id)
+    library.removeCard(album.value.id)
+    await router.push({ name: 'library' })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to archive album'
+  } finally {
+    archiving.value = false
+    archiveDialogOpen.value = false
+  }
+}
+
+async function handleUnarchive() {
+  if (!auth.user || !album.value) return
+
+  archiving.value = true
+  error.value = null
+
+  try {
+    await unarchiveAlbum(auth.user.uid, album.value.id)
+    album.value = await getAlbumById(auth.user.uid, album.value.id)
+    library.invalidate()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to restore album'
+  } finally {
+    archiving.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -378,6 +434,22 @@ onMounted(load)
       >
         ← {{ backLink.label }}
       </RouterLink>
+
+      <div
+        v-if="isArchived"
+        class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+      >
+        <p>This album is archived and hidden from the library.</p>
+        <button
+          v-if="isAdmin"
+          type="button"
+          class="mt-2 text-xs font-medium text-amber-200 underline-offset-2 hover:underline disabled:opacity-50"
+          :disabled="archiving"
+          @click="handleUnarchive"
+        >
+          {{ archiving ? 'Restoring…' : 'Restore to library' }}
+        </button>
+      </div>
 
       <header class="mb-6 flex gap-6">
         <div class="h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-surface-raised">
@@ -526,6 +598,14 @@ onMounted(load)
                   : 'Resolve all (search)'
               }}
             </button>
+            <button
+              v-if="isAdmin && !isArchived"
+              type="button"
+              class="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+              @click="archiveDialogOpen = true"
+            >
+              Archive
+            </button>
           </div>
           <form
             class="mt-3 flex max-w-lg flex-wrap gap-2"
@@ -619,6 +699,17 @@ onMounted(load)
           />
         </li>
       </ol>
+
+      <ConfirmDialog
+        :open="archiveDialogOpen"
+        title="Archive this album?"
+        :message="`“${album.title}” will be hidden from the library. Playlist memberships and history are kept. You can restore it from Settings → Archived albums.`"
+        confirm-label="Archive album"
+        destructive
+        :busy="archiving"
+        @confirm="handleArchive"
+        @cancel="archiveDialogOpen = false"
+      />
     </template>
   </div>
 </template>

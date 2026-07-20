@@ -16,7 +16,14 @@ import {
   undoLastWorkflowStep,
   type PlaylistWorkflowRowState,
 } from '@/lib/pipeline/service'
+import { matchesLibrarySearch } from '@/lib/library/search'
 import { sortPlaylistMembers, type PlaylistSortField } from '@/lib/playlist/sortMembers'
+import {
+  loadPlaylistSearchQuery,
+  loadPlaylistSortPreference,
+  savePlaylistSearchQuery,
+  savePlaylistSortPreference,
+} from '@/lib/playlist/persistSort'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
@@ -50,8 +57,10 @@ const savingName = ref(false)
 const nameError = ref<string | null>(null)
 const menuOpen = ref(false)
 const showTracklist = ref(false)
-const sortField = ref<PlaylistSortField>('date-added')
-const sortAscending = ref(false)
+const savedSort = loadPlaylistSortPreference()
+const sortField = ref<PlaylistSortField>(savedSort.field)
+const sortAscending = ref(savedSort.ascending)
+const searchQuery = ref(loadPlaylistSearchQuery())
 const lastfmConnected = ref(false)
 const workflowEnabled = ref(false)
 const workflowBlockedReason = ref<string | null>(null)
@@ -73,8 +82,21 @@ const resolvedTracks = computed(() => {
   return trackIds.filter((id) => mappings.value.has(id)).length
 })
 
-const sortedMembers = computed(() =>
-  sortPlaylistMembers(members.value, sortField.value, sortAscending.value),
+const sortedMembers = computed(() => {
+  const filtered = members.value.filter((member) =>
+    matchesLibrarySearch(
+      searchQuery.value,
+      member.album.title,
+      member.album.artist,
+      member.album.albumYear,
+    ),
+  )
+  return sortPlaylistMembers(filtered, sortField.value, sortAscending.value)
+})
+
+const hasActiveSearch = computed(() => Boolean(searchQuery.value.trim()))
+const showSearchNoResults = computed(
+  () => members.value.length > 0 && hasActiveSearch.value && sortedMembers.value.length === 0,
 )
 
 function memberPosition(albumId: string): number {
@@ -337,6 +359,14 @@ function toggleSortDirection() {
   sortAscending.value = !sortAscending.value
 }
 
+watch([sortField, sortAscending], ([field, ascending]) => {
+  savePlaylistSortPreference({ field, ascending })
+})
+
+watch(searchQuery, (value) => {
+  savePlaylistSearchQuery(value)
+})
+
 onMounted(() => load())
 watch(
   () => route.params.id,
@@ -483,6 +513,23 @@ watch(showTracklist, async (enabled) => {
         </label>
 
         <div class="flex flex-wrap items-center gap-2 text-sm">
+          <div class="relative min-w-[14rem] flex-1 sm:max-w-xs">
+            <input
+              v-model="searchQuery"
+              type="search"
+              class="w-full rounded-lg border border-border bg-surface py-2 pr-9 pl-3 text-sm outline-none focus:border-accent/50 [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Filter albums or artists…"
+            />
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="absolute top-1/2 right-2 -translate-y-1/2 rounded px-1.5 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+              aria-label="Clear search"
+              @click="searchQuery = ''"
+            >
+              ×
+            </button>
+          </div>
           <span class="text-xs font-medium uppercase tracking-wider text-text-muted">Sort by</span>
           <select
             v-model="sortField"
@@ -540,6 +587,10 @@ watch(showTracklist, async (enabled) => {
         This playlist is empty. Add albums from your
         <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
         — unresolved albums are fine; resolve tracks before playing.
+      </p>
+
+      <p v-else-if="showSearchNoResults" class="text-sm text-text-muted">
+        No albums match “{{ searchQuery.trim() }}”.
       </p>
 
       <ul
