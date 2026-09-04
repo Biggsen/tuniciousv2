@@ -7,12 +7,20 @@ function normalizeForMatch(text: string): string {
   return normalizeTrackTitle(text)
 }
 
+/** True when `needle` appears in `haystack` as whole words (not a substring of a longer word). */
+function containsAsWords(haystack: string, needle: string): boolean {
+  if (!needle || !haystack) return false
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?:^| )${escaped}(?:$| )`).test(haystack)
+}
+
 function artistsMatch(csvArtist: string, libraryArtist: string): boolean {
   const csvNorm = normalizeForMatch(csvArtist)
   const libNorm = normalizeForMatch(libraryArtist)
   if (!csvNorm || !libNorm) return false
   if (csvNorm === libNorm) return true
-  return csvNorm.includes(libNorm) || libNorm.includes(csvNorm)
+  // Allow "Steve Coleman" ↔ "Steve Coleman and Five Elements", but not "EMA" ↔ "…coleman…"
+  return containsAsWords(csvNorm, libNorm) || containsAsWords(libNorm, csvNorm)
 }
 
 function buildLibraryIndex(library: Album[]): Map<string, Album[]> {

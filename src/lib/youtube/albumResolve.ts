@@ -54,3 +54,32 @@ export function albumLibraryCardClasses(status: AlbumResolveStatus, isPlaying: b
   }
   return albumResolveCardClasses(status)
 }
+
+/** Aggregate resolve progress across a set of albums (e.g. one playlist). */
+export function countAlbumsResolveProgress(
+  albums: AlbumResolveInput[],
+  mappings: MappingLookup,
+): {
+  albumCount: number
+  resolvedAlbumCount: number
+  trackCount: number
+  resolvedTrackCount: number
+} {
+  let resolvedAlbumCount = 0
+  let trackCount = 0
+  let resolvedTrackCount = 0
+
+  for (const album of albums) {
+    const { resolved, total } = countAlbumResolvedTracks(album, mappings)
+    trackCount += total
+    resolvedTrackCount += resolved
+    if (total > 0 && resolved === total) resolvedAlbumCount += 1
+  }
+
+  return {
+    albumCount: albums.length,
+    resolvedAlbumCount,
+    trackCount,
+    resolvedTrackCount,
+  }
+}

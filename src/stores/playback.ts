@@ -294,8 +294,11 @@ export const usePlaybackStore = defineStore('playback', () => {
     }
   }
 
-  function onPlayerError() {
-    error.value = 'YouTube playback failed for this track — skipping'
+  function onPlayerError(errorCode?: number) {
+    error.value =
+      errorCode === 101 || errorCode === 150
+        ? 'This video blocks embedding (common for Topic uploads) — skipping'
+        : 'YouTube playback failed for this track — skipping'
     void next('error')
   }
 

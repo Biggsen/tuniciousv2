@@ -56,8 +56,8 @@ onMounted(async () => {
       onStateChange: (event) => {
         playback.onPlayerStateChange(event.data)
       },
-      onError: () => {
-        playback.onPlayerError()
+      onError: (event) => {
+        playback.onPlayerError(event.data)
       },
     },
   })

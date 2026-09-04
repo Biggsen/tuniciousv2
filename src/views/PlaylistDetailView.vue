@@ -6,6 +6,8 @@ import AddAlbumPanel from '@/components/playlist/AddAlbumPanel.vue'
 import PlaylistAlbumCard from '@/components/playlist/PlaylistAlbumCard.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
+import { getAlbumById } from '@/lib/album/firestore'
+import { getArtistById } from '@/lib/artist/firestore'
 import { isLastfmConnected, refreshPlaylistPlaycounts } from '@/lib/lastfm/scrobble'
 import { reorderPlaylistMember, updatePlaylist } from '@/lib/playlist/firestore'
 import {
@@ -24,6 +26,12 @@ import {
   savePlaylistSearchQuery,
   savePlaylistSortPreference,
 } from '@/lib/playlist/persistSort'
+import { buildArtistResolveContext } from '@/lib/youtube/context'
+import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
+import {
+  resolveAlbumFromYouTubePlaylist,
+  resolveAlbumViaArtistChannel,
+} from '@/lib/youtube/playlistResolve'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
@@ -67,6 +75,9 @@ const workflowBlockedReason = ref<string | null>(null)
 const workflowByAlbumId = ref<Map<string, PlaylistWorkflowRowState>>(new Map())
 const pendingSubmissionAlbumId = ref<string | null>(null)
 const pendingSubmissionRating = ref<number | null>(null)
+const resolvingAlbumId = ref<string | null>(null)
+const resolveProgress = ref('')
+const resolveMessages = ref<Map<string, string>>(new Map())
 
 const playlistId = () => String(route.params.id)
 
@@ -163,6 +174,13 @@ async function load({ showFullPageLoader = true, force = false } = {}) {
     loading.value = false
     reloading.value = false
   }
+
+  // Background: hydrate mappings so album cards can show resolve bars without waiting for Tracklist.
+  if (auth.user && !trackDataLoaded.value) {
+    void ensureTrackDataLoaded().catch((err) => {
+      console.error('Failed to load playlist resolve stats', err)
+    })
+  }
 }
 
 async function refreshAfterMutation() {
@@ -170,9 +188,9 @@ async function refreshAfterMutation() {
   playlistDetail.invalidate(playlistId())
   const entry = await playlistDetail.loadPlaylistShell(auth.user.uid, playlistId(), { force: true })
   applyCacheToView(entry)
-  if (showTracklist.value) {
-    await ensureTrackDataLoaded()
-  }
+  void ensureTrackDataLoaded().catch((err) => {
+    console.error('Failed to refresh playlist resolve stats', err)
+  })
 }
 
 async function handleAdd(albumId: string, confirmedOverwrite = false) {
@@ -328,6 +346,102 @@ function startRename() {
   menuOpen.value = false
 }
 
+function resolveMessageForAlbum(albumId: string): string | null {
+  return resolveMessages.value.get(albumId) ?? null
+}
+
+async function handleResolveFromPlaylist(albumId: string) {
+  if (!auth.user || resolvingAlbumId.value) return
+
+  resolvingAlbumId.value = albumId
+  resolveProgress.value = ''
+  error.value = null
+  playError.value = null
+
+  const nextMessages = new Map(resolveMessages.value)
+  nextMessages.delete(albumId)
+  resolveMessages.value = nextMessages
+
+  try {
+    await ensureTrackDataLoaded()
+    const member = members.value.find((row) => row.album.id === albumId)
+    if (!member) throw new Error('Album not found in playlist')
+
+    let album = member.album
+    const needsFullAlbum =
+      album.tracks.length === 0 || album.tracks.some((track) => !track.title)
+    if (needsFullAlbum || !album.youtubePlaylistId) {
+      const loaded = await getAlbumById(auth.user.uid, albumId)
+      if (!loaded) throw new Error('Album not found')
+      album = loaded
+    }
+
+    const artist = await getArtistById(auth.user.uid, album.artistId)
+    const context = buildArtistResolveContext(album, artist)
+    const onProgress = (completed: number, total: number) => {
+      resolveProgress.value = `${completed}/${total}`
+    }
+
+    const result = album.youtubePlaylistId
+      ? await resolveAlbumFromYouTubePlaylist(
+          auth.user.uid,
+          album,
+          album.youtubePlaylistId,
+          album.tracks,
+          onProgress,
+        )
+      : await resolveAlbumViaArtistChannel(
+          auth.user.uid,
+          album,
+          context,
+          album.artist,
+          album.tracks,
+          onProgress,
+        )
+
+    const updatedAlbum = await getAlbumById(auth.user.uid, albumId)
+    if (updatedAlbum) {
+      members.value = members.value.map((row) =>
+        row.album.id === albumId ? { ...row, album: updatedAlbum } : row,
+      )
+    }
+
+    const trackIds = (updatedAlbum ?? album).tracks.map((track) => track.id)
+    const albumMappings = await getMappingsForTrackIds(auth.user.uid, trackIds)
+    const nextMappings = new Map(mappings.value)
+    for (const [trackId, mapping] of albumMappings) {
+      nextMappings.set(trackId, mapping)
+    }
+    mappings.value = nextMappings
+    library.upsertMappings(albumMappings.values())
+
+    const cached = playlistDetail.getCached(playlistId())
+    if (cached) {
+      playlistDetail.setCached(playlistId(), {
+        ...cached,
+        members: members.value,
+        mappings: mappings.value,
+        albumsHydrated: true,
+        trackDataLoaded: true,
+      })
+    }
+
+    const unmatched =
+      result.unmatchedTracks.length > 0
+        ? ` (${result.unmatchedTracks.length} unmatched: ${result.unmatchedTracks.map((t) => t.title).join(', ')})`
+        : ''
+    resolveMessages.value = new Map(resolveMessages.value).set(
+      albumId,
+      `Resolved ${result.resolved}/${result.total} from “${result.playlist.title}”${unmatched}`,
+    )
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Playlist resolve failed'
+  } finally {
+    resolvingAlbumId.value = null
+    resolveProgress.value = ''
+  }
+}
+
 function cancelRename() {
   editingName.value = false
   nameError.value = null
@@ -372,6 +486,9 @@ watch(
   () => route.params.id,
   () => {
     showTracklist.value = false
+    resolvingAlbumId.value = null
+    resolveProgress.value = ''
+    resolveMessages.value = new Map()
     load()
   },
 )
@@ -610,11 +727,20 @@ watch(showTracklist, async (enabled) => {
             :workflow-actions="workflowStateForAlbum(member.album.id)?.actions ?? []"
             :can-undo-workflow="workflowStateForAlbum(member.album.id)?.canUndo ?? false"
             :workflow-blocked-reason="workflowStateForAlbum(member.album.id)?.blockedReason"
+            :resolving-from-playlist="resolvingAlbumId === member.album.id"
+            :resolve-from-playlist-progress="
+              resolvingAlbumId === member.album.id ? resolveProgress : ''
+            "
+            :resolve-from-playlist-message="resolveMessageForAlbum(member.album.id)"
+            :resolve-from-playlist-disabled="
+              resolvingAlbumId !== null && resolvingAlbumId !== member.album.id
+            "
             @remove="handleRemove(member.album.id)"
             @move-up="handleReorder(member.album.id, 'up')"
             @move-down="handleReorder(member.album.id, 'down')"
             @workflow-action="handleWorkflowAction(member.album.id, $event)"
             @undo-workflow="handleUndoWorkflow(member.album.id)"
+            @resolve-from-playlist="handleResolveFromPlaylist(member.album.id)"
           />
         </li>
       </ul>

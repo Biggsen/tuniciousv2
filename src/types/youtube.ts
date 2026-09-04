@@ -35,6 +35,13 @@ export interface YouTubeVideoCandidate {
   score?: number
 }
 
+export interface YouTubeChannelCandidate {
+  channelId: string
+  channelTitle: string
+  uploadsPlaylistId?: string
+  score?: number
+}
+
 export interface ArtistResolveContext {
   artistId: string
   artistDisplay: string

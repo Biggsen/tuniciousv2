@@ -25,6 +25,10 @@ const props = defineProps<{
   workflowActions?: WorkflowAction[]
   canUndoWorkflow?: boolean
   workflowBlockedReason?: string
+  resolvingFromPlaylist?: boolean
+  resolveFromPlaylistProgress?: string
+  resolveFromPlaylistMessage?: string | null
+  resolveFromPlaylistDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +37,7 @@ const emit = defineEmits<{
   moveDown: []
   workflowAction: [action: WorkflowAction]
   undoWorkflow: []
+  resolveFromPlaylist: []
 }>()
 
 const menuOpen = ref(false)
@@ -48,6 +53,16 @@ const resolveStats = computed(() =>
 const resolvedPercent = computed(() => {
   if (resolveStats.value.total === 0) return 0
   return Math.round((resolveStats.value.resolved / resolveStats.value.total) * 100)
+})
+
+const resolveFromPlaylistLabel = computed(() => {
+  if (props.resolvingFromPlaylist) {
+    const progress = props.resolveFromPlaylistProgress?.trim()
+    return progress ? `Resolving… ${progress}` : 'Resolving…'
+  }
+  return album.value.youtubePlaylistId
+    ? 'Resolve from playlist'
+    : 'Resolve via Topic channel'
 })
 
 function trackPlaycount(trackId: string): number {
@@ -207,21 +222,41 @@ function actionLabel(action: WorkflowAction): string {
           </div>
         </div>
 
-        <div v-if="showResolveStats !== false" class="mb-1 flex items-center justify-between text-xs text-text-muted">
-          <span>Resolved tracks</span>
-          <span>{{ resolvedPercent }}%</span>
+        <div
+          v-if="showResolveStats !== false"
+          class="mb-1 flex items-center justify-between text-xs"
+          :class="resolvedPercent === 100 ? 'text-emerald-400' : 'text-amber-400'"
+        >
+          <span>Resolved</span>
+          <span>{{ resolveStats.resolved }}/{{ resolveStats.total }} · {{ resolvedPercent }}%</span>
         </div>
         <div
           v-if="showResolveStats !== false"
           class="h-1.5 overflow-hidden rounded-full bg-white/10"
         >
           <div
-            class="h-full rounded-full bg-emerald-500/80 transition-all"
+            class="h-full rounded-full transition-all"
+            :class="resolvedPercent === 100 ? 'bg-emerald-500/80' : 'bg-amber-500/80'"
             :style="{ width: `${resolvedPercent}%` }"
           />
         </div>
         <p v-else class="text-xs text-text-muted">
           {{ album.tracks.length }} track{{ album.tracks.length === 1 ? '' : 's' }}
+        </p>
+
+        <button
+          type="button"
+          class="mt-2 w-full rounded-md border border-border px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="resolvingFromPlaylist || resolveFromPlaylistDisabled"
+          @click="emit('resolveFromPlaylist')"
+        >
+          {{ resolveFromPlaylistLabel }}
+        </button>
+        <p
+          v-if="resolveFromPlaylistMessage"
+          class="mt-1 text-xs text-emerald-300"
+        >
+          {{ resolveFromPlaylistMessage }}
         </p>
 
         <div

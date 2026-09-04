@@ -23,6 +23,8 @@ import {
 } from '@/lib/album/firestore'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
+import { countAlbumsResolveProgress } from '@/lib/youtube/albumResolve'
+import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import type {
   Playlist,
   PlaylistDocument,
@@ -316,6 +318,9 @@ export async function countPlaylistAlbums(uid: string, playlistId: string): Prom
 export interface PlaylistStats {
   albumCount: number
   trackCount: number
+  /** Albums with every track mapped to YouTube. */
+  resolvedAlbumCount: number
+  resolvedTrackCount: number
 }
 
 export async function getPlaylistStatsMap(
@@ -330,23 +335,39 @@ export async function getPlaylistStatsMap(
   ])
 
   const albumById = new Map(albums.map((album) => [album.id, album]))
-  const stats = new Map<string, PlaylistStats>()
+  const albumsByPlaylist = new Map<string, typeof albums>()
+  const allTrackIds: string[] = []
 
   for (let index = 0; index < playlistIds.length; index++) {
     const playlistId = playlistIds[index]
     const snapshot = memberSnapshots[index]
-    let albumCount = 0
-    let trackCount = 0
+    const playlistAlbums = []
 
     for (const docSnap of snapshot.docs) {
       const albumId = (docSnap.data() as PlaylistMembershipDocument).albumId
       const album = albumById.get(albumId)
       if (!album) continue
-      albumCount++
-      trackCount += album.tracks.length
+      playlistAlbums.push(album)
+      for (const track of album.tracks) {
+        allTrackIds.push(track.id)
+      }
     }
 
-    stats.set(playlistId, { albumCount, trackCount })
+    albumsByPlaylist.set(playlistId, playlistAlbums)
+  }
+
+  const mappings = await getMappingsForTrackIds(uid, allTrackIds)
+  const stats = new Map<string, PlaylistStats>()
+
+  for (const playlistId of playlistIds) {
+    const playlistAlbums = albumsByPlaylist.get(playlistId) ?? []
+    const progress = countAlbumsResolveProgress(playlistAlbums, mappings)
+    stats.set(playlistId, {
+      albumCount: progress.albumCount,
+      trackCount: progress.trackCount,
+      resolvedAlbumCount: progress.resolvedAlbumCount,
+      resolvedTrackCount: progress.resolvedTrackCount,
+    })
   }
 
   return stats

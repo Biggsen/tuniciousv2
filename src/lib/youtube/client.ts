@@ -1,5 +1,9 @@
 import { parseIso8601Duration } from '@/lib/youtube/duration'
-import type { YouTubePlaylistCandidate, YouTubeVideoCandidate } from '@/types/youtube'
+import type {
+  YouTubeChannelCandidate,
+  YouTubePlaylistCandidate,
+  YouTubeVideoCandidate,
+} from '@/types/youtube'
 
 export class YouTubeApiError extends Error {
   constructor(
@@ -31,7 +35,7 @@ function formatYouTubeErrorBody(body: string): string {
 }
 
 interface YouTubeSearchItem {
-  id?: { videoId?: string; playlistId?: string }
+  id?: { videoId?: string; playlistId?: string; channelId?: string }
   snippet?: {
     title?: string
     channelId?: string
@@ -71,24 +75,28 @@ async function youtubeFetch<T>(path: string, params: Record<string, string>): Pr
 async function fetchVideoDetails(videoIds: string[]): Promise<Map<string, YouTubeVideoCandidate>> {
   if (!videoIds.length) return new Map()
 
-  const data = await youtubeFetch<{ items?: YouTubeVideoItem[] }>('videos', {
-    part: 'snippet,contentDetails',
-    id: videoIds.join(','),
-  })
-
   const map = new Map<string, YouTubeVideoCandidate>()
+  const chunkSize = 50
 
-  for (const item of data.items ?? []) {
-    if (!item.id) continue
-    map.set(item.id, {
-      videoId: item.id,
-      title: item.snippet?.title ?? 'Unknown title',
-      channelId: item.snippet?.channelId ?? '',
-      channelTitle: item.snippet?.channelTitle ?? 'Unknown channel',
-      durationMs: item.contentDetails?.duration
-        ? parseIso8601Duration(item.contentDetails.duration)
-        : undefined,
+  for (let offset = 0; offset < videoIds.length; offset += chunkSize) {
+    const chunk = videoIds.slice(offset, offset + chunkSize)
+    const data = await youtubeFetch<{ items?: YouTubeVideoItem[] }>('videos', {
+      part: 'snippet,contentDetails',
+      id: chunk.join(','),
     })
+
+    for (const item of data.items ?? []) {
+      if (!item.id) continue
+      map.set(item.id, {
+        videoId: item.id,
+        title: item.snippet?.title ?? 'Unknown title',
+        channelId: item.snippet?.channelId ?? '',
+        channelTitle: item.snippet?.channelTitle ?? 'Unknown channel',
+        durationMs: item.contentDetails?.duration
+          ? parseIso8601Duration(item.contentDetails.duration)
+          : undefined,
+      })
+    }
   }
 
   return map
@@ -125,6 +133,10 @@ export async function searchVideos(
     .filter((candidate): candidate is YouTubeVideoCandidate => Boolean(candidate))
 }
 
+export async function getVideosByIds(videoIds: string[]): Promise<Map<string, YouTubeVideoCandidate>> {
+  return fetchVideoDetails(videoIds)
+}
+
 export async function getVideoById(videoId: string): Promise<YouTubeVideoCandidate | null> {
   const details = await fetchVideoDetails([videoId])
   return details.get(videoId) ?? null
@@ -154,6 +166,106 @@ interface YouTubePlaylistResource {
   contentDetails?: {
     itemCount?: number
   }
+}
+
+export async function searchChannels(
+  query: string,
+  maxResults = 5,
+): Promise<YouTubeChannelCandidate[]> {
+  const data = await youtubeFetch<{ items?: YouTubeSearchItem[] }>('search', {
+    part: 'snippet',
+    type: 'channel',
+    q: query,
+    maxResults: String(maxResults),
+  })
+
+  return (data.items ?? [])
+    .map((item) => {
+      const channelId = item.id?.channelId ?? item.snippet?.channelId
+      if (!channelId) return null
+      return {
+        channelId,
+        channelTitle: item.snippet?.title ?? item.snippet?.channelTitle ?? 'Unknown channel',
+      }
+    })
+    .filter((item): item is YouTubeChannelCandidate => item !== null)
+}
+
+export async function getChannelUploadsInfo(
+  channelId: string,
+): Promise<YouTubeChannelCandidate | null> {
+  const data = await youtubeFetch<{
+    items?: Array<{
+      id?: string
+      snippet?: { title?: string }
+      contentDetails?: { relatedPlaylists?: { uploads?: string } }
+    }>
+  }>('channels', {
+    part: 'snippet,contentDetails',
+    id: channelId,
+  })
+
+  const item = data.items?.[0]
+  const uploadsPlaylistId = item?.contentDetails?.relatedPlaylists?.uploads
+  if (!item?.id || !uploadsPlaylistId) return null
+
+  return {
+    channelId: item.id,
+    channelTitle: item.snippet?.title ?? 'Unknown channel',
+    uploadsPlaylistId,
+  }
+}
+
+/**
+ * List videos in a playlist using playlistItems only (cheap).
+ * Does not call videos.list — titles come from snippets.
+ */
+export async function listPlaylistVideoSnippets(
+  playlistId: string,
+  options: {
+    maxPages?: number
+    pageSize?: number
+    pageToken?: string
+    /** Called after each page with all videos accumulated so far. Return true to stop paging. */
+    shouldStop?: (videos: YouTubeVideoCandidate[]) => boolean
+  } = {},
+): Promise<YouTubeVideoCandidate[]> {
+  const maxPages = options.maxPages ?? 40
+  const pageSize = options.pageSize ?? 50
+  const videos: YouTubeVideoCandidate[] = []
+  let pageToken: string | undefined = options.pageToken
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const params: Record<string, string> = {
+      part: 'snippet,contentDetails',
+      playlistId,
+      maxResults: String(pageSize),
+    }
+    if (pageToken) params.pageToken = pageToken
+
+    const data = await youtubeFetch<{
+      items?: YouTubePlaylistItem[]
+      nextPageToken?: string
+    }>('playlistItems', params)
+
+    for (const item of data.items ?? []) {
+      const videoId = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId
+      if (!videoId) continue
+      videos.push({
+        videoId,
+        title: item.snippet?.title ?? 'Unknown title',
+        channelId: item.snippet?.channelId ?? '',
+        channelTitle: item.snippet?.channelTitle ?? 'Unknown channel',
+      })
+    }
+
+    if (options.shouldStop?.(videos)) break
+
+    pageToken = data.nextPageToken
+    if (!pageToken) break
+  }
+
+  return videos
 }
 
 export async function searchPlaylists(

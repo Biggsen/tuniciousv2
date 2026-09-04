@@ -54,6 +54,25 @@ describe('matchLibrary', () => {
     expect(matches.map((album) => album.title)).toEqual(['Mabool', 'Unsung Prophets'])
   })
 
+  it('matches shorter artist names as whole words only', () => {
+    const lib = [
+      libraryAlbum("The Future's Void", 'EMA'),
+      libraryAlbum('The Tao of Mad Phat', 'Steve Coleman and Five Elements'),
+    ]
+    const staged = stagedAlbum('Curves Of Life/Live In Paris', 'Steve Coleman and Five Elements')
+    expect(findLibraryAlbumsByArtist(staged, lib).map((album) => album.title)).toEqual([
+      'The Tao of Mad Phat',
+    ])
+  })
+
+  it('still matches a shorter artist name inside a longer billing', () => {
+    const lib = [libraryAlbum('Black Science', 'Steve Coleman')]
+    const staged = stagedAlbum('Curves Of Life', 'Steve Coleman and Five Elements')
+    expect(findLibraryAlbumsByArtist(staged, lib).map((album) => album.title)).toEqual([
+      'Black Science',
+    ])
+  })
+
   it('matches And vs & in album titles', () => {
     const lib = [libraryAlbum('Unsung Prophets & Dead Messiahs', 'Orphaned Land')]
     const staged = stagedAlbum('Unsung Prophets And Dead Messiahs', 'Orphaned Land')

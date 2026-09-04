@@ -17,6 +17,12 @@ import {
   listPlaylists,
   type PlaylistStats,
 } from '@/lib/playlist/firestore'
+import {
+  loadPlaylistStatsCache,
+  playlistStatsMapFromCache,
+  removePlaylistFromStatsCache,
+  savePlaylistStatsCache,
+} from '@/lib/playlist/persistStats'
 import { useAuthStore } from '@/stores/auth'
 import type { Pipeline, Stage } from '@/types/pipeline'
 import type { Playlist } from '@/types/library'
@@ -26,6 +32,8 @@ const router = useRouter()
 
 const playlists = ref<Playlist[]>([])
 const playlistStats = ref<Map<string, PlaylistStats>>(new Map())
+const statsUpdatedAt = ref<number | null>(null)
+const refreshingStats = ref(false)
 const evaluationPipelines = ref<Pipeline[]>([])
 const pipelineStages = ref<Map<string, Stage[]>>(new Map())
 const loading = ref(true)
@@ -80,11 +88,36 @@ const regularPlaylists = computed(() =>
   playlists.value.filter((playlist) => !playlist.pipelineId),
 )
 
-function formatPlaylistStats(playlistId: string): string {
-  const stats = playlistStats.value.get(playlistId) ?? { albumCount: 0, trackCount: 0 }
+function playlistStatsFor(playlistId: string): PlaylistStats {
+  return (
+    playlistStats.value.get(playlistId) ?? {
+      albumCount: 0,
+      trackCount: 0,
+      resolvedAlbumCount: 0,
+      resolvedTrackCount: 0,
+    }
+  )
+}
+
+function formatPlaylistCounts(playlistId: string): string {
+  const stats = playlistStatsFor(playlistId)
   const albumLabel = stats.albumCount === 1 ? 'album' : 'albums'
   const trackLabel = stats.trackCount === 1 ? 'track' : 'tracks'
   return `${stats.albumCount} ${albumLabel} · ${stats.trackCount} ${trackLabel}`
+}
+
+function formatPlaylistResolved(playlistId: string): string | null {
+  const stats = playlistStatsFor(playlistId)
+  if (stats.albumCount === 0) return null
+  return `${stats.resolvedAlbumCount}/${stats.albumCount} resolved`
+}
+
+function playlistResolvedClass(playlistId: string): string {
+  const stats = playlistStatsFor(playlistId)
+  if (stats.albumCount > 0 && stats.resolvedAlbumCount === stats.albumCount) {
+    return 'text-emerald-400'
+  }
+  return 'text-amber-400'
 }
 
 function loadFunnelOpenStateFromStorage(): Record<string, boolean> {
@@ -144,6 +177,30 @@ function setAllFunnelsOpen(open: boolean) {
   persistFunnelOpenState()
 }
 
+function applyCachedStats(uid: string) {
+  const cache = loadPlaylistStatsCache(uid)
+  playlistStats.value = playlistStatsMapFromCache(cache)
+  statsUpdatedAt.value = cache?.updatedAt ?? null
+  return cache !== null
+}
+
+async function refreshPlaylistStats(playlistIds: string[]) {
+  if (!auth.user) return
+
+  refreshingStats.value = true
+  error.value = null
+  try {
+    const fresh = await getPlaylistStatsMap(auth.user.uid, playlistIds)
+    playlistStats.value = fresh
+    savePlaylistStatsCache(auth.user.uid, fresh)
+    statsUpdatedAt.value = Date.now()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to refresh playlist stats'
+  } finally {
+    refreshingStats.value = false
+  }
+}
+
 async function load() {
   if (!auth.user) return
 
@@ -165,15 +222,28 @@ async function load() {
     evaluationPipelines.value = pipelines
     pipelineStages.value = new Map(stagesEntries)
     hydrateFunnelOpenStateForPipelines(pipelines)
-    playlistStats.value = await getPlaylistStatsMap(
-      auth.user.uid,
-      loadedPlaylists.map((playlist) => playlist.id),
-    )
+
+    const hasCache = applyCachedStats(auth.user.uid)
+    loading.value = false
+
+    // First visit: fetch once so resolve counts appear. Later visits use cache + Reload.
+    if (!hasCache && loadedPlaylists.length > 0) {
+      await refreshPlaylistStats(loadedPlaylists.map((playlist) => playlist.id))
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load playlists'
-  } finally {
     loading.value = false
   }
+}
+
+async function handleReloadStats() {
+  if (!auth.user || refreshingStats.value) return
+  await refreshPlaylistStats(playlists.value.map((playlist) => playlist.id))
+}
+
+function formatStatsUpdatedAt(): string | null {
+  if (!statsUpdatedAt.value) return null
+  return new Date(statsUpdatedAt.value).toLocaleString()
 }
 
 async function handleCreate() {
@@ -212,6 +282,7 @@ async function confirmDeletePlaylist() {
     await deletePlaylist(auth.user.uid, playlist.id)
     playlists.value = playlists.value.filter((item) => item.id !== playlist.id)
     playlistStats.value.delete(playlist.id)
+    removePlaylistFromStatsCache(auth.user.uid, playlist.id)
     playlistPendingDelete.value = null
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to delete playlist'
@@ -308,21 +379,37 @@ onMounted(() => {
     <ExplorerError v-else-if="error" :message="error" class="mb-4" />
 
     <template v-else>
-      <div v-if="pipelineGroups.length" class="mb-3 flex items-center gap-2">
+      <div
+        v-if="playlists.length"
+        class="mb-3 flex flex-wrap items-center gap-2"
+      >
+        <template v-if="pipelineGroups.length">
+          <button
+            type="button"
+            class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            @click="setAllFunnelsOpen(true)"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+            @click="setAllFunnelsOpen(false)"
+          >
+            Collapse all
+          </button>
+        </template>
         <button
           type="button"
-          class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          @click="setAllFunnelsOpen(true)"
+          class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text disabled:opacity-50"
+          :disabled="refreshingStats"
+          @click="handleReloadStats"
         >
-          Expand all
+          {{ refreshingStats ? 'Refreshing…' : 'Reload resolve stats' }}
         </button>
-        <button
-          type="button"
-          class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          @click="setAllFunnelsOpen(false)"
-        >
-          Collapse all
-        </button>
+        <span v-if="formatStatsUpdatedAt()" class="text-xs text-text-muted">
+          Cached {{ formatStatsUpdatedAt() }}
+        </span>
       </div>
 
       <section v-for="group in pipelineGroups" :key="group.pipeline.id" class="mb-6">
@@ -361,7 +448,13 @@ onMounted(() => {
               >
                 <span class="font-medium">{{ playlist.name }}</span>
                 <span class="mt-0.5 block text-xs text-text-muted">
-                  {{ formatPlaylistStats(playlist.id) }}
+                  {{ formatPlaylistCounts(playlist.id) }}
+                  <template v-if="formatPlaylistResolved(playlist.id)">
+                    ·
+                    <span :class="playlistResolvedClass(playlist.id)">
+                      {{ formatPlaylistResolved(playlist.id) }}
+                    </span>
+                  </template>
                   · Updated {{ playlist.updatedAt.toLocaleDateString() }}
                 </span>
               </RouterLink>
@@ -397,7 +490,13 @@ onMounted(() => {
             >
               <span class="font-medium">{{ playlist.name }}</span>
               <span class="mt-0.5 block text-xs text-text-muted">
-                {{ formatPlaylistStats(playlist.id) }}
+                {{ formatPlaylistCounts(playlist.id) }}
+                <template v-if="formatPlaylistResolved(playlist.id)">
+                  ·
+                  <span :class="playlistResolvedClass(playlist.id)">
+                    {{ formatPlaylistResolved(playlist.id) }}
+                  </span>
+                </template>
                 · Updated {{ playlist.updatedAt.toLocaleDateString() }}
               </span>
             </RouterLink>

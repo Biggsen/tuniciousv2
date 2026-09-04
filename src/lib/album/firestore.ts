@@ -21,7 +21,12 @@ import {
 
 import { buildAlbumFromRelease } from '@/lib/album/buildFromRelease'
 import { isAlbumArchived, restoreArchivedAlbum } from '@/lib/album/archive'
+import {
+  applyAlbumEntryOverlay,
+  filterTrackIdsByExclusions,
+} from '@/lib/album/entryOverlay'
 import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
+import { deleteTrackMapping } from '@/lib/youtube/firestore'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
 import { ensureArtistImages } from '@/lib/artist/syncImages'
 import { getRelease } from '@/lib/musicbrainz/api'
@@ -443,15 +448,7 @@ export async function getAlbumById(uid: string, albumId: string): Promise<Album 
   if (!snapshot.exists()) return null
   const album = toAlbum(snapshot.id, snapshot.data() as AlbumDocument)
   const entry = await getAlbumEntry(uid, albumId)
-  if (!entry) return album
-  return {
-    ...album,
-    rating: entry.rating,
-    ratingSource: entry.ratingSource,
-    ratingSubmittedPipelineId: entry.ratingSubmittedPipelineId,
-    ratingBeforeSubmission: entry.ratingBeforeSubmission,
-    ratedAt: entry.ratedAt,
-  }
+  return applyAlbumEntryOverlay(album, entry)
 }
 
 export async function listAlbums(
@@ -462,10 +459,13 @@ export async function listAlbums(
   const albums = snapshot.docs.map((docSnap) =>
     toAlbum(docSnap.id, docSnap.data() as AlbumDocument),
   )
+  const entries = await listUserAlbumEntries(uid)
   const visible = options.includeArchived
     ? albums
     : albums.filter((album) => !isAlbumArchived(album))
-  return visible.sort((a, b) => a.title.localeCompare(b.title))
+  return visible
+    .map((album) => applyAlbumEntryOverlay(album, entries.get(album.id)))
+    .sort((a, b) => a.title.localeCompare(b.title))
 }
 
 export async function listUserAlbumEntryIds(uid: string): Promise<string[]> {
@@ -473,22 +473,29 @@ export async function listUserAlbumEntryIds(uid: string): Promise<string[]> {
   return snapshot.docs.map((docSnap) => docSnap.id)
 }
 
-async function listUserAlbumEntries(
-  uid: string,
-): Promise<Map<string, Pick<AlbumEntry, 'rating' | 'ratingSource' | 'ratingSubmittedPipelineId'>>> {
+async function listUserAlbumEntries(uid: string): Promise<Map<string, AlbumEntry>> {
   const snapshot = await getDocs(collection(getFirestoreDb(), 'users', uid, 'album_entries'))
-  const result = new Map<
-    string,
-    Pick<AlbumEntry, 'rating' | 'ratingSource' | 'ratingSubmittedPipelineId'>
-  >()
+  const result = new Map<string, AlbumEntry>()
   for (const docSnap of snapshot.docs) {
-    const data = docSnap.data() as AlbumEntryDocument
-    result.set(docSnap.id, {
-      rating: data.rating,
-      ratingSource: data.ratingSource,
-      ratingSubmittedPipelineId: data.ratingSubmittedPipelineId,
-    })
+    result.set(docSnap.id, toAlbumEntry(docSnap.data() as AlbumEntryDocument))
   }
+  return result
+}
+
+async function getAlbumEntriesByIds(
+  uid: string,
+  albumIds: string[],
+): Promise<Map<string, AlbumEntry>> {
+  const result = new Map<string, AlbumEntry>()
+  const uniqueIds = [...new Set(albumIds)]
+  if (uniqueIds.length === 0) return result
+
+  await Promise.all(
+    uniqueIds.map(async (albumId) => {
+      const entry = await getAlbumEntry(uid, albumId)
+      if (entry) result.set(albumId, entry)
+    }),
+  )
   return result
 }
 
@@ -521,7 +528,15 @@ export async function getAlbumsByIdsForUser(
   uid: string,
   albumIds: string[],
 ): Promise<Map<string, Album>> {
-  return getAlbumsByIds(uid, albumIds)
+  const [albums, entries] = await Promise.all([
+    getAlbumsByIds(uid, albumIds),
+    getAlbumEntriesByIds(uid, albumIds),
+  ])
+  const result = new Map<string, Album>()
+  for (const [id, album] of albums) {
+    result.set(id, applyAlbumEntryOverlay(album, entries.get(id)))
+  }
+  return result
 }
 
 export function albumStubFromPickerItem(item: AlbumPickerItem): Album {
@@ -634,7 +649,7 @@ export async function listUserLibraryCards(uid: string): Promise<LibraryAlbumCar
           artist: item.artist,
           albumYear: item.albumYear,
           coverUrlSmall: item.coverUrlSmall,
-          trackIds: item.trackIds ?? [],
+          trackIds: filterTrackIdsByExclusions(item.trackIds ?? [], entry?.excludedTrackIds),
           artistIds: item.artistIds ?? [],
           rating: entry?.rating,
           ratingSource: entry?.ratingSource,
@@ -649,8 +664,14 @@ export async function listAlbumsByArtist(uid: string, artistId: string): Promise
   const snapshot = await getDocs(
     query(albumsCollection(uid), where('artistIds', 'array-contains', artistId)),
   )
+  const entries = await listUserAlbumEntries(uid)
   return snapshot.docs
-    .map((docSnap) => toAlbum(docSnap.id, docSnap.data() as AlbumDocument))
+    .map((docSnap) =>
+      applyAlbumEntryOverlay(
+        toAlbum(docSnap.id, docSnap.data() as AlbumDocument),
+        entries.get(docSnap.id),
+      ),
+    )
     .sort((a, b) => a.title.localeCompare(b.title))
 }
 
@@ -728,6 +749,28 @@ export async function setAlbumYouTubePlaylist(
   }
 
   return toAlbum(updated.id, updated.data() as AlbumDocument)
+}
+
+/** Soft-delete a track for this user (catalog tracklist stays intact). */
+export async function excludeTrackFromAlbum(
+  uid: string,
+  albumId: string,
+  trackId: string,
+): Promise<Album> {
+  await ensureAlbumEntry(uid, albumId)
+  const ref = doc(getFirestoreDb(), 'users', uid, 'album_entries', albumId)
+  const entry = await getAlbumEntry(uid, albumId)
+  const excluded = new Set(entry?.excludedTrackIds ?? [])
+  excluded.add(trackId)
+  await updateDoc(ref, {
+    excludedTrackIds: [...excluded],
+    updatedAt: serverTimestamp(),
+  })
+  await deleteTrackMapping(uid, trackId)
+
+  const album = await getAlbumById(uid, albumId)
+  if (!album) throw new Error('Album not found')
+  return album
 }
 
 export async function updateAlbumRating(

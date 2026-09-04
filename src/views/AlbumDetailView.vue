@@ -14,7 +14,7 @@ import {
 } from '@/lib/artist/firestore'
 import { formatDuration } from '@/lib/musicbrainz/format'
 import { archiveAlbum, isAlbumArchived, unarchiveAlbum } from '@/lib/album/archive'
-import { getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
+import { excludeTrackFromAlbum, getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
 import { isAdminUid } from '@/lib/auth/admin'
 import { isLastfmConnected, refreshAlbumPlaycounts } from '@/lib/lastfm/scrobble'
@@ -29,13 +29,14 @@ import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
 import { deleteMappingsForTrackIds, getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { parsePlaylistIdFromInput } from '@/lib/youtube/parseUrl'
 import {
-  findAndResolveAlbumFromPlaylist,
   resolveAlbumFromYouTubePlaylist,
+  resolveAlbumViaArtistChannel,
 } from '@/lib/youtube/playlistResolve'
 import { resolveAllAlbumTracks } from '@/lib/youtube/resolve'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
+import { usePlaylistDetailStore } from '@/stores/playlistDetail'
 import type { Album, Artist } from '@/types/library'
 import type { StarRating } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
@@ -79,9 +80,12 @@ const refreshingPlaycounts = ref(false)
 const playcountMessage = ref<string | null>(null)
 const archiveDialogOpen = ref(false)
 const archiving = ref(false)
+const trackPendingDelete = ref<{ id: string; title: string } | null>(null)
+const deletingTrack = ref(false)
 
 const isAdmin = computed(() => isAdminUid(auth.user?.uid))
 const isArchived = computed(() => (album.value ? isAlbumArchived(album.value) : false))
+const playlistDetail = usePlaylistDetailStore()
 
 const resolveContext = computed(() => {
   if (!album.value) return null
@@ -233,6 +237,9 @@ async function applyPlaylistResolveResult(
   result: Awaited<ReturnType<typeof resolveAlbumFromYouTubePlaylist>>,
 ) {
   album.value = await getAlbumById(auth.user!.uid, album.value!.id)
+  if (result.preferredChannelArtist) {
+    primaryArtist.value = result.preferredChannelArtist
+  }
   await loadMappings()
 
   const unmatched =
@@ -303,7 +310,7 @@ async function handleResolveFromPlaylist() {
             playlistProgress.value = `${completed}/${total}`
           },
         )
-      : await findAndResolveAlbumFromPlaylist(
+      : await resolveAlbumViaArtistChannel(
           auth.user.uid,
           album.value,
           resolveContext.value,
@@ -417,6 +424,35 @@ async function handleUnarchive() {
     error.value = err instanceof Error ? err.message : 'Failed to restore album'
   } finally {
     archiving.value = false
+  }
+}
+
+function requestRemoveTrack(track: { id: string; title: string }) {
+  trackPendingDelete.value = track
+}
+
+async function handleRemoveTrack() {
+  if (!auth.user || !album.value || !trackPendingDelete.value) return
+
+  deletingTrack.value = true
+  error.value = null
+
+  const trackId = trackPendingDelete.value.id
+  try {
+    album.value = await excludeTrackFromAlbum(auth.user.uid, album.value.id, trackId)
+    mappings.value.delete(trackId)
+    mappings.value = new Map(mappings.value)
+    library.removeMappingTrackIds([trackId])
+    library.invalidate()
+    const playlistId = route.query.playlistId
+    if (typeof playlistId === 'string' && playlistId) {
+      playlistDetail.invalidate(playlistId)
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to remove track'
+  } finally {
+    deletingTrack.value = false
+    trackPendingDelete.value = null
   }
 }
 
@@ -579,10 +615,12 @@ onMounted(load)
             >
               {{
                 resolvingPlaylist
-                  ? `Resolving from playlist… ${playlistProgress}`
+                  ? album.youtubePlaylistId
+                    ? `Resolving from playlist… ${playlistProgress}`
+                    : `Resolving via Topic channel… ${playlistProgress}`
                   : album.youtubePlaylistId
                     ? 'Resolve from playlist'
-                    : 'Find Topic playlist & resolve'
+                    : 'Resolve via Topic channel'
               }}
             </button>
             <button
@@ -648,7 +686,7 @@ onMounted(load)
         <li
           v-for="(track, index) in album.tracks"
           :key="track.id"
-          class="grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
+          class="grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
           :class="isCurrentTrack(track.id) ? 'bg-accent/10' : ''"
         >
           <button
@@ -697,6 +735,15 @@ onMounted(load)
             @updated="(mapping) => onMappingUpdated(track.id, mapping)"
             @channel-preference-updated="onChannelPreferenceUpdated"
           />
+          <button
+            type="button"
+            class="shrink-0 text-xs text-text-muted transition-colors hover:text-red-300 disabled:opacity-50"
+            :disabled="deletingTrack"
+            title="Remove from tracklist"
+            @click="requestRemoveTrack(track)"
+          >
+            Remove
+          </button>
         </li>
       </ol>
 
@@ -709,6 +756,17 @@ onMounted(load)
         :busy="archiving"
         @confirm="handleArchive"
         @cancel="archiveDialogOpen = false"
+      />
+
+      <ConfirmDialog
+        :open="!!trackPendingDelete"
+        title="Remove this track?"
+        :message="`“${trackPendingDelete?.title ?? ''}” will be removed from your tracklist for this album. Other users’ catalogs are unchanged.`"
+        confirm-label="Remove track"
+        destructive
+        :busy="deletingTrack"
+        @confirm="handleRemoveTrack"
+        @cancel="trackPendingDelete = null"
       />
     </template>
   </div>
