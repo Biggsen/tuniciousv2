@@ -1,12 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { buildQueueFromAlbum } from '@/lib/playback/queue'
 import { matchTracksToPlaylistVideos } from '@/lib/youtube/match'
 import {
+  findPlayableVideoForTrack,
   isTopicChannelTitle,
   rankArtistChannels,
   scoreArtistChannelCandidate,
 } from '@/lib/youtube/playlistResolve'
-import type { YouTubeChannelCandidate, YouTubeVideoCandidate } from '@/types/youtube'
+import type { Album } from '@/types/library'
+import type { TrackYouTubeMapping, YouTubeChannelCandidate, YouTubeVideoCandidate } from '@/types/youtube'
+
+const searchVideos = vi.fn()
+
+vi.mock('@/lib/youtube/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/lib/youtube/client')>()
+  return {
+    ...mod,
+    searchVideos: (...args: unknown[]) => searchVideos(...args),
+  }
+})
 
 describe('isTopicChannelTitle', () => {
   it('detects Topic channels', () => {
@@ -76,5 +89,80 @@ describe('matchTracksToPlaylistVideos for channel uploads', () => {
     expect(matches.get('t1')?.videoId).toBe('v1')
     expect(matches.get('t2')?.videoId).toBe('v2')
     expect(matches.has('t3')).toBe(false)
+  })
+})
+
+describe('findPlayableVideoForTrack', () => {
+  beforeEach(() => {
+    searchVideos.mockReset()
+  })
+
+  it('prefers a non-Topic candidate over Topic', async () => {
+    searchVideos.mockResolvedValue([
+      {
+        videoId: 'topic-vid',
+        title: 'Above the Water',
+        channelId: 'topic-ch',
+        channelTitle: 'Khemmis - Topic',
+        durationMs: 440_000,
+      },
+      {
+        videoId: 'fan-vid',
+        title: 'Khemmis - Above the Water',
+        channelId: 'fan-ch',
+        channelTitle: 'SevereRepugnance',
+        durationMs: 442_000,
+      },
+    ] satisfies YouTubeVideoCandidate[])
+
+    const picked = await findPlayableVideoForTrack(
+      'Khemmis',
+      { id: 't1', trackNumber: '1', title: 'Above the Water', lengthMs: 442_000 },
+      {
+        videoId: 'topic-vid',
+        title: 'Above the Water',
+        channelId: 'topic-ch',
+        channelTitle: 'Khemmis - Topic',
+      },
+    )
+
+    expect(searchVideos).toHaveBeenCalledOnce()
+    expect(picked?.videoId).toBe('fan-vid')
+    expect(picked?.channelTitle).toBe('SevereRepugnance')
+  })
+})
+
+describe('buildQueueFromAlbum', () => {
+  it('copies channel fields from mappings', () => {
+    const album: Album = {
+      id: 'a1',
+      title: 'Hunted',
+      artist: 'Khemmis',
+      artistId: 'art1',
+      artistIds: ['art1'],
+      albumYear: 2016,
+      releaseMbid: 'mb',
+      tracks: [{ id: 't1', trackNumber: '1', title: 'Above the Water', lengthMs: 1000 }],
+      importedAt: new Date('2026-01-01'),
+    }
+    const mappings = new Map<string, TrackYouTubeMapping>([
+      [
+        't1',
+        {
+          trackId: 't1',
+          videoId: 'vid1',
+          videoTitle: 'Above the Water',
+          channelTitle: 'Khemmis - Topic',
+          channelId: 'ch1',
+          source: 'auto',
+          resolvedAt: new Date(),
+        },
+      ],
+    ])
+
+    const queue = buildQueueFromAlbum(album, mappings)
+    expect(queue[0]?.videoId).toBe('vid1')
+    expect(queue[0]?.channelTitle).toBe('Khemmis - Topic')
+    expect(queue[0]?.channelId).toBe('ch1')
   })
 })

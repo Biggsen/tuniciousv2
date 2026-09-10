@@ -294,7 +294,7 @@ async function handlePlay() {
     await ensureTrackDataLoaded()
     const started = await playback.playFromPlaylist(members.value, playlistId(), auth.user.uid)
     if (!started) {
-      playError.value = playback.error ?? 'No resolved tracks to play'
+      playError.value = playback.error ?? 'Failed to start playback'
     }
   } catch (err) {
     playError.value = err instanceof Error ? err.message : 'Failed to start playback'
@@ -312,7 +312,7 @@ async function handlePlayRandom() {
       auth.user.uid,
     )
     if (!started) {
-      playError.value = playback.error ?? 'No resolved tracks to play'
+      playError.value = playback.error ?? 'Failed to start playback'
     }
   } catch (err) {
     playError.value = err instanceof Error ? err.message : 'Failed to start playback'
@@ -703,7 +703,7 @@ watch(showTracklist, async (enabled) => {
       <p v-if="!members.length" class="text-sm text-text-muted">
         This playlist is empty. Add albums from your
         <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
-        — unresolved albums are fine; resolve tracks before playing.
+        — unresolved albums are fine; Play looks up YouTube matches on demand (~1 Search/track).
       </p>
 
       <p v-else-if="showSearchNoResults" class="text-sm text-text-muted">

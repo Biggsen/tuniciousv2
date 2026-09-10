@@ -24,9 +24,10 @@ onMounted(async () => {
 
   const yt = await loadYouTubeIframeApi()
 
+  // Non-zero in-viewport size: Chrome often refuses PLAYING on 0×0 / display:none embeds.
   player = new yt.Player(hostEl.value, {
-    height: '0',
-    width: '0',
+    height: '48',
+    width: '48',
     playerVars: {
       controls: 0,
       disablekb: 1,
@@ -34,6 +35,7 @@ onMounted(async () => {
       rel: 0,
       modestbranding: 1,
       playsinline: 1,
+      mute: 1,
     },
     events: {
       onReady: (event) => {
@@ -76,11 +78,12 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- Keep a real painted box in the viewport so Chrome will allow media playback. -->
   <div
-    class="pointer-events-none fixed h-0 w-0 overflow-hidden opacity-0"
+    class="pointer-events-none fixed bottom-0 left-0 z-0 h-12 w-12 overflow-hidden opacity-[0.02]"
     aria-hidden="true"
     data-tunicious-yt-player="1"
   >
-    <div ref="hostEl" />
+    <div ref="hostEl" class="h-full w-full" />
   </div>
 </template>

@@ -174,9 +174,7 @@ async function saveTrackMatches(
 
 async function tryResolveFromChannelUploads(
   uid: string,
-  album: Album,
   channel: YouTubeChannelCandidate,
-  artistName: string,
   tracksToResolve: Track[],
   onProgress?: (completed: number, total: number) => void,
 ): Promise<PlaylistResolveResult | null> {
@@ -196,36 +194,11 @@ async function tryResolveFromChannelUploads(
 
   if (!matches.size) return null
 
-  const playbackMatches = new Map<string, YouTubeVideoCandidate>()
-  const channelIsTopic = isTopicChannelTitle(resolvedChannel.channelTitle)
-
-  for (const [index, track] of targetTracks.entries()) {
-    const topicMatch = matches.get(track.id)
-    if (!topicMatch) {
-      onProgress?.(index + 1, targetTracks.length)
-      continue
-    }
-
-    if (channelIsTopic) {
-      const playable = await findPlayableVideoForTrack(artistName, track, topicMatch)
-      if (playable) {
-        playbackMatches.set(track.id, playable)
-      }
-    } else {
-      playbackMatches.set(track.id, topicMatch)
-    }
-    onProgress?.(index + 1, targetTracks.length)
-  }
-
-  if (!playbackMatches.size) return null
-
   const resolved = await saveTrackMatches(
     uid,
     targetTracks,
-    playbackMatches,
-    channelIsTopic
-      ? `topic-match+playable:${resolvedChannel.channelId}`
-      : `channel-uploads:${resolvedChannel.channelId}`,
+    matches,
+    `channel-uploads:${resolvedChannel.channelId}`,
     onProgress,
   )
 
@@ -238,7 +211,7 @@ async function tryResolveFromChannelUploads(
       channelId: resolvedChannel.channelId,
       channelTitle: resolvedChannel.channelTitle,
     },
-    unmatchedTracks: targetTracks.filter((track) => !playbackMatches.has(track.id)),
+    unmatchedTracks: targetTracks.filter((track) => !matches.has(track.id)),
   }
 }
 
@@ -262,12 +235,10 @@ export async function resolveAlbumViaArtistChannel(
     tried.add(context.preferredChannelId)
     const result = await tryResolveFromChannelUploads(
       uid,
-      album,
       {
         channelId: context.preferredChannelId,
         channelTitle: context.preferredChannelTitle ?? '',
       },
-      artistName,
       targetTracks,
       onProgress,
     )
@@ -287,9 +258,7 @@ export async function resolveAlbumViaArtistChannel(
 
     const result = await tryResolveFromChannelUploads(
       uid,
-      album,
       channel,
-      artistName,
       targetTracks,
       onProgress,
     )

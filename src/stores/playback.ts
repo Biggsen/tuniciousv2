@@ -7,7 +7,10 @@ import {
   loadPlaybackState,
   savePlaybackState,
 } from '@/lib/playback/persist'
-import { buildQueueFromAlbum, buildQueueFromPlaylist, shuffleResolvedQueueItems } from '@/lib/playback/queue'
+import {
+  buildQueueFromAlbum,
+  buildQueueFromPlaylist,
+} from '@/lib/playback/queue'
 import { listPlaylistMembers } from '@/lib/playlist/firestore'
 import {
   onPaused,
@@ -21,8 +24,13 @@ import {
 import { handleTrackStarted } from '@/lib/lastfm/scrobble'
 import type { YouTubePlayerInstance } from '@/lib/youtube/iframeApi'
 import { YT_PLAYER_STATE } from '@/lib/youtube/iframeApi'
-import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
+import { getMappingsForTrackIds, saveTrackMapping } from '@/lib/youtube/firestore'
+import {
+  findPlayableVideoForTrack,
+  isTopicChannelTitle,
+} from '@/lib/youtube/playlistResolve'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import type { Album, PlaylistMember } from '@/types/library'
 import type { PlaybackQueueItem } from '@/types/playback'
 import type { ListenEndReason } from '@/types/sessions'
@@ -40,9 +48,93 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   let player: YouTubePlayerInstance | null = null
   let progressTimer: ReturnType<typeof setInterval> | null = null
+  const playableSwapAttempted = new Set<string>()
+  /** Mute-then-unmute: async queue loads drop the click gesture; muted autoplay is allowed. */
+  let unmuteOnPlaying = false
 
   function playbackUid(): string | null {
     return useAuthStore().user?.uid ?? null
+  }
+
+  /**
+   * Ensure the current queue item has an embeddable videoId:
+   * - unresolved → Search once, persist mapping
+   * - Topic mapping → Search once for a non-Topic stand-in
+   * @returns true when the item is ready to load (has videoId)
+   */
+  async function ensurePlayableForCurrentItem(options: { force?: boolean } = {}): Promise<boolean> {
+    const item = currentItem.value
+    const uid = playbackUid()
+    if (!item || !uid) return false
+
+    const needsResolve = !item.videoId
+    const needsTopicSwap =
+      Boolean(item.videoId) && (options.force || isTopicChannelTitle(item.channelTitle ?? ''))
+
+    if (!needsResolve && !needsTopicSwap) return true
+    if (playableSwapAttempted.has(item.trackId) && !options.force) {
+      return Boolean(item.videoId)
+    }
+    if (!item.title?.trim()) return false
+
+    playableSwapAttempted.add(item.trackId)
+    status.value = 'buffering'
+
+    const topicCandidate = item.videoId
+      ? {
+          videoId: item.videoId,
+          title: item.title,
+          channelId: item.channelId ?? '',
+          channelTitle: item.channelTitle ?? '',
+          durationMs: item.lengthMs,
+        }
+      : undefined
+    const track = {
+      id: item.trackId,
+      trackNumber: item.trackNumber,
+      title: item.title,
+      lengthMs: item.lengthMs,
+    }
+
+    const playable = await findPlayableVideoForTrack(item.artist, track, topicCandidate)
+
+    if (!playable) return false
+    if (playable.videoId === item.videoId) return true
+
+    const mapping = await saveTrackMapping(uid, {
+      trackId: item.trackId,
+      videoId: playable.videoId,
+      videoTitle: playable.title,
+      channelTitle: playable.channelTitle,
+      channelId: playable.channelId,
+      durationMs: playable.durationMs,
+      source: 'auto',
+      searchQuery: needsResolve
+        ? `on-demand-resolve:${playable.channelId}`
+        : `on-demand-playable:${playable.channelId}`,
+    })
+
+    const index = currentIndex.value
+    if (index < 0 || !queue.value[index]) return false
+
+    const nextQueue = [...queue.value]
+    nextQueue[index] = {
+      ...nextQueue[index],
+      videoId: playable.videoId,
+      channelTitle: playable.channelTitle,
+      channelId: playable.channelId,
+      lengthMs: playable.durationMs ?? nextQueue[index].lengthMs,
+    }
+    queue.value = nextQueue
+    useLibraryStore().upsertMappings([mapping])
+    return true
+  }
+
+  async function prepareAndLoadCurrentVideo(autoplay = true): Promise<boolean> {
+    const ready = await ensurePlayableForCurrentItem()
+    if (!ready || !activeVideoId.value) return false
+    loadCurrentVideo(autoplay)
+    return true
   }
 
   async function trackCurrentItem() {
@@ -98,24 +190,68 @@ export const usePlaybackStore = defineStore('playback', () => {
     }, 500)
   }
 
-  function findPlayableIndex(from: number, direction: 1 | -1): number {
-    if (direction === 1) {
-      for (let index = from; index < queue.value.length; index++) {
-        if (queue.value[index]?.videoId) return index
-      }
-      return -1
+  /** Advance from `fromIndex`, resolving unmapped tracks on demand until one loads. */
+  async function startPlayback(fromIndex = 0) {
+    error.value = null
+    if (queue.value.length === 0) {
+      error.value = 'No tracks to play'
+      return false
     }
 
-    for (let index = from; index >= 0; index--) {
-      if (queue.value[index]?.videoId) return index
+    const start = Math.max(0, Math.min(fromIndex, queue.value.length - 1))
+    const order: number[] = []
+    for (let index = start; index < queue.value.length; index++) order.push(index)
+    for (let index = 0; index < start; index++) order.push(index)
+
+    for (const index of order) {
+      currentIndex.value = index
+      positionMs.value = 0
+      durationMs.value = currentItem.value?.lengthMs ?? 0
+      status.value = 'playing'
+      const loaded = await prepareAndLoadCurrentVideo(true)
+      if (loaded) {
+        void trackCurrentItem()
+        persistState()
+        return true
+      }
+      error.value = `No YouTube match for “${currentItem.value?.title ?? 'track'}” — trying next…`
     }
-    return -1
+
+    error.value = 'Could not find playable YouTube matches in this queue'
+    status.value = 'idle'
+    return false
+  }
+
+  async function playFromPlaylist(members: PlaylistMember[], playlistId: string, uid: string) {
+    await setQueueFromPlaylist(members, playlistId, uid)
+    return startPlayback(0)
+  }
+
+  async function playRandomFromPlaylist(
+    members: PlaylistMember[],
+    playlistId: string,
+    uid: string,
+  ) {
+    await setQueueFromPlaylist(members, playlistId, uid)
+    if (queue.value.length === 0) {
+      error.value = 'No tracks to play'
+      return false
+    }
+    const startIndex = Math.floor(Math.random() * queue.value.length)
+    return startPlayback(startIndex)
   }
 
   function loadCurrentVideo(autoplay = true) {
     if (!player || !activeVideoId.value) return
     player.loadVideoById(activeVideoId.value)
     if (autoplay) {
+      // After awaits (mappings fetch), Chrome blocks unmuted autoplay — start muted.
+      try {
+        player.mute()
+        unmuteOnPlaying = true
+      } catch {
+        unmuteOnPlaying = false
+      }
       player.playVideo()
       status.value = 'playing'
       startProgressTimer()
@@ -142,39 +278,6 @@ export const usePlaybackStore = defineStore('playback', () => {
     savePlaybackState(queue.value, currentIndex.value, sourcePlaylistId.value)
   }
 
-  function startPlayback(fromIndex = 0) {
-    error.value = null
-    const index = findPlayableIndex(fromIndex, 1)
-    if (index < 0) {
-      error.value = 'No resolved tracks to play'
-      return false
-    }
-
-    currentIndex.value = index
-    positionMs.value = 0
-    durationMs.value = currentItem.value?.lengthMs ?? 0
-    status.value = 'playing'
-    loadCurrentVideo(true)
-    void trackCurrentItem()
-    persistState()
-    return true
-  }
-
-  async function playFromPlaylist(members: PlaylistMember[], playlistId: string, uid: string) {
-    await setQueueFromPlaylist(members, playlistId, uid)
-    return startPlayback(0)
-  }
-
-  async function playRandomFromPlaylist(
-    members: PlaylistMember[],
-    playlistId: string,
-    uid: string,
-  ) {
-    await setQueueFromPlaylist(members, playlistId, uid)
-    queue.value = shuffleResolvedQueueItems(queue.value)
-    return startPlayback(0)
-  }
-
   async function playFromAlbum(album: Album, uid: string) {
     await setQueueFromAlbum(album, uid)
     return startPlayback(0)
@@ -190,6 +293,13 @@ export const usePlaybackStore = defineStore('playback', () => {
     if (!player) {
       status.value = 'playing'
       return
+    }
+    // Direct user gesture — unmuted play is allowed.
+    unmuteOnPlaying = false
+    try {
+      player.unMute()
+    } catch {
+      /* ignore */
     }
     player.playVideo()
     status.value = 'playing'
@@ -218,18 +328,21 @@ export const usePlaybackStore = defineStore('playback', () => {
     const uid = playbackUid()
     if (uid) await onTrackEnd(endReason)
 
-    const index = findPlayableIndex(currentIndex.value + 1, 1)
-    if (index < 0) {
-      await stop()
-      return
+    for (let index = currentIndex.value + 1; index < queue.value.length; index++) {
+      currentIndex.value = index
+      positionMs.value = 0
+      durationMs.value = currentItem.value?.lengthMs ?? 0
+      status.value = 'playing'
+      const loaded = await prepareAndLoadCurrentVideo(true)
+      if (loaded) {
+        void trackCurrentItem()
+        persistState()
+        return
+      }
+      error.value = `No YouTube match for “${currentItem.value?.title ?? 'track'}” — skipping`
     }
-    currentIndex.value = index
-    positionMs.value = 0
-    durationMs.value = currentItem.value?.lengthMs ?? 0
-    status.value = 'playing'
-    loadCurrentVideo(true)
-    void trackCurrentItem()
-    persistState()
+
+    await stop()
   }
 
   async function previous() {
@@ -241,35 +354,47 @@ export const usePlaybackStore = defineStore('playback', () => {
       return
     }
 
-    const index = findPlayableIndex(currentIndex.value - 1, -1)
-    if (index < 0) {
-      if (player) {
-        player.seekTo(0, true)
-        positionMs.value = 0
-      }
-      return
-    }
-
     const uid = playbackUid()
     if (uid) await onTrackEnd('skipped')
 
-    currentIndex.value = index
-    positionMs.value = 0
-    durationMs.value = currentItem.value?.lengthMs ?? 0
-    status.value = 'playing'
-    loadCurrentVideo(true)
-    void trackCurrentItem()
-    persistState()
+    for (let index = currentIndex.value - 1; index >= 0; index--) {
+      currentIndex.value = index
+      positionMs.value = 0
+      durationMs.value = currentItem.value?.lengthMs ?? 0
+      status.value = 'playing'
+      const loaded = await prepareAndLoadCurrentVideo(true)
+      if (loaded) {
+        void trackCurrentItem()
+        persistState()
+        return
+      }
+    }
+
+    if (player) {
+      player.seekTo(0, true)
+      positionMs.value = 0
+    }
   }
 
   function onPlayerReady() {
-    if (status.value === 'playing' && activeVideoId.value) {
-      loadCurrentVideo(true)
+    if (
+      (status.value === 'playing' || status.value === 'buffering') &&
+      activeVideoId.value
+    ) {
+      void prepareAndLoadCurrentVideo(true)
     }
   }
 
   function onPlayerStateChange(state: number) {
     if (state === YT_PLAYER_STATE.PLAYING) {
+      if (unmuteOnPlaying) {
+        unmuteOnPlaying = false
+        try {
+          player?.unMute()
+        } catch {
+          /* ignore */
+        }
+      }
       status.value = 'playing'
       onPlaying()
       startProgressTimer()
@@ -295,11 +420,25 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function onPlayerError(errorCode?: number) {
-    error.value =
-      errorCode === 101 || errorCode === 150
+    const embedBlocked = errorCode === 101 || errorCode === 150
+    void (async () => {
+      if (embedBlocked) {
+        const swapped = await ensurePlayableForCurrentItem({ force: true })
+        if (swapped) {
+          error.value = null
+          status.value = 'playing'
+          loadCurrentVideo(true)
+          void trackCurrentItem()
+          persistState()
+          return
+        }
+      }
+
+      error.value = embedBlocked
         ? 'This video blocks embedding (common for Topic uploads) — skipping'
         : 'YouTube playback failed for this track — skipping'
-    void next('error')
+      await next('error')
+    })()
   }
 
   async function stop() {
@@ -332,6 +471,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     queue.value = []
     sourcePlaylistId.value = null
     error.value = null
+    playableSwapAttempted.clear()
     clearPlaybackState()
     await resetSessionTracking()
   }
