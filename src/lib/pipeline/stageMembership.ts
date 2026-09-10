@@ -27,6 +27,7 @@ function toStageMembership(id: string, data: StageMembershipDocument): StageMemb
     pipelineRole: data.pipelineRole,
     addedAt: data.addedAt.toDate(),
     removedAt: data.removedAt?.toDate(),
+    previousMembershipId: data.previousMembershipId ?? undefined,
   }
 }
 
@@ -131,6 +132,7 @@ export async function openStageMembership(
     stageId: string
     pipelineRole: PipelineRole
     addedAt?: Date
+    previousMembershipId?: string
   },
 ): Promise<StageMembership> {
   const id = crypto.randomUUID()
@@ -144,6 +146,9 @@ export async function openStageMembership(
     pipelineRole: input.pipelineRole,
     addedAt: input.addedAt ? Timestamp.fromDate(input.addedAt) : serverTimestamp(),
     removedAt: null,
+    ...(input.previousMembershipId
+      ? { previousMembershipId: input.previousMembershipId }
+      : {}),
   })
 
   const created = await getDoc(ref)
@@ -157,7 +162,8 @@ export async function closeStageMembership(uid: string, membershipId: string): P
 
 export async function reopenStageMembership(uid: string, membershipId: string): Promise<void> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'stage_memberships', membershipId)
-  await updateDoc(ref, { removedAt: null })
+  // Clearing previousMembershipId enforces one-level undo (no chain after reopen).
+  await updateDoc(ref, { removedAt: null, previousMembershipId: null })
 }
 
 export async function closeOpenMembershipsForAlbumPipeline(

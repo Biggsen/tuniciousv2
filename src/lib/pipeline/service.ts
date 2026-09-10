@@ -5,13 +5,14 @@ import { getStageByPlaylistId, listStagesByPipeline } from '@/lib/pipeline/stage
 import {
   closeStageMembership,
   getOpenMembershipForAlbumPipeline,
-  listMembershipHistoryForAlbumPipeline,
+  getStageMembershipById,
   listOpenMembershipsForAlbum,
   listOpenMembershipsForPipeline,
   openStageMembership,
   reopenStageMembership,
 } from '@/lib/pipeline/stageMembership'
 import {
+  canUndoLastWorkflowStep,
   getAvailableActions,
   isEvaluationPipeline,
   resolveAdvanceTarget,
@@ -126,6 +127,23 @@ function assertWorkflowEligible(
   }
 }
 
+/** Keep album on at most one stage playlist in the funnel. */
+async function removeAlbumFromOtherStagePlaylists(
+  uid: string,
+  albumId: string,
+  stages: Stage[],
+  keepPlaylistId: string,
+): Promise<void> {
+  const siblingIds = [
+    ...new Set(
+      stages.map((entry) => entry.playlistId).filter((playlistId) => playlistId !== keepPlaylistId),
+    ),
+  ]
+  await Promise.all(
+    siblingIds.map((playlistId) => removeAlbumFromPlaylist(uid, playlistId, albumId)),
+  )
+}
+
 async function ensureCurrentMembership(
   uid: string,
   graph: PipelineGraph,
@@ -136,34 +154,37 @@ async function ensureCurrentMembership(
 
   if (!open) {
     assertWorkflowEligible(graph.pipeline, open)
-    return openStageMembership(uid, {
+    const membership = await openStageMembership(uid, {
       albumId,
       pipelineId: graph.pipeline.id,
       stageId: stage.id,
       pipelineRole: stage.pipelineRole,
     })
+    await removeAlbumFromOtherStagePlaylists(uid, albumId, graph.stages, stage.playlistId)
+    return membership
   }
 
   if (open.stageId === stage.id) return open
 
   await closeStageMembership(uid, open.id)
-  return openStageMembership(uid, {
+  const membership = await openStageMembership(uid, {
     albumId,
     pipelineId: graph.pipeline.id,
     stageId: stage.id,
     pipelineRole: stage.pipelineRole,
   })
+  // Heal membership onto the viewed stage — drop the album from every other stage playlist.
+  await removeAlbumFromOtherStagePlaylists(uid, albumId, graph.stages, stage.playlistId)
+  return membership
 }
 
-async function syncStagePlaylistMembership(
+async function syncAlbumToStagePlaylist(
   uid: string,
   albumId: string,
-  fromPlaylistId: string,
+  stages: Stage[],
   toPlaylistId: string,
 ) {
-  if (fromPlaylistId !== toPlaylistId) {
-    await removeAlbumFromPlaylist(uid, fromPlaylistId, albumId)
-  }
+  await removeAlbumFromOtherStagePlaylists(uid, albumId, stages, toPlaylistId)
   await addAlbumToPlaylist(uid, toPlaylistId, albumId)
 }
 
@@ -244,14 +265,10 @@ export async function applyWorkflowAction(
     pipelineId: graph.pipeline.id,
     stageId: targetStage.id,
     pipelineRole: targetStage.pipelineRole,
+    previousMembershipId: membership.id,
   })
 
-  await syncStagePlaylistMembership(
-    uid,
-    input.albumId,
-    currentStage.playlistId,
-    targetStage.playlistId,
-  )
+  await syncAlbumToStagePlaylist(uid, input.albumId, graph.stages, targetStage.playlistId)
 
   if (isEvaluationPipeline(graph.stages)) {
     await applyOutcomeRatingIfNeeded(uid, input.albumId, targetStage)
@@ -270,29 +287,24 @@ export async function undoLastWorkflowStep(
     throw new WorkflowEligibilityError('Playlist is not mapped to a funnel stage')
   }
 
-  const { graph, stage } = context
-  const membership = await ensureCurrentMembership(uid, graph, stage, input.albumId)
-  const history = await listMembershipHistoryForAlbumPipeline(uid, input.albumId, graph.pipeline.id)
-  const previous = history.find(
-    (item) => item.id !== membership.id && item.stageId !== membership.stageId,
-  )
+  const { graph } = context
+  const membership = await getOpenMembershipForAlbumPipeline(uid, input.albumId, graph.pipeline.id)
+  if (!canUndoLastWorkflowStep(membership)) {
+    throw new WorkflowEligibilityError('Nothing to undo for this album yet')
+  }
 
-  if (!previous) {
+  const previous = await getStageMembershipById(uid, membership!.previousMembershipId!)
+  if (!previous || previous.removedAt === undefined) {
     throw new WorkflowEligibilityError('Nothing to undo for this album yet')
   }
 
   const previousStage = stageById(graph.stages, previous.stageId)
-  const currentStage = stageById(graph.stages, membership.stageId)
+  const currentStage = stageById(graph.stages, membership!.stageId)
 
-  await closeStageMembership(uid, membership.id)
+  await closeStageMembership(uid, membership!.id)
   await reopenStageMembership(uid, previous.id)
 
-  await syncStagePlaylistMembership(
-    uid,
-    input.albumId,
-    currentStage.playlistId,
-    previousStage.playlistId,
-  )
+  await syncAlbumToStagePlaylist(uid, input.albumId, graph.stages, previousStage.playlistId)
 
   if (shouldClearRatingOnUndo(currentStage, previousStage)) {
     await updateAlbumRating(uid, input.albumId, null, null)
@@ -336,6 +348,9 @@ export async function handleStagePlaylistAdd(
   if (!context || !isSafeWorkflowTemplate(context.graph.pipeline.templateId)) return
 
   const { graph, stage } = context
+  // One stage at a time: drop this album from every other stage playlist in the funnel.
+  await removeAlbumFromOtherStagePlaylists(uid, input.albumId, graph.stages, stage.playlistId)
+
   const open = await getOpenMembershipForAlbumPipeline(uid, input.albumId, graph.pipeline.id)
   if (open?.stageId === stage.id) return
 
@@ -412,17 +427,10 @@ export async function listPlaylistWorkflowStates(
       const open = openByAlbumId.get(albumId)
 
       const actions = getAvailableActions(context.stage)
-      let canUndo = false
-      if (open) {
-        const history = await listMembershipHistoryForAlbumPipeline(
-          uid,
-          albumId,
-          context.graph.pipeline.id,
-        )
-        canUndo = history.some((entry) => entry.id !== open.id && entry.stageId !== open.stageId)
-      }
-
-      byAlbumId.set(albumId, { actions, canUndo })
+      byAlbumId.set(albumId, {
+        actions,
+        canUndo: canUndoLastWorkflowStep(open),
+      })
     }),
   )
 

@@ -60,6 +60,8 @@ export interface StageMembership {
   pipelineRole: PipelineRole
   addedAt: Date
   removedAt?: Date
+  /** Closed membership this row advanced from (Start/Yes/No). Cleared on undo reopen. */
+  previousMembershipId?: string
 }
 
 export interface StageMembershipDocument {
@@ -70,6 +72,7 @@ export interface StageMembershipDocument {
   pipelineRole: PipelineRole
   addedAt: Timestamp
   removedAt?: Timestamp | null
+  previousMembershipId?: string | null
 }
 
 export interface PipelineGraph {

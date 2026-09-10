@@ -99,7 +99,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     const playable = await findPlayableVideoForTrack(item.artist, track, topicCandidate)
 
     if (!playable) return false
-    if (playable.videoId === item.videoId) return true
+    // After embed 101/150 (`force`), the same videoId would reload forever.
+    if (playable.videoId === item.videoId) return !options.force
 
     const mapping = await saveTrackMapping(uid, {
       trackId: item.trackId,

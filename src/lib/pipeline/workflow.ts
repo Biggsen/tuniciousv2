@@ -1,4 +1,4 @@
-import type { PipelineRole, Stage, WorkflowAction } from '@/types/pipeline'
+import type { PipelineRole, Stage, StageMembership, WorkflowAction } from '@/types/pipeline'
 
 export class WorkflowTransitionError extends Error {
   constructor(message: string) {
@@ -105,4 +105,9 @@ export function shouldRestoreRatingOnLeave(stageRole: PipelineRole): boolean {
 
 export function shouldRetainRatingOnLeave(stageRole: PipelineRole): boolean {
   return stageRole === 'sink' || stageRole === 'terminal'
+}
+
+/** True when the open membership is the result of a forward Start/Yes/No that can be undone once. */
+export function canUndoLastWorkflowStep(membership: StageMembership | null | undefined): boolean {
+  return Boolean(membership?.previousMembershipId)
 }

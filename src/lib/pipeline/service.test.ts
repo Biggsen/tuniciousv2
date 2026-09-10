@@ -15,8 +15,8 @@ const mockGetStageByPlaylistId = vi.fn()
 const mockListStagesByPipeline = vi.fn()
 const mockListPlaylistsByPipelineId = vi.fn()
 const mockGetOpenMembership = vi.fn()
+const mockGetMembershipById = vi.fn()
 const mockListOpenMembershipsForPipeline = vi.fn()
-const mockListHistory = vi.fn()
 const mockOpenMembership = vi.fn()
 const mockCloseMembership = vi.fn()
 const mockReopenMembership = vi.fn()
@@ -30,9 +30,10 @@ vi.mock('@/lib/pipeline/stage', () => ({
 
 vi.mock('@/lib/pipeline/stageMembership', () => ({
   getOpenMembershipForAlbumPipeline: (...args: unknown[]) => mockGetOpenMembership(...args),
+  getStageMembershipById: (...args: unknown[]) => mockGetMembershipById(...args),
   listOpenMembershipsForAlbum: vi.fn(),
   listOpenMembershipsForPipeline: (...args: unknown[]) => mockListOpenMembershipsForPipeline(...args),
-  listMembershipHistoryForAlbumPipeline: (...args: unknown[]) => mockListHistory(...args),
+  listMembershipHistoryForAlbumPipeline: vi.fn(),
   openStageMembership: (...args: unknown[]) => mockOpenMembership(...args),
   closeStageMembership: (...args: unknown[]) => mockCloseMembership(...args),
   reopenStageMembership: (...args: unknown[]) => mockReopenMembership(...args),
@@ -82,6 +83,7 @@ function makeMembership(
     pipelineRole: overrides.pipelineRole ?? 'source',
     addedAt: overrides.addedAt ?? new Date(),
     removedAt: overrides.removedAt,
+    previousMembershipId: overrides.previousMembershipId,
   }
 }
 
@@ -115,7 +117,7 @@ beforeEach(() => {
   mockListPlaylistsByPipelineId.mockResolvedValue([])
   mockListOpenMembershipsForPipeline.mockResolvedValue([])
   mockGetOpenMembership.mockResolvedValue(null)
-  mockListHistory.mockResolvedValue([])
+  mockGetMembershipById.mockResolvedValue(null)
   mockOpenMembership.mockResolvedValue(makeMembership({ id: 'm-open', stageId: source.id }))
   mockCloseMembership.mockResolvedValue(undefined)
   mockReopenMembership.mockResolvedValue(undefined)
@@ -157,6 +159,31 @@ describe('handleStagePlaylistAdd', () => {
       repairAddedAt: false,
     })
     expect(mockOpenMembership).toHaveBeenCalled()
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-check', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-culled', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-ready', 'album-1')
+  })
+
+  it('clears sibling stage playlists when moving an open membership', async () => {
+    mockGetStageByPlaylistId.mockResolvedValue(check)
+    mockGetOpenMembership.mockResolvedValue(
+      makeMembership({ id: 'm1', stageId: source.id, pipelineRole: 'source' }),
+    )
+
+    await handleStagePlaylistAdd('user-1', { playlistId: 'playlist-check', albumId: 'album-1' })
+
+    expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-check', 'album-1', {
+      addedAt: undefined,
+      repairAddedAt: false,
+    })
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-culled', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-ready', 'album-1')
+    expect(mockCloseMembership).toHaveBeenCalledWith('user-1', 'm1')
+    expect(mockOpenMembership).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ stageId: 'check' }),
+    )
   })
 })
 
@@ -171,9 +198,35 @@ describe('applyWorkflowAction', () => {
     })
 
     expect(mockCloseMembership).toHaveBeenCalledWith('user-1', 'm1')
-    expect(mockOpenMembership).toHaveBeenCalledWith('user-1', expect.objectContaining({ stageId: 'check' }))
+    expect(mockOpenMembership).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ stageId: 'check', previousMembershipId: 'm1' }),
+    )
     expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-culled', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-ready', 'album-1')
     expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-check', 'album-1')
+  })
+
+  it('heals membership onto the viewed stage and drops sibling playlists', async () => {
+    mockGetStageByPlaylistId.mockResolvedValue(check)
+    mockGetOpenMembership.mockResolvedValue(makeMembership({ id: 'm1', stageId: source.id }))
+    mockOpenMembership.mockResolvedValue(makeMembership({ id: 'm-healed', stageId: check.id }))
+
+    await applyWorkflowAction('user-1', {
+      playlistId: 'playlist-check',
+      albumId: 'album-1',
+      action: 'yes',
+    })
+
+    // Heal source → check before advancing check → ready
+    expect(mockCloseMembership).toHaveBeenCalledWith('user-1', 'm1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1')
+    expect(mockOpenMembership).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ stageId: 'ready' }),
+    )
+    expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-ready', 'album-1')
   })
 
   it('opens membership when starting on an evaluation funnel', async () => {
@@ -196,19 +249,54 @@ describe('applyWorkflowAction', () => {
 })
 
 describe('undoLastWorkflowStep', () => {
-  it('reopens previous stage and syncs playlist back', async () => {
+  it('reopens the previousMembershipId stage and syncs playlist back', async () => {
     mockGetStageByPlaylistId.mockResolvedValue(check)
-    mockGetOpenMembership.mockResolvedValue(makeMembership({ id: 'm2', stageId: check.id }))
-    mockListHistory.mockResolvedValue([
-      makeMembership({ id: 'm2', stageId: check.id }),
+    mockGetOpenMembership.mockResolvedValue(
+      makeMembership({
+        id: 'm2',
+        stageId: check.id,
+        previousMembershipId: 'm1',
+      }),
+    )
+    mockGetMembershipById.mockResolvedValue(
       makeMembership({ id: 'm1', stageId: source.id, removedAt: new Date() }),
-    ])
+    )
 
     await undoLastWorkflowStep('user-1', { playlistId: 'playlist-check', albumId: 'album-1' })
 
+    expect(mockGetMembershipById).toHaveBeenCalledWith('user-1', 'm1')
     expect(mockCloseMembership).toHaveBeenCalledWith('user-1', 'm2')
     expect(mockReopenMembership).toHaveBeenCalledWith('user-1', 'm1')
     expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-check', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-culled', 'album-1')
+    expect(mockRemoveAlbum).toHaveBeenCalledWith('user-1', 'playlist-ready', 'album-1')
     expect(mockAddAlbum).toHaveBeenCalledWith('user-1', 'playlist-inbox', 'album-1')
+  })
+
+  it('rejects a second undo when previousMembershipId is missing', async () => {
+    mockGetStageByPlaylistId.mockResolvedValue(source)
+    mockGetOpenMembership.mockResolvedValue(makeMembership({ id: 'm1', stageId: source.id }))
+
+    await expect(
+      undoLastWorkflowStep('user-1', { playlistId: 'playlist-inbox', albumId: 'album-1' }),
+    ).rejects.toBeInstanceOf(WorkflowEligibilityError)
+    expect(mockReopenMembership).not.toHaveBeenCalled()
+  })
+})
+
+describe('listPlaylistWorkflowStates undo flag', () => {
+  it('exposes canUndo only when open membership has previousMembershipId', async () => {
+    mockListOpenMembershipsForPipeline.mockResolvedValue([
+      makeMembership({ id: 'm2', stageId: source.id, previousMembershipId: 'm1', albumId: 'album-1' }),
+      makeMembership({ id: 'm3', stageId: source.id, albumId: 'album-2' }),
+    ])
+
+    const result = await listPlaylistWorkflowStates('user-1', 'playlist-inbox', [
+      'album-1',
+      'album-2',
+    ])
+
+    expect(result.byAlbumId.get('album-1')?.canUndo).toBe(true)
+    expect(result.byAlbumId.get('album-2')?.canUndo).toBe(false)
   })
 })

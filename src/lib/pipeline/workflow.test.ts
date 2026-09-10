@@ -8,10 +8,11 @@ import {
   shouldClearRatingOnUndo,
   shouldRestoreRatingOnLeave,
   shouldRetainRatingOnLeave,
+  canUndoLastWorkflowStep,
   validateStageRoleFields,
   WorkflowTransitionError,
 } from '@/lib/pipeline/workflow'
-import type { Stage } from '@/types/pipeline'
+import type { Stage, StageMembership } from '@/types/pipeline'
 
 function makeStage(overrides: Partial<Stage> & Pick<Stage, 'id' | 'pipelineRole'>): Stage {
   return {
@@ -140,6 +141,25 @@ describe('leave and undo rating rules', () => {
     expect(shouldClearRatingOnUndo(stages['sink-1'], stages.curious)).toBe(true)
     expect(shouldClearRatingOnUndo(stages.wonderful, stages.excellent)).toBe(true)
     expect(shouldClearRatingOnUndo(stages.curious, stages.interested)).toBe(false)
+  })
+})
+
+describe('canUndoLastWorkflowStep', () => {
+  it('is true only when previousMembershipId is set', () => {
+    const withPrev: StageMembership = {
+      id: 'm2',
+      albumId: 'a1',
+      pipelineId: 'p1',
+      stageId: 'curious',
+      pipelineRole: 'transient',
+      addedAt: new Date(),
+      previousMembershipId: 'm1',
+    }
+    const withoutPrev: StageMembership = { ...withPrev, previousMembershipId: undefined }
+
+    expect(canUndoLastWorkflowStep(withPrev)).toBe(true)
+    expect(canUndoLastWorkflowStep(withoutPrev)).toBe(false)
+    expect(canUndoLastWorkflowStep(null)).toBe(false)
   })
 })
 
