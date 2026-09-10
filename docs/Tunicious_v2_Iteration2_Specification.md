@@ -1,12 +1,13 @@
 # Tunicious v2 — Iteration 2 Specification
 
-**Status:** In progress (Phase 1 complete)  
+**Status:** Complete  
+**Completed:** 2026-09-10  
 **Prerequisite:** [Iteration 1](Tunicious_v2_Iteration1_Specification.md) complete (Phases 0–8).  
-**Scope:** Evaluation funnel (pipelines, stages, ratings). Custom pipeline editing and smart queue are **deferred** — see §1.2 and §12.
+**Scope:** Evaluation funnel (pipelines, stages, ratings). Custom pipeline editing and smart queue are **deferred** — see §1.2 and §13.
 
 This document is **self-contained** for iteration 2 implementation. Pipeline concepts were sketched in iteration 1 Appendix A; this spec supersedes that appendix for build purposes.
 
-> Note: Catalog architecture has since moved toward global lbums/rtists with per-user lbum_entries overlays and /album/:id routing.
+> Note: Catalog architecture has since moved toward global albums/artists with per-user album_entries overlays and /album/:id routing.
 
 ### Build progress
 
@@ -17,7 +18,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 | 2 — Playlist grouping UI | Complete | Collapsible groups; delete funnel with confirm; flat list for other playlists |
 | 3 — Pipeline workflow engine | Complete | Stage playlist Start/Yes/No/Undo with membership + playlist sync; evaluation legacy rows guarded until migration |
 | 4 — Rating & submission | Complete | Manual stars, submission confirm, auto-rate on rated exits, §7.4 display states |
-| 5 — Polish & exit criteria | Not started | Edge cases, rules audit, indexes |
+| 5 — Polish & exit criteria | Complete | Exit criteria met; optional `sourcePipelineId` on sessions skipped |
 
 ---
 
@@ -25,7 +26,7 @@ This document is **self-contained** for iteration 2 implementation. Pipeline con
 
 Add an **evaluation funnel** to Tunicious v2: albums move through named stages (backed by playlists), users advance with **Start** / **Yes** / **No**, and **rated exits** (sinks and terminal) write **star ratings** to the library.
 
-Iteration 2 builds on the iteration 1 player (library, playlists, YouTube playback, sessions, Last.fm). Playback behaviour is unchanged except optional `sourcePipelineId` on sessions.
+Iteration 2 builds on the iteration 1 player (library, playlists, YouTube playback, sessions, Last.fm). Playback behaviour is unchanged. Optional `sourcePipelineId` on sessions was **skipped**.
 
 ### 1.1 Iteration 2 delivers
 
@@ -205,11 +206,11 @@ Existing iteration 1 fields unchanged. Add:
 
 **In pipeline (evaluation):** `ratingSubmittedPipelineId` set from first add to any stage playlist until removed from **all** evaluation stage playlists (or pipeline deleted).
 
-### 4.7 `PlaybackSession` (optional)
+### 4.7 `PlaybackSession` (optional — skipped)
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `sourcePipelineId` | string? | When queue built from a stage playlist |
+| `sourcePipelineId` | string? | When queue built from a stage playlist — **not implemented** |
 
 ---
 
@@ -528,10 +529,12 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 
 ### Phase 5 — Polish & ship
 
-- `sourcePipelineId` on playback sessions (optional)
-- Firestore rules + indexes deploy
+- ~~`sourcePipelineId` on playback sessions (optional)~~ — **skipped**
+- Firestore indexes for stage memberships; user-scoped rules cover pipeline docs
 - Edge cases: re-queue, delete pipeline, direct drop on sink
-- README update
+- README links this spec
+
+**Status:** Complete (optional `sourcePipelineId` deferred indefinitely / not required)
 
 **Done when:** §12 exit criteria met.
 
@@ -541,17 +544,17 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 
 ## 12. Exit criteria (iteration 2 complete)
 
-- [ ] User can set up evaluation funnel once (ten stages mapped to playlists; existing memberships preserved)
-- [ ] Stage playlists appear in collapsible group on `/playlists`
-- [ ] Add album to Queued → submission; Start → Curious
-- [ ] Yes/No through transients; lands on correct sink or Wonderful
+- [x] User can set up evaluation funnel once (ten stages mapped to playlists; existing memberships preserved)
+- [x] Stage playlists appear in collapsible group on `/playlists`
+- [x] Add album to Queued → submission; Start → Curious
+- [x] Yes/No through transients; lands on correct sink or Wonderful
 - [x] Auto-rate on sink/terminal; manual rating disabled while in funnel
 - [x] Manual rating on library/album when not in funnel
 - [x] Remove from transient/source restores `ratingBeforeSubmission`
 - [x] Remove from sink/terminal retains rating
 - [x] One-level undo; undo out of sink clears rating
 - [x] Re-add to Queued after completion works with submission confirm
-- [ ] Delete pipeline keeps playlists; memberships closed; rating cleanup correct
+- [x] Delete pipeline keeps playlists; memberships closed; rating cleanup correct
 - [x] Play stage playlist uses existing playback engine
 
 ---
@@ -565,6 +568,7 @@ Extend iteration 1 rules: `pipelines`, `stages`, `stage_memberships` under `user
 | **Workflow pipelines** | No auto-rate; coexist with evaluation |
 | **Pipeline summary row** | Beyond collapsible group |
 | **Rating history** | `AlbumRatingEvent` audit trail |
+| **`sourcePipelineId` on sessions** | Optional Phase 5 item; skipped for iteration 2 |
 
 ---
 
