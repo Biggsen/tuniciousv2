@@ -35,8 +35,8 @@ export function artistDedupeKey(seed: ArtistSeedInput): string {
 }
 
 export function toArtistDocumentFields(
-  artist: Omit<Artist, 'importedAt'>,
-): Omit<Artist, 'importedAt'> {
+  artist: Omit<Artist, 'importedAt' | 'importedBy'>,
+): Omit<Artist, 'importedAt' | 'importedBy'> {
   return {
     id: artist.id,
     name: artist.name,
@@ -44,6 +44,8 @@ export function toArtistDocumentFields(
     artistMbid: artist.artistMbid,
     scrobbleName: artist.scrobbleName,
     nameLower: artist.nameLower,
+    imageUrlSmall: artist.imageUrlSmall,
+    imageUrlLarge: artist.imageUrlLarge,
     preferredYouTubeChannelId: artist.preferredYouTubeChannelId,
     preferredYouTubeChannelTitle: artist.preferredYouTubeChannelTitle,
   }

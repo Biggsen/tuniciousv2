@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
-import PlaceholderPage from '@/components/PlaceholderPage.vue'
+import {
+  listArchivedAlbums,
+  unarchiveAlbum,
+  type ArchivedAlbumSummary,
+} from '@/lib/album/archive'
+import { isAdminUid } from '@/lib/auth/admin'
 import {
   completeLastfmConnect,
   connectLastfm,
@@ -9,11 +15,22 @@ import {
   getPendingLastfmAuthToken,
 } from '@/lib/lastfm/auth'
 import { refreshLibraryPlaycounts } from '@/lib/lastfm/scrobble'
+import { refreshAlbumCoverUrls } from '@/lib/album/refreshCoverUrls'
+import { refreshArtistImageUrls } from '@/lib/artist/refreshImageUrls'
 import { getDefaultMusicBrainzUserAgent } from '@/lib/musicbrainz/userAgent'
 import { updateUserSettings } from '@/lib/userProfile'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 
 const auth = useAuthStore()
+const library = useLibraryStore()
+
+const isAdmin = computed(() => isAdminUid(auth.user?.uid))
+const archivedAlbums = ref<ArchivedAlbumSummary[]>([])
+const archivedLoading = ref(false)
+const archivedError = ref<string | null>(null)
+const archivedMessage = ref<string | null>(null)
+const restoringAlbumId = ref<string | null>(null)
 
 const musicbrainzUserAgent = ref('')
 const saving = ref(false)
@@ -27,7 +44,61 @@ const lastfmError = ref<string | null>(null)
 const lastfmMessage = ref<string | null>(null)
 const pendingLastfmToken = ref<string | null>(null)
 
+const coverRefreshing = ref(false)
+const coverMessage = ref<string | null>(null)
+const coverError = ref<string | null>(null)
+
+const artistImageRefreshing = ref(false)
+const artistImageMessage = ref<string | null>(null)
+const artistImageError = ref<string | null>(null)
+
 const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.username))
+
+const memberSince = computed(() => {
+  const date = auth.profile?.createdAt
+  return date ? date.toLocaleDateString(undefined, { dateStyle: 'long' }) : '—'
+})
+
+async function loadArchivedAlbums() {
+  if (!isAdmin.value) return
+
+  archivedLoading.value = true
+  archivedError.value = null
+  try {
+    archivedAlbums.value = await listArchivedAlbums()
+  } catch (err) {
+    archivedError.value = err instanceof Error ? err.message : 'Failed to load archived albums'
+  } finally {
+    archivedLoading.value = false
+  }
+}
+
+async function handleRestoreArchived(albumId: string) {
+  if (!auth.user) return
+
+  restoringAlbumId.value = albumId
+  archivedMessage.value = null
+  archivedError.value = null
+
+  try {
+    await unarchiveAlbum(auth.user.uid, albumId)
+    archivedAlbums.value = archivedAlbums.value.filter((album) => album.id !== albumId)
+    library.invalidate()
+    archivedMessage.value = 'Album restored to the library.'
+  } catch (err) {
+    archivedError.value = err instanceof Error ? err.message : 'Failed to restore album'
+  } finally {
+    restoringAlbumId.value = null
+  }
+}
+
+onMounted(() => {
+  void loadArchivedAlbums()
+})
+
+watch(isAdmin, (value) => {
+  if (value) void loadArchivedAlbums()
+})
 
 watch(
   () => auth.profile?.settings.musicbrainzUserAgent,
@@ -132,29 +203,85 @@ async function handleRefreshPlaycounts() {
     lastfmSyncing.value = false
   }
 }
+
+async function handleRefreshCoverUrls() {
+  if (!auth.user) return
+  if (!confirm('Re-fetch cover art for all library albums? This may take a minute.')) return
+
+  coverRefreshing.value = true
+  coverError.value = null
+  coverMessage.value = null
+
+  try {
+    const result = await refreshAlbumCoverUrls(auth.user.uid)
+    coverMessage.value = `Updated ${result.updated} covers · ${result.unchanged} unchanged · ${result.noArt} without art · ${result.failed} failed`
+  } catch (err) {
+    coverError.value = err instanceof Error ? err.message : 'Failed to refresh cover art'
+  } finally {
+    coverRefreshing.value = false
+  }
+}
+
+async function handleRefreshArtistImages() {
+  if (!auth.user) return
+  if (!confirm('Re-fetch artist photos from MusicBrainz / Wikidata? This may take several minutes.')) {
+    return
+  }
+
+  artistImageRefreshing.value = true
+  artistImageMessage.value = null
+  artistImageError.value = null
+
+  try {
+    const result = await refreshArtistImageUrls(
+      auth.user.uid,
+      musicbrainzUserAgent.value || undefined,
+    )
+    artistImageMessage.value = `Updated ${result.updated} photos · ${result.unchanged} unchanged · ${result.noArt} without art · ${result.failed} failed`
+  } catch (err) {
+    artistImageError.value = err instanceof Error ? err.message : 'Failed to refresh artist photos'
+  } finally {
+    artistImageRefreshing.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-8">
-    <PlaceholderPage
-      title="Account"
-      description="Signed-in user details."
-    >
-      <dl class="mt-4 space-y-3 text-sm">
+  <div class="mx-auto max-w-2xl space-y-6">
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">Account</h2>
+      <p class="mt-1 text-sm text-text-muted">Your signed-in profile</p>
+
+      <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
         <div>
           <dt class="text-text-muted">Display name</dt>
-          <dd>{{ auth.profile?.displayName ?? '—' }}</dd>
+          <dd class="mt-0.5 font-medium">{{ auth.profile?.displayName ?? '—' }}</dd>
         </div>
         <div>
           <dt class="text-text-muted">Email</dt>
-          <dd>{{ auth.profile?.email ?? '—' }}</dd>
+          <dd class="mt-0.5">{{ auth.profile?.email ?? '—' }}</dd>
         </div>
-        <div>
+        <div class="sm:col-span-2">
           <dt class="text-text-muted">User ID</dt>
-          <dd class="break-all font-mono text-xs">{{ auth.user?.uid ?? '—' }}</dd>
+          <dd class="mt-0.5 font-mono text-xs">{{ auth.user?.uid ?? '—' }}</dd>
+          <p v-if="!isAdmin" class="mt-1 text-xs text-text-muted">
+            Set <code class="text-text">VITE_ADMIN_UIDS</code> to this value in <code class="text-text">.env</code> to enable archive tools.
+          </p>
+        </div>
+        <div class="sm:col-span-2">
+          <dt class="text-text-muted">Member since</dt>
+          <dd class="mt-0.5">{{ memberSince }}</dd>
         </div>
       </dl>
-    </PlaceholderPage>
+
+      <button
+        type="button"
+        class="mt-5 rounded-lg border border-border px-4 py-2 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text md:hidden"
+        @click="auth.signOutUser()"
+      >
+        Sign out
+      </button>
+    </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">Last.fm</h2>
@@ -213,6 +340,100 @@ async function handleRefreshPlaycounts() {
     </section>
 
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">Library</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Re-fetch album covers from Cover Art Archive, or artist photos via MusicBrainz and Wikidata
+        (with album-cover fallback). May take a while for large libraries.
+      </p>
+
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+          :disabled="coverRefreshing"
+          @click="handleRefreshCoverUrls"
+        >
+          {{ coverRefreshing ? 'Refreshing covers…' : 'Refresh cover art' }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+          :disabled="artistImageRefreshing"
+          @click="handleRefreshArtistImages"
+        >
+          {{ artistImageRefreshing ? 'Refreshing photos…' : 'Refresh artist photos' }}
+        </button>
+      </div>
+
+      <p v-if="coverMessage" class="mt-3 text-sm text-emerald-400">{{ coverMessage }}</p>
+      <p v-if="coverError" class="mt-3 text-sm text-red-300">{{ coverError }}</p>
+      <p v-if="artistImageMessage" class="mt-3 text-sm text-emerald-400">{{ artistImageMessage }}</p>
+      <p v-if="artistImageError" class="mt-3 text-sm text-red-300">{{ artistImageError }}</p>
+    </section>
+
+    <section
+      v-if="isAdmin"
+      class="rounded-xl border border-border bg-surface-raised/50 p-6"
+    >
+      <h2 class="text-lg font-medium">Archived albums</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Albums hidden from the library. Permanent purge from the database can come later once
+        reference checks are in place.
+      </p>
+
+      <p v-if="archivedLoading" class="mt-4 text-sm text-text-muted">Loading archived albums…</p>
+      <p v-else-if="archivedAlbums.length === 0" class="mt-4 text-sm text-text-muted">
+        No archived albums.
+      </p>
+      <ul v-else class="mt-4 divide-y divide-border rounded-xl border border-border">
+        <li
+          v-for="album in archivedAlbums"
+          :key="album.id"
+          class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
+        >
+          <div class="min-w-0">
+            <RouterLink
+              :to="{ name: 'album-detail', params: { id: album.id } }"
+              class="font-medium transition-colors hover:text-accent"
+            >
+              {{ album.title }}
+            </RouterLink>
+            <p class="mt-0.5 text-xs text-text-muted">
+              {{ album.artist }}
+              <template v-if="album.albumYear"> · {{ album.albumYear }}</template>
+              · archived {{ album.archivedAt.toLocaleDateString() }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:bg-white/5 disabled:opacity-50"
+            :disabled="restoringAlbumId === album.id"
+            @click="handleRestoreArchived(album.id)"
+          >
+            {{ restoringAlbumId === album.id ? 'Restoring…' : 'Restore' }}
+          </button>
+        </li>
+      </ul>
+
+      <p v-if="archivedMessage" class="mt-3 text-sm text-emerald-400">{{ archivedMessage }}</p>
+      <p v-if="archivedError" class="mt-3 text-sm text-red-300">{{ archivedError }}</p>
+    </section>
+
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
+      <h2 class="text-lg font-medium">v1 pipeline migration</h2>
+      <p class="mt-2 text-sm text-text-muted">
+        Stage v1 funnel history, match albums to the library, and apply
+        <code class="text-text">StageMembership</code> rows.
+      </p>
+      <RouterLink
+        to="/migration"
+        class="mt-4 inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
+      >
+        Open migration
+      </RouterLink>
+    </section>
+
+    <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">MusicBrainz</h2>
       <p class="mt-2 text-sm text-text-muted">
         MusicBrainz requires a descriptive User-Agent (app name + contact email).
@@ -233,14 +454,14 @@ async function handleRefreshPlaycounts() {
         Default: {{ getDefaultMusicBrainzUserAgent() }}
       </p>
 
-      <div class="mt-4 flex items-center gap-3">
+      <div class="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
           class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
           :disabled="saving"
           @click="saveMusicBrainzUserAgent"
         >
-          Save
+          {{ saving ? 'Saving…' : 'Save' }}
         </button>
         <span v-if="saved" class="text-sm text-emerald-400">Saved</span>
         <span v-if="saveError" class="text-sm text-red-300">{{ saveError }}</span>

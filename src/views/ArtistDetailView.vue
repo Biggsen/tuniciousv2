@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
+import ArtistAvatar from '@/components/artist/ArtistAvatar.vue'
+import { pickArtistImageLarge } from '@/lib/artist/artistImage'
 import { getArtistById, setArtistScrobbleName } from '@/lib/artist/firestore'
 import { listAlbumsByArtist } from '@/lib/album/firestore'
+import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { useAuthStore } from '@/stores/auth'
 import type { Album, Artist } from '@/types/library'
 
@@ -20,6 +23,19 @@ const scrobbleName = ref('')
 const savingScrobbleName = ref(false)
 const scrobbleNameSaved = ref(false)
 const scrobbleNameError = ref<string | null>(null)
+
+const backLink = computed(() => {
+  if (route.query.mode === 'artist') {
+    return {
+      to: { name: 'library', query: { mode: 'artist' } },
+      label: 'Library',
+    }
+  }
+  return {
+    to: { name: 'library' },
+    label: 'Library',
+  }
+})
 
 onMounted(async () => {
   if (!auth.user) return
@@ -69,8 +85,21 @@ async function saveScrobbleName() {
     <ExplorerLoading v-if="loading" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="artist">
-      <header class="mb-6">
-        <h2 class="text-2xl font-semibold">{{ artist.name }}</h2>
+      <RouterLink
+        :to="backLink.to"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-text"
+      >
+        ← {{ backLink.label }}
+      </RouterLink>
+
+      <header class="mb-6 flex items-center gap-5">
+        <ArtistAvatar :artist="artist" size="lg" rounded="full" />
+        <div class="min-w-0">
+          <h2 class="text-2xl font-semibold">{{ artist.name }}</h2>
+          <p v-if="pickArtistImageLarge(artist)" class="mt-1 text-xs text-text-muted">
+            Photo via Wikimedia Commons
+          </p>
+        </div>
       </header>
 
       <section class="mb-8 rounded-xl border border-border bg-surface-raised/50 p-4">
@@ -114,8 +143,8 @@ async function saveScrobbleName() {
           >
             <div class="h-12 w-12 shrink-0 overflow-hidden rounded bg-surface">
               <img
-                v-if="album.coverUrl"
-                :src="album.coverUrl"
+                v-if="pickAlbumCoverSmall(album)"
+                :src="pickAlbumCoverSmall(album)"
                 :alt="album.title"
                 class="h-full w-full object-cover"
               />

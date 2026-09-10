@@ -1,18 +1,30 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 
-import { getAlbumById } from '@/lib/album/firestore'
+import {
+  albumStubFromPickerItem,
+  ensureAlbumPickerForAlbumIds,
+  getAlbumPickerItemsByIdsForUser,
+  getAlbumsByIdsForUser,
+  listAlbums,
+} from '@/lib/album/firestore'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
+import { countAlbumsResolveProgress } from '@/lib/youtube/albumResolve'
+import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import type {
   Playlist,
   PlaylistDocument,
@@ -34,6 +46,7 @@ function toPlaylist(id: string, data: PlaylistDocument): Playlist {
     id,
     name: data.name,
     description: data.description,
+    pipelineId: data.pipelineId,
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   }
@@ -54,6 +67,18 @@ export async function listPlaylists(uid: string): Promise<Playlist[]> {
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 }
 
+export async function listPlaylistsByPipelineId(
+  uid: string,
+  pipelineId: string,
+): Promise<Playlist[]> {
+  const snapshot = await getDocs(
+    query(playlistsCollection(uid), where('pipelineId', '==', pipelineId)),
+  )
+  return snapshot.docs
+    .map((docSnap) => toPlaylist(docSnap.id, docSnap.data() as PlaylistDocument))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export async function getPlaylistById(uid: string, playlistId: string): Promise<Playlist | null> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId)
   const snapshot = await getDoc(ref)
@@ -65,6 +90,7 @@ export async function createPlaylist(
   uid: string,
   name: string,
   description?: string,
+  pipelineId?: string,
 ): Promise<Playlist> {
   const id = crypto.randomUUID()
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', id)
@@ -76,6 +102,7 @@ export async function createPlaylist(
       id,
       name: name.trim(),
       description: description?.trim(),
+      pipelineId,
       createdAt: now,
       updatedAt: now,
     }),
@@ -101,6 +128,18 @@ export async function updatePlaylist(
   )
 }
 
+/** Detach playlist from a deleted pipeline; keep albums and memberships. */
+export async function clearPlaylistPipelineLink(
+  uid: string,
+  playlistId: string,
+): Promise<void> {
+  const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId)
+  await updateDoc(ref, {
+    pipelineId: deleteField(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function deletePlaylist(uid: string, playlistId: string): Promise<void> {
   const members = await getDocs(membersCollection(uid, playlistId))
   const batch = writeBatch(getFirestoreDb())
@@ -118,25 +157,64 @@ async function touchPlaylist(uid: string, playlistId: string): Promise<void> {
   await updateDoc(ref, { updatedAt: serverTimestamp() })
 }
 
+export async function listPlaylistMemberships(
+  uid: string,
+  playlistId: string,
+): Promise<PlaylistMembership[]> {
+  const snapshot = await getDocs(membersCollection(uid, playlistId))
+  return snapshot.docs
+    .map((docSnap) => toMembership(docSnap.data() as PlaylistMembershipDocument))
+    .sort((a, b) => a.position - b.position)
+}
+
+/**
+ * Lightweight playlist rows from album_picker (track ids only, no titles).
+ * Use hydratePlaylistMemberAlbums when tracklists / playback need full docs.
+ */
 export async function listPlaylistMembers(
   uid: string,
   playlistId: string,
+  options: { fullAlbums?: boolean } = {},
 ): Promise<PlaylistMember[]> {
-  const snapshot = await getDocs(membersCollection(uid, playlistId))
-  const memberships = snapshot.docs
-    .map((docSnap) => toMembership(docSnap.data() as PlaylistMembershipDocument))
-    .sort((a, b) => a.position - b.position)
+  const memberships = await listPlaylistMemberships(uid, playlistId)
+  if (memberships.length === 0) return []
 
-  const members: PlaylistMember[] = []
+  const albumIds = memberships.map((membership) => membership.albumId)
 
-  for (const membership of memberships) {
-    const album = await getAlbumById(uid, membership.albumId)
-    if (album) {
-      members.push({ membership, album })
-    }
+  if (options.fullAlbums) {
+    const albums = await getAlbumsByIdsForUser(uid, albumIds)
+    return memberships
+      .map((membership) => {
+        const album = albums.get(membership.albumId)
+        return album ? { membership, album } : null
+      })
+      .filter((member): member is PlaylistMember => Boolean(member))
   }
 
-  return members
+  await ensureAlbumPickerForAlbumIds(uid, albumIds)
+  const pickers = await getAlbumPickerItemsByIdsForUser(uid, albumIds)
+  return memberships
+    .map((membership) => {
+      const picker = pickers.get(membership.albumId)
+      return picker ? { membership, album: albumStubFromPickerItem(picker) } : null
+    })
+    .filter((member): member is PlaylistMember => Boolean(member))
+}
+
+/** Replace stub albums with full album docs (track titles, etc.). */
+export async function hydratePlaylistMemberAlbums(
+  uid: string,
+  members: PlaylistMember[],
+): Promise<PlaylistMember[]> {
+  if (members.length === 0) return members
+  const albums = await getAlbumsByIdsForUser(
+    uid,
+    members.map((member) => member.album.id),
+  )
+  return members.map((member) => {
+    const album = albums.get(member.album.id)
+    return album ? { ...member, album } : member
+  })
 }
 
 async function nextMemberPosition(uid: string, playlistId: string): Promise<number> {
@@ -156,17 +234,22 @@ export async function addAlbumToPlaylist(
   uid: string,
   playlistId: string,
   albumId: string,
+  options: { addedAt?: Date; repairAddedAt?: boolean } = {},
 ): Promise<void> {
   const ref = doc(getFirestoreDb(), 'users', uid, 'playlists', playlistId, 'members', albumId)
   const existing = await getDoc(ref)
 
   if (existing.exists()) {
+    if (options.repairAddedAt && options.addedAt) {
+      await updateDoc(ref, { addedAt: Timestamp.fromDate(options.addedAt) })
+      await touchPlaylist(uid, playlistId)
+    }
     return
   }
 
   await setDoc(ref, {
     albumId,
-    addedAt: serverTimestamp(),
+    addedAt: options.addedAt ? Timestamp.fromDate(options.addedAt) : serverTimestamp(),
     position: await nextMemberPosition(uid, playlistId),
   })
 
@@ -189,16 +272,16 @@ export async function reorderPlaylistMember(
   albumId: string,
   direction: 'up' | 'down',
 ): Promise<void> {
-  const members = await listPlaylistMembers(uid, playlistId)
-  const index = members.findIndex((member) => member.album.id === albumId)
+  const memberships = await listPlaylistMemberships(uid, playlistId)
+  const index = memberships.findIndex((membership) => membership.albumId === albumId)
 
   if (index < 0) return
 
   const swapIndex = direction === 'up' ? index - 1 : index + 1
-  if (swapIndex < 0 || swapIndex >= members.length) return
+  if (swapIndex < 0 || swapIndex >= memberships.length) return
 
-  const current = members[index]
-  const swap = members[swapIndex]
+  const current = memberships[index]
+  const swap = memberships[swapIndex]
   const batch = writeBatch(getFirestoreDb())
 
   const currentRef = doc(
@@ -208,7 +291,7 @@ export async function reorderPlaylistMember(
     'playlists',
     playlistId,
     'members',
-    current.album.id,
+    current.albumId,
   )
   const swapRef = doc(
     getFirestoreDb(),
@@ -217,11 +300,11 @@ export async function reorderPlaylistMember(
     'playlists',
     playlistId,
     'members',
-    swap.album.id,
+    swap.albumId,
   )
 
-  batch.update(currentRef, { position: swap.membership.position })
-  batch.update(swapRef, { position: current.membership.position })
+  batch.update(currentRef, { position: swap.position })
+  batch.update(swapRef, { position: current.position })
 
   await batch.commit()
   await touchPlaylist(uid, playlistId)
@@ -230,4 +313,62 @@ export async function reorderPlaylistMember(
 export async function countPlaylistAlbums(uid: string, playlistId: string): Promise<number> {
   const snapshot = await getDocs(membersCollection(uid, playlistId))
   return snapshot.size
+}
+
+export interface PlaylistStats {
+  albumCount: number
+  trackCount: number
+  /** Albums with every track mapped to YouTube. */
+  resolvedAlbumCount: number
+  resolvedTrackCount: number
+}
+
+export async function getPlaylistStatsMap(
+  uid: string,
+  playlistIds: string[],
+): Promise<Map<string, PlaylistStats>> {
+  if (playlistIds.length === 0) return new Map()
+
+  const [albums, ...memberSnapshots] = await Promise.all([
+    listAlbums(uid),
+    ...playlistIds.map((playlistId) => getDocs(membersCollection(uid, playlistId))),
+  ])
+
+  const albumById = new Map(albums.map((album) => [album.id, album]))
+  const albumsByPlaylist = new Map<string, typeof albums>()
+  const allTrackIds: string[] = []
+
+  for (let index = 0; index < playlistIds.length; index++) {
+    const playlistId = playlistIds[index]
+    const snapshot = memberSnapshots[index]
+    const playlistAlbums = []
+
+    for (const docSnap of snapshot.docs) {
+      const albumId = (docSnap.data() as PlaylistMembershipDocument).albumId
+      const album = albumById.get(albumId)
+      if (!album) continue
+      playlistAlbums.push(album)
+      for (const track of album.tracks) {
+        allTrackIds.push(track.id)
+      }
+    }
+
+    albumsByPlaylist.set(playlistId, playlistAlbums)
+  }
+
+  const mappings = await getMappingsForTrackIds(uid, allTrackIds)
+  const stats = new Map<string, PlaylistStats>()
+
+  for (const playlistId of playlistIds) {
+    const playlistAlbums = albumsByPlaylist.get(playlistId) ?? []
+    const progress = countAlbumsResolveProgress(playlistAlbums, mappings)
+    stats.set(playlistId, {
+      albumCount: progress.albumCount,
+      trackCount: progress.trackCount,
+      resolvedAlbumCount: progress.resolvedAlbumCount,
+      resolvedTrackCount: progress.resolvedTrackCount,
+    })
+  }
+
+  return stats
 }

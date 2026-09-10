@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       port: 4827,
+      headers: {
+        // YouTube embeds require a Referer (error 153 / stuck BUFFERING without it).
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
       proxy: {
         '/api/musicbrainz': {
           target: 'https://musicbrainz.org',
@@ -47,6 +51,10 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
+    },
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
     },
   }
 })

@@ -1,13 +1,32 @@
 const COVER_ART_ARCHIVE = 'https://coverartarchive.org'
 
-export async function fetchReleaseCoverUrl(releaseMbid: string): Promise<string | undefined> {
+export interface ReleaseCoverUrls {
+  small?: string
+  large?: string
+}
+
+export function pickAlbumCoverSmall(album: {
+  coverUrlSmall?: string
+  coverUrlLarge?: string
+}): string | undefined {
+  return album.coverUrlSmall ?? album.coverUrlLarge
+}
+
+export function pickAlbumCoverLarge(album: {
+  coverUrlSmall?: string
+  coverUrlLarge?: string
+}): string | undefined {
+  return album.coverUrlLarge ?? album.coverUrlSmall
+}
+
+export async function fetchReleaseCoverUrls(releaseMbid: string): Promise<ReleaseCoverUrls> {
   try {
     const response = await fetch(`${COVER_ART_ARCHIVE}/release/${releaseMbid}`, {
       headers: { Accept: 'application/json' },
     })
 
     if (!response.ok) {
-      return undefined
+      return {}
     }
 
     const data = (await response.json()) as {
@@ -15,8 +34,11 @@ export async function fetchReleaseCoverUrl(releaseMbid: string): Promise<string 
     }
 
     const front = data.images?.find((image) => image.front)
-    return front?.thumbnails?.large ?? front?.thumbnails?.small
+    return {
+      small: front?.thumbnails?.small,
+      large: front?.thumbnails?.large,
+    }
   } catch {
-    return undefined
+    return {}
   }
 }

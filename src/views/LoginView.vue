@@ -43,7 +43,7 @@ async function handleEmailSignIn() {
 <template>
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md rounded-2xl border border-border bg-surface-raised p-8 shadow-xl">
-      <p class="text-sm font-medium uppercase tracking-wider text-accent">Phase 0</p>
+      <p class="text-sm font-medium uppercase tracking-wider text-accent">Tunicious v2</p>
       <h1 class="mt-2 text-2xl font-semibold">Sign in to Tunicious</h1>
       <p class="mt-2 text-sm text-text-muted">
         Personal music player — MusicBrainz, YouTube, Last.fm.

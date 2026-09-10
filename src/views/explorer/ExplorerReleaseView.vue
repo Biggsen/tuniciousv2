@@ -17,6 +17,7 @@ import {
   yearFromDate,
 } from '@/lib/musicbrainz/format'
 import { useAuthStore } from '@/stores/auth'
+import { useLibraryStore } from '@/stores/library'
 import type { Album } from '@/types/library'
 import type { MbReleaseDetail, MbTrack } from '@/lib/musicbrainz/types'
 
@@ -108,6 +109,7 @@ async function importToLibrary() {
 
   try {
     const album = await importReleaseToLibrary(auth.user.uid, mbid(), userAgent.value)
+    useLibraryStore().invalidate()
     libraryAlbum.value = album
     router.push({ name: 'album-detail', params: { id: album.id } })
   } catch (err) {
@@ -134,7 +136,7 @@ watch(() => route.params.mbid, load)
   <div>
     <ExplorerBreadcrumb :items="breadcrumbItems" />
 
-    <ExplorerLoading v-if="loading" />
+    <ExplorerLoading v-if="loading" message="Loading from MusicBrainz…" />
     <ExplorerError v-else-if="error" :message="error" />
     <template v-else-if="release">
       <header class="mb-6">
@@ -182,7 +184,7 @@ watch(() => route.params.mbid, load)
           :key="track.id || `${track.number}-${index}`"
           class="flex items-center gap-4 px-4 py-2.5 text-sm"
         >
-          <span class="w-8 shrink-0 text-right text-text-muted tabular-nums">{{ track.number }}</span>
+          <span class="w-8 shrink-0 text-right text-text-muted tabular-nums">{{ index + 1 }}</span>
           <span class="min-w-0 flex-1 truncate">{{ track.title }}</span>
           <span class="shrink-0 text-xs text-text-muted tabular-nums">
             {{ formatDuration(trackLength(track)) }}

@@ -2,9 +2,12 @@
 
 Personal music player — MusicBrainz metadata, YouTube playback, Last.fm scrobbling.
 
-**Status:** Phase 7 — Last.fm
+**Status:** Phase 8 — Polish and ship
 
-Full specification: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
+Specifications:
+
+- Iteration 1: [docs/Tunicious_v2_Iteration1_Specification.md](docs/Tunicious_v2_Iteration1_Specification.md)
+- Iteration 2 (evaluation funnel): [docs/Tunicious_v2_Iteration2_Specification.md](docs/Tunicious_v2_Iteration2_Specification.md)
 
 ## Stack
 
@@ -95,11 +98,17 @@ Resolve tracks from **Library → album detail**: auto-resolve, manual search, p
 
 ```bash
 npm run build
-cd functions && npm run build
-firebase deploy --only functions,hosting
+cd functions && npm install && npm run build
+firebase deploy --only firestore:rules,firestore:indexes,functions,hosting
 ```
 
-Ensure `.env` values are set in your CI/deploy environment (Vite inlines `VITE_*` at build time). Set `YOUTUBE_API_KEY` and `MUSICBRAINZ_DEFAULT_USER_AGENT` for Cloud Functions.
+Deploy Firestore rules and indexes before or with the first production release. Ensure `.env` values are set in your CI/deploy environment (Vite inlines `VITE_*` at build time). Set `YOUTUBE_API_KEY`, `LASTFM_*`, and `MUSICBRAINZ_DEFAULT_USER_AGENT` in Cloud Functions config:
+
+```bash
+firebase functions:config:set youtube.api_key="..." lastfm.api_key="..." lastfm.shared_secret="..." lastfm.callback_url="..."
+```
+
+Or use Firebase environment secrets / `.env` in functions as configured in your project.
 
 ## Project layout
 
@@ -126,6 +135,15 @@ docs/             Product specification
 - [x] Phase 5 — Playback engine (IFrame player, global bar, album/playlist play)
 - [x] Phase 6 — Session tracking (PlaybackSession, TrackListenRecord, /history, local playcounts)
 - [x] Phase 7 — Last.fm (connect, scrobbling, now playing, playcount sync)
+- [ ] Phase 8 — Polish and ship (in progress; deploy deferred)
+
+## Phase 8 (in progress)
+
+- [x] Home screen with recent listens and resume playback
+- [x] Mobile-responsive layout and player bar
+- [x] Settings polish
+- [x] Firestore indexes and security rules audit
+- [ ] Production deploy (deferred)
 
 ## Last.fm (Phase 7)
 
@@ -144,6 +162,6 @@ Connect in **Settings → Last.fm**. Scrobbles fire when a listen reaches `min(t
 - **Local dev:** Vite middleware proxies `/api/lastfm` (uses `LASTFM_*` from `.env`)
 - **Production:** Firebase Cloud Function `lastfmProxy` (set `LASTFM_*` in Functions config)
 
-## Next: Phase 8
+## Next
 
-Polish, home screen, mobile player bar, and production deploy. See spec §11 Phase 8.
+Continue UI polish locally. Production deploy and a prod Last.fm app can wait until you need a public URL. See spec §11 Phase 8.

@@ -1,6 +1,6 @@
 # Tunicious v2 — Iteration 1 Specification
 
-**Status:** In progress — **Phases 0–7 complete**; Phase 8 (Polish and ship) is next  
+**Status:** In progress — **Phases 0–7 complete**; **Phase 8 (Polish and ship) in progress**  
 **Validation:** Architecture and behaviour below were proven in a disposable local lab (MusicBrainz explorer, library import, YouTube resolution, playback, session tracking, Last.fm). This document is **self-contained** — no other spec files are required to implement iteration 1.
 
 ### Build progress
@@ -15,7 +15,7 @@
 | 5 — Playback engine | **Complete** | IFrame player, global bar, play album/playlist, skip unresolved |
 | 6 — Session tracking | **Complete** | PlaybackSession, TrackListenRecord, /history, local playcounts |
 | 7 — Last.fm | **Complete** | Auth, scrobbling, now playing, playcount sync, artist scrobbleName |
-| 8 — Polish and ship | Not started | |
+| 8 — Polish and ship | In progress | Home, resume, mobile layout, settings; deploy deferred |
 
 ---
 
@@ -654,18 +654,19 @@ Implementation milestones. Track with checkboxes or issues.
 
 ---
 
-### Phase 8 — Polish and ship
+### Phase 8 — Polish and ship (in progress)
 
-**Goal:** Daily-driver quality.
+**Goal:** Daily-driver quality for local use; production deploy deferred until needed.
 
-- [ ] Home: recent listens, resume playback
-- [ ] Settings polish
-- [ ] Error states, loading, empty states
-- [ ] Mobile-responsive player bar
-- [ ] Firestore indexes and security rules audit
-- [ ] Production deploy
+- [x] Home: recent listens, resume playback (`localStorage` queue persist)
+- [x] Settings polish
+- [x] Error states, loading, empty states (history fix; existing patterns on list views)
+- [x] Mobile-responsive player bar
+- [x] Mobile bottom navigation
+- [x] Firestore indexes and security rules audit
+- [ ] Production deploy (deferred — local dev is sufficient for UI iteration)
 
-**Done when:** Usable as primary music player.
+**Done when:** Usable as primary music player locally; deploy when a public URL is required.
 
 **Estimate:** 3–5 days
 
@@ -717,8 +718,8 @@ tunicious/
 
 ## Appendix A — Pipeline data model (iteration 2)
 
-**Status:** Defined, not implemented in iteration 1.  
-**Purpose:** Ensure iteration 1 schema does not block pipelines later.
+**Status:** Superseded for build purposes by [Tunicious_v2_Iteration2_Specification.md](Tunicious_v2_Iteration2_Specification.md).  
+**Purpose:** Ensure iteration 1 schema does not block pipelines later. Retained here as a short reference; full workflow, rating, and UI rules are in the iteration 2 spec.
 
 ### Concepts
 
@@ -827,10 +828,6 @@ Queued (source)
 | One playlist membership implied by stage | Many playlists + pipeline position |
 | Spotify playback | YouTube playback |
 
-### Iteration 2 features (not scheduled here)
+### Iteration 2
 
-- Pipeline / stage CRUD UI
-- Advance / terminate / undo
-- Funnel template creation
-- Smart queue generation
-- Spotify → MusicBrainz migration
+See [Tunicious_v2_Iteration2_Specification.md](Tunicious_v2_Iteration2_Specification.md). Evaluation funnel, ratings, and playlist grouping ship in iteration 2. Custom pipeline editor and smart queue are deferred to iteration 3.

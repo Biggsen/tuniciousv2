@@ -1,0 +1,163 @@
+[
+  {
+    "v1AlbumId": "1T764WfpIEjIxme1YdUEzF",
+    "albumTitle": "The Hex",
+    "artistName": "Richard Swift",
+    "playlistHistory": [
+      {
+        "playlistId": "3PTpK7Yzq05S4D4d8rrcrN",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T21:16:49.834Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2018",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b2738403cb494ddfa19bd35dfc07",
+    "extras": {
+      "artistNameLower": "richard swift",
+      "artistId": "7fSjnDr8tBO37Xbb2UXuYr",
+      "createdAt": "2026-02-14T21:16:49.848Z",
+      "updatedAt": "2026-02-14T21:16:49.848Z"
+    }
+  },
+  {
+    "v1AlbumId": "1VZxGX1lzF1QjY5QofhC5r",
+    "albumTitle": "For Ever",
+    "artistName": "Jungle",
+    "playlistHistory": [
+      {
+        "playlistId": "3PTpK7Yzq05S4D4d8rrcrN",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T21:55:08.834Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2018",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273ed7161514b659102e49bb589",
+    "extras": {
+      "artistNameLower": "jungle",
+      "artistId": "59oA5WbbQvomJz2BuRG071",
+      "createdAt": "2026-02-14T21:55:08.740Z",
+      "updatedAt": "2026-02-14T21:55:08.740Z"
+    }
+  },
+  {
+    "v1AlbumId": "2brlAmoJVSQs3qpSkblzMv",
+    "albumTitle": "Left for Dead In Seattle",
+    "artistName": "Skerik",
+    "playlistHistory": [
+      {
+        "playlistId": "3PTpK7Yzq05S4D4d8rrcrN",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T21:12:27.970Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1993",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273fe1b346e015e1e719c7e5b27",
+    "extras": {
+      "artistNameLower": "skerik",
+      "artistId": "00uSjAOZMB626Y0W2ij3Md",
+      "createdAt": "2026-02-14T21:12:27.946Z",
+      "updatedAt": "2026-02-14T21:12:27.946Z"
+    }
+  },
+  {
+    "v1AlbumId": "3X8OMpgoNyMvOEZSKvDjbh",
+    "albumTitle": "Midnight Boom",
+    "artistName": "The Kills",
+    "playlistHistory": [
+      {
+        "playlistId": "3PTpK7Yzq05S4D4d8rrcrN",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T21:23:17.504Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2008",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273160d4d0ad326af0a5825f84a",
+    "extras": {
+      "artistNameLower": "the kills",
+      "artistId": "5BYuBzqmTXwUDw2rYkwExr",
+      "createdAt": "2026-02-14T21:23:17.474Z",
+      "updatedAt": "2026-02-14T21:23:17.474Z"
+    }
+  },
+  {
+    "v1AlbumId": "4fG8BOnqmBcUiIPilVZXlz",
+    "albumTitle": "Shabooh Shoobah (Remastered)",
+    "artistName": "INXS",
+    "playlistHistory": [
+      {
+        "playlistId": "5bK537V2so6OqMaOVecYxX",
+        "addedAt": "2026-02-03T21:14:59.000Z",
+        "pipelineRole": "source",
+        "type": "known",
+        "removedAt": "2026-02-03T21:15:25.248Z"
+      },
+      {
+        "playlistId": "4YMIhj3YESsAZF4iBWKfG1",
+        "pipelineRole": "transient",
+        "type": "known",
+        "addedAt": "2026-02-03T21:15:25.668Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1982",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b2735970a8f612e783a8e68903ef",
+    "extras": {
+      "artistNameLower": "inxs",
+      "artistId": "1eClJfHLoDI4rZe5HxzBFv",
+      "createdAt": "2026-02-03T21:15:12.511Z",
+      "updatedAt": "2026-02-03T21:15:25.900Z"
+    }
+  },
+  {
+    "v1AlbumId": "7H17mkPC83lBVFxTie8FhH",
+    "albumTitle": "Aural Coincidence",
+    "artistName": "Parazit",
+    "playlistHistory": [
+      {
+        "playlistId": "3PTpK7Yzq05S4D4d8rrcrN",
+        "pipelineRole": "source",
+        "type": "new",
+        "addedAt": "2026-02-14T21:21:54.808Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "2018",
+    "albumCover": "https://i.scdn.co/image/ab67616d0000b273c4a594e46a838ba65d2ebbd4",
+    "extras": {
+      "artistNameLower": "parazit",
+      "artistId": "5LaWGNlE5SvG9EX1UO7Qtn",
+      "createdAt": "2026-02-14T21:21:54.888Z",
+      "updatedAt": "2026-02-14T21:21:54.888Z"
+    }
+  },
+  {
+    "v1AlbumId": "7kW0cpKgSVsEqcc8xgbSb0",
+    "albumTitle": "Vulgar Display of Power",
+    "artistName": "Pantera",
+    "playlistHistory": [
+      {
+        "playlistId": "5bK537V2so6OqMaOVecYxX",
+        "pipelineRole": "source",
+        "type": "known",
+        "addedAt": "2025-12-12T20:37:29.747Z",
+        "removedAt": null
+      }
+    ],
+    "releaseYear": "1992",
+    "albumCover": "https://i.scdn.co/image/ab67616d00001e02347c0a40c1e3f0c890a6d9d6",
+    "extras": {
+      "artistNameLower": "pantera",
+      "artistId": "14pVkFUHDL207LzLHtSA18",
+      "updatedAt": "2025-12-12T20:37:29.138Z",
+      "createdAt": "2025-12-12T20:37:29.138Z"
+    }
+  }
+]

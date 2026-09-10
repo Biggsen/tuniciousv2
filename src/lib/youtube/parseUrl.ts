@@ -51,3 +51,7 @@ export function parsePlaylistIdFromInput(input: string): string | null {
 
   return null
 }
+
+export function youtubeChannelUrl(channelId: string): string {
+  return `https://www.youtube.com/channel/${channelId}`
+}

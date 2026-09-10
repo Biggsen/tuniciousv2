@@ -7,6 +7,47 @@
         { "fieldPath": "artistIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "title", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "albumId", "order": "ASCENDING" },
+        { "fieldPath": "pipelineId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pipelineId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stage_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "albumId", "order": "ASCENDING" },
+        { "fieldPath": "removedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "album_picker",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "titleLower", "order": "ASCENDING" },
+        { "fieldPath": "id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "album_picker",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "artistLower", "order": "ASCENDING" },
+        { "fieldPath": "id", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

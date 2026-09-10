@@ -26,6 +26,7 @@ functions/node_modules
 # Firebase
 .firebase
 *-debug.log
+backups/
 
 # TypeScript
 *.tsbuildinfo

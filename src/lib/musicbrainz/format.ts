@@ -16,6 +16,19 @@ export function yearFromDate(date: string | undefined): string | undefined {
   return match?.[1]
 }
 
+/** Ascending by first-release year; undated groups sink to the bottom. */
+export function compareByFirstReleaseYearAsc(
+  a: { 'first-release-date'?: string },
+  b: { 'first-release-date'?: string },
+): number {
+  const yearA = yearFromDate(a['first-release-date'])
+  const yearB = yearFromDate(b['first-release-date'])
+  if (!yearA && !yearB) return 0
+  if (!yearA) return 1
+  if (!yearB) return -1
+  return Number(yearA) - Number(yearB)
+}
+
 export function formatDuration(ms: number | undefined): string {
   if (!ms || ms <= 0) return '—'
   const totalSeconds = Math.floor(ms / 1000)
@@ -32,6 +45,27 @@ export function formatReleaseGroupType(primaryType: string | undefined): string 
 export function formatCountry(country: string | undefined): string {
   if (!country) return '—'
   return country.toUpperCase()
+}
+
+/** Total tracks across media; uses per-medium track-count when present. */
+export function releaseTrackCount(release: {
+  media?: Array<{ 'track-count'?: number; tracks?: unknown[] }>
+}): number | undefined {
+  const media = release.media
+  if (!media?.length) return undefined
+
+  let total = 0
+  let sawCount = false
+  for (const medium of media) {
+    if (typeof medium['track-count'] === 'number') {
+      total += medium['track-count']
+      sawCount = true
+    } else if (Array.isArray(medium.tracks)) {
+      total += medium.tracks.length
+      sawCount = true
+    }
+  }
+  return sawCount ? total : undefined
 }
 
 /** Short label for a specific release when RG title is often identical. */

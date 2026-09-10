@@ -4,6 +4,7 @@ import type { Plugin } from 'vite'
 import {
   buildLastfmAuthUrl,
   callLastfmApi,
+  callLastfmPublicApi,
   type LastfmServerConfig,
 } from './serverApi'
 
@@ -79,6 +80,35 @@ async function handleRequest(
 
     if (subpath === 'auth/disconnect') {
       sendJson(res, 200, { ok: true })
+      return
+    }
+
+    const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo', 'track.getInfo'])
+
+    if (subpath === 'public') {
+      const method = body.method
+      if (typeof method !== 'string' || !method.trim()) {
+        sendJson(res, 400, { error: 'Missing method' })
+        return
+      }
+
+      const trimmedMethod = method.trim()
+      if (!PUBLIC_LASTFM_METHODS.has(trimmedMethod)) {
+        sendJson(res, 403, { error: 'Method not allowed' })
+        return
+      }
+
+      const params: Record<string, string> = {
+        method: trimmedMethod,
+      }
+
+      for (const [key, value] of Object.entries(body)) {
+        if (key === 'method' || value === undefined || value === null) continue
+        params[key] = String(value)
+      }
+
+      const data = await callLastfmPublicApi(config, params)
+      sendJson(res, 200, data)
       return
     }
 

@@ -1,7 +1,11 @@
 import { musicBrainzFetch } from '@/lib/musicbrainz/client'
+import { compareByFirstReleaseYearAsc } from '@/lib/musicbrainz/format'
 import type {
   MbArtistDetail,
   MbArtistSearchResult,
+  MbArtistWithUrlRels,
+  MbIsrcLookupResult,
+  MbRecordingDetail,
   MbReleaseGroupDetail,
   MbReleaseGroupSearchResult,
   MbReleaseDetail,
@@ -33,7 +37,7 @@ export async function searchReleaseGroups(
     `release-group?${searchParams({ query: term, limit: String(SEARCH_LIMIT) })}`,
     userAgent,
   )
-  return data['release-groups'] ?? []
+  return [...(data['release-groups'] ?? [])].sort(compareByFirstReleaseYearAsc)
 }
 
 export async function getArtist(mbid: string, userAgent?: string): Promise<MbArtistDetail> {
@@ -43,12 +47,22 @@ export async function getArtist(mbid: string, userAgent?: string): Promise<MbArt
   )
 }
 
+export async function getArtistWithUrlRels(
+  mbid: string,
+  userAgent?: string,
+): Promise<MbArtistWithUrlRels> {
+  return musicBrainzFetch<MbArtistWithUrlRels>(
+    `artist/${mbid}?${searchParams({ inc: 'url-rels' })}`,
+    userAgent,
+  )
+}
+
 export async function getReleaseGroup(
   mbid: string,
   userAgent?: string,
 ): Promise<MbReleaseGroupDetail> {
   return musicBrainzFetch<MbReleaseGroupDetail>(
-    `release-group/${mbid}?${searchParams({ inc: 'releases+artist-credits' })}`,
+    `release-group/${mbid}?${searchParams({ inc: 'releases+artist-credits+media' })}`,
     userAgent,
   )
 }
@@ -56,6 +70,24 @@ export async function getReleaseGroup(
 export async function getRelease(mbid: string, userAgent?: string): Promise<MbReleaseDetail> {
   return musicBrainzFetch<MbReleaseDetail>(
     `release/${mbid}?${searchParams({ inc: 'recordings+artist-credits+release-groups' })}`,
+    userAgent,
+  )
+}
+
+export async function lookupIsrc(isrc: string, userAgent?: string): Promise<MbIsrcLookupResult> {
+  const normalized = isrc.trim().toUpperCase()
+  return musicBrainzFetch<MbIsrcLookupResult>(
+    `isrc/${encodeURIComponent(normalized)}?${searchParams({})}`,
+    userAgent,
+  )
+}
+
+export async function getRecording(
+  mbid: string,
+  userAgent?: string,
+): Promise<MbRecordingDetail> {
+  return musicBrainzFetch<MbRecordingDetail>(
+    `recording/${mbid}?${searchParams({ inc: 'releases+release-groups+artist-credits' })}`,
     userAgent,
   )
 }

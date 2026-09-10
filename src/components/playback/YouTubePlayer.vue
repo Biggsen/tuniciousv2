@@ -1,20 +1,33 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 import { loadYouTubeIframeApi } from '@/lib/youtube/iframeApi'
 import type { YouTubePlayerInstance } from '@/lib/youtube/iframeApi'
 import { usePlaybackStore } from '@/stores/playback'
 
 const playback = usePlaybackStore()
+const hostEl = ref<HTMLElement | null>(null)
 
 let player: YouTubePlayerInstance | null = null
 
+function purgeLeakedPlayers() {
+  document.querySelectorAll('[data-tunicious-yt-player="1"]').forEach((node) => {
+    if (hostEl.value && (node === hostEl.value || node.contains(hostEl.value))) return
+    node.remove()
+  })
+}
+
 onMounted(async () => {
+  purgeLeakedPlayers()
+  await nextTick()
+  if (!hostEl.value) return
+
   const yt = await loadYouTubeIframeApi()
 
-  player = new yt.Player('youtube-player-host', {
-    height: '0',
-    width: '0',
+  // Non-zero in-viewport size: Chrome often refuses PLAYING on 0×0 / display:none embeds.
+  player = new yt.Player(hostEl.value, {
+    height: '48',
+    width: '48',
     playerVars: {
       controls: 0,
       disablekb: 1,
@@ -22,19 +35,31 @@ onMounted(async () => {
       rel: 0,
       modestbranding: 1,
       playsinline: 1,
+      mute: 1,
     },
     events: {
-      onReady: () => {
-        if (player) {
-          playback.registerPlayer(player)
-          playback.onPlayerReady()
+      onReady: (event) => {
+        const readyPlayer = event.target
+        player = readyPlayer
+        try {
+          const iframe = readyPlayer.getIframe()
+          iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
+          iframe.setAttribute(
+            'allow',
+            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+          )
+          iframe.dataset.tuniciousYtPlayer = '1'
+        } catch {
+          /* ignore */
         }
+        playback.registerPlayer(readyPlayer)
+        playback.onPlayerReady()
       },
       onStateChange: (event) => {
         playback.onPlayerStateChange(event.data)
       },
-      onError: () => {
-        playback.onPlayerError()
+      onError: (event) => {
+        playback.onPlayerError(event.data)
       },
     },
   })
@@ -42,15 +67,23 @@ onMounted(async () => {
 
 onUnmounted(() => {
   playback.unregisterPlayer()
-  player?.destroy()
+  try {
+    player?.destroy()
+  } catch {
+    /* ignore */
+  }
   player = null
+  document.querySelectorAll('[data-tunicious-yt-player="1"]').forEach((node) => node.remove())
 })
 </script>
 
 <template>
+  <!-- Keep a real painted box in the viewport so Chrome will allow media playback. -->
   <div
-    id="youtube-player-host"
-    class="pointer-events-none fixed h-0 w-0 overflow-hidden opacity-0"
+    class="pointer-events-none fixed bottom-0 left-0 z-0 h-12 w-12 overflow-hidden opacity-[0.02]"
     aria-hidden="true"
-  />
+    data-tunicious-yt-player="1"
+  >
+    <div ref="hostEl" class="h-full w-full" />
+  </div>
 </template>

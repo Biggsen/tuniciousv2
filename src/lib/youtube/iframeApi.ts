@@ -7,6 +7,9 @@ export interface YouTubePlayerInstance {
   getCurrentTime(): number
   getDuration(): number
   getPlayerState(): number
+  mute(): void
+  unMute(): void
+  getIframe(): HTMLIFrameElement
   destroy(): void
 }
 
@@ -23,7 +26,10 @@ interface YouTubePlayerOptions {
 }
 
 interface YouTubePlayerConstructor {
-  new (elementId: string, options: YouTubePlayerOptions): YouTubePlayerInstance
+  new (
+    elementId: string | HTMLElement,
+    options: YouTubePlayerOptions,
+  ): YouTubePlayerInstance
 }
 
 interface YouTubeIframeApi {

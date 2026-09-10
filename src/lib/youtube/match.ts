@@ -4,7 +4,12 @@ import type { YouTubeVideoCandidate } from '@/types/youtube'
 export function normalizeTrackTitle(title: string): string {
   return title
     .toLowerCase()
+    // Treat "&" as "and" so "Prophets & Dead" matches "Prophets And Dead".
+    .replace(/&/g, ' and ')
+    // Drop decorative brackets so "(Y)our" matches "Your".
+    .replace(/[()[\]]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 

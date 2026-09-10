@@ -7,6 +7,7 @@ export interface TrackYouTubeMapping {
   videoId: string
   videoTitle: string
   channelTitle?: string
+  channelId?: string
   durationMs?: number
   source: YouTubeMappingSource
   resolvedAt: Date
@@ -18,6 +19,7 @@ export interface TrackYouTubeMappingDocument {
   videoId: string
   videoTitle: string
   channelTitle?: string
+  channelId?: string
   durationMs?: number
   source: YouTubeMappingSource
   resolvedAt: Timestamp
@@ -30,6 +32,13 @@ export interface YouTubeVideoCandidate {
   channelId: string
   channelTitle: string
   durationMs?: number
+  score?: number
+}
+
+export interface YouTubeChannelCandidate {
+  channelId: string
+  channelTitle: string
+  uploadsPlaylistId?: string
   score?: number
 }
 

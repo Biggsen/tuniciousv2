@@ -65,7 +65,17 @@ const router = createRouter({
           meta: { title: 'Library' },
         },
         {
+          path: 'import',
+          name: 'import',
+          component: () => import('@/views/ImportView.vue'),
+          meta: { title: 'Import' },
+        },
+        {
           path: 'library/:id',
+          redirect: (to) => ({ name: 'album-detail', params: { id: to.params.id } }),
+        },
+        {
+          path: 'album/:id',
           name: 'album-detail',
           component: () => import('@/views/AlbumDetailView.vue'),
           meta: { title: 'Album' },
@@ -105,6 +115,12 @@ const router = createRouter({
           name: 'settings',
           component: () => import('@/views/SettingsView.vue'),
           meta: { title: 'Settings' },
+        },
+        {
+          path: 'migration',
+          name: 'migration',
+          component: () => import('@/views/MigrationView.vue'),
+          meta: { title: 'Migration' },
         },
       ],
     },
