@@ -190,7 +190,10 @@ async function refreshAlbumPlaycountsWithKeys(
       await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, info.playcount, info.loved)
       synced++
     } catch {
-      await syncTrackLovedFromLastfm(uid, libraryTrack.id, bulkLoved)
+      // Only persist a positive loved-list match. A miss must not clear an existing love.
+      if (bulkLoved) {
+        await syncTrackLovedFromLastfm(uid, libraryTrack.id, true)
+      }
     }
   }
 
