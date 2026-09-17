@@ -2,11 +2,13 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import TrackLovedHeart from '@/components/lastfm/TrackLovedHeart.vue'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
+import { setTrackLoved } from '@/lib/lastfm/scrobble'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import { useAuthStore } from '@/stores/auth'
-import type { PlaylistMember } from '@/types/library'
+import type { PlaylistMember, Track } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
@@ -38,6 +40,7 @@ const emit = defineEmits<{
   workflowAction: [action: WorkflowAction]
   undoWorkflow: []
   resolveFromPlaylist: []
+  lovedChange: [trackId: string, loved: boolean]
 }>()
 
 const menuOpen = ref(false)
@@ -45,6 +48,9 @@ const menuOpen = ref(false)
 const album = computed(() => props.member.album)
 
 const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
+const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.sessionKey))
+const togglingLovedIds = ref<Set<string>>(new Set())
+const lovedToggleError = ref<string | null>(null)
 
 const resolveStats = computed(() =>
   countAlbumResolvedTracks(album.value, props.mappings),
@@ -69,8 +75,32 @@ function trackPlaycount(trackId: string): number {
   return props.playStats.get(trackId)?.playcount ?? 0
 }
 
-function isTrackResolved(trackId: string): boolean {
-  return props.mappings.has(trackId)
+function isTrackLoved(trackId: string): boolean {
+  return props.playStats.get(trackId)?.loved === true
+}
+
+function isTogglingLoved(trackId: string): boolean {
+  return togglingLovedIds.value.has(trackId)
+}
+
+async function handleToggleLoved(track: Track) {
+  if (!auth.user || !lastfmConnected.value) return
+
+  const nextLoved = !isTrackLoved(track.id)
+  lovedToggleError.value = null
+  togglingLovedIds.value = new Set(togglingLovedIds.value).add(track.id)
+  emit('lovedChange', track.id, nextLoved)
+
+  try {
+    await setTrackLoved(auth.user.uid, album.value, track, nextLoved)
+  } catch (err) {
+    emit('lovedChange', track.id, !nextLoved)
+    lovedToggleError.value = err instanceof Error ? err.message : 'Failed to update Last.fm love'
+  } finally {
+    const next = new Set(togglingLovedIds.value)
+    next.delete(track.id)
+    togglingLovedIds.value = next
+  }
 }
 
 function closeMenu() {
@@ -181,15 +211,15 @@ function actionLabel(action: WorkflowAction): string {
             <span class="shrink-0 tabular-nums text-xs text-text-muted">
               {{ trackPlaycount(track.id) }}
             </span>
-            <span
-              class="shrink-0 text-xs"
-              :class="isTrackResolved(track.id) ? 'text-red-400' : 'text-text-muted/40'"
-              :title="isTrackResolved(track.id) ? 'Resolved' : 'Unresolved'"
-            >
-              {{ isTrackResolved(track.id) ? '♥' : '♡' }}
-            </span>
+            <TrackLovedHeart
+              :loved="isTrackLoved(track.id)"
+              :can-toggle="lastfmConnected"
+              :busy="isTogglingLoved(track.id)"
+              @toggle="handleToggleLoved(track)"
+            />
           </li>
         </ul>
+        <p v-if="lovedToggleError" class="mt-2 text-xs text-red-300">{{ lovedToggleError }}</p>
       </div>
 
       <div class="mt-auto">

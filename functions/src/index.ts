@@ -13,7 +13,11 @@ import {
   type LastfmConfig,
 } from './lastfm/api'
 
-const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo', 'track.getInfo'])
+const PUBLIC_LASTFM_METHODS = new Set([
+  'artist.getInfo',
+  'track.getInfo',
+  'user.getLovedTracks',
+])
 
 initializeApp()
 

@@ -286,8 +286,8 @@ async function handleRefreshArtistImages() {
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">Last.fm</h2>
       <p class="mt-2 text-sm text-text-muted">
-        Connect to scrobble listens and sync playcounts. Last.fm is authoritative when you refresh
-        playcounts.
+        Connect to scrobble listens and sync playcounts and loved tracks. Last.fm is authoritative
+        when you refresh playcounts.
       </p>
 
       <p v-if="lastfmConnected" class="mt-4 text-sm">

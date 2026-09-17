@@ -160,12 +160,32 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     }
   }
 
+  function patchPlayStats(
+    playlistId: string,
+    trackId: string,
+    patch: Partial<TrackPlayStats>,
+  ): Map<string, TrackPlayStats> | null {
+    const cached = getCached(playlistId)
+    if (!cached) return null
+    const playStats = new Map(cached.playStats)
+    const current = playStats.get(trackId)
+    playStats.set(trackId, {
+      trackId,
+      playcount: current?.playcount ?? 0,
+      ...current,
+      ...patch,
+    })
+    setCached(playlistId, { ...cached, playStats })
+    return playStats
+  }
+
   return {
     getCached,
     setCached,
     loadPlaylistShell,
     ensureAlbumsHydrated,
     ensureTrackData,
+    patchPlayStats,
     invalidate,
   }
 })

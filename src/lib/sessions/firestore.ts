@@ -90,7 +90,8 @@ function toTrackListenRecord(id: string, data: TrackListenRecordDocument): Track
 function toTrackPlayStats(trackId: string, data: TrackPlayStatsDocument): TrackPlayStats {
   return {
     trackId,
-    playcount: data.playcount,
+    playcount: data.playcount ?? 0,
+    loved: data.loved === true,
     lastPlayedAt: data.lastPlayedAt?.toDate(),
     lastSyncedAt: data.lastSyncedAt?.toDate(),
     lastfmPlaycountAtSync: data.lastfmPlaycountAtSync,
@@ -221,18 +222,47 @@ export async function syncTrackPlaycountFromLastfm(
   uid: string,
   trackId: string,
   lastfmPlaycount: number,
+  loved?: boolean,
 ): Promise<void> {
   const ref = trackStatsDoc(uid, trackId)
   await setDoc(
     ref,
-    {
+    omitUndefined({
       trackId,
       playcount: lastfmPlaycount,
+      loved,
       lastSyncedAt: serverTimestamp(),
       lastfmPlaycountAtSync: lastfmPlaycount,
-    },
+    }),
     { merge: true },
   )
+}
+
+export async function syncTrackLovedFromLastfm(
+  uid: string,
+  trackId: string,
+  loved: boolean,
+): Promise<void> {
+  const ref = trackStatsDoc(uid, trackId)
+  await setDoc(ref, { trackId, loved }, { merge: true })
+}
+
+export function patchTrackPlayStatsLoved(
+  stats: Map<string, TrackPlayStats>,
+  trackId: string,
+  loved: boolean,
+): Map<string, TrackPlayStats> {
+  const next = new Map(stats)
+  const current = next.get(trackId)
+  next.set(trackId, {
+    trackId,
+    playcount: current?.playcount ?? 0,
+    lastPlayedAt: current?.lastPlayedAt,
+    lastSyncedAt: current?.lastSyncedAt,
+    lastfmPlaycountAtSync: current?.lastfmPlaycountAtSync,
+    loved,
+  })
+  return next
 }
 
 async function incrementTrackPlaycount(uid: string, trackId: string): Promise<void> {

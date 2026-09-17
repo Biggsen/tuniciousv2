@@ -83,7 +83,11 @@ async function handleRequest(
       return
     }
 
-    const PUBLIC_LASTFM_METHODS = new Set(['artist.getInfo', 'track.getInfo'])
+    const PUBLIC_LASTFM_METHODS = new Set([
+      'artist.getInfo',
+      'track.getInfo',
+      'user.getLovedTracks',
+    ])
 
     if (subpath === 'public') {
       const method = body.method
