@@ -72,6 +72,7 @@ export interface TrackListenRecordDocument {
 export interface TrackPlayStats {
   trackId: string
   playcount: number
+  loved?: boolean
   lastPlayedAt?: Date
   lastSyncedAt?: Date
   lastfmPlaycountAtSync?: number
@@ -80,6 +81,7 @@ export interface TrackPlayStats {
 export interface TrackPlayStatsDocument {
   trackId: string
   playcount: number
+  loved?: boolean
   lastPlayedAt?: Timestamp
   lastSyncedAt?: Timestamp
   lastfmPlaycountAtSync?: number

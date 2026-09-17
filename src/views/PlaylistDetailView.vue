@@ -9,6 +9,7 @@ import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { getAlbumById } from '@/lib/album/firestore'
 import { getArtistById } from '@/lib/artist/firestore'
 import { isLastfmConnected, refreshPlaylistPlaycounts } from '@/lib/lastfm/scrobble'
+import { patchTrackPlayStatsLoved } from '@/lib/sessions/firestore'
 import { reorderPlaylistMember, updatePlaylist } from '@/lib/playlist/firestore'
 import {
   applyWorkflowAction,
@@ -344,6 +345,11 @@ function startRename() {
   editingName.value = true
   nameError.value = null
   menuOpen.value = false
+}
+
+function handleLovedChange(trackId: string, loved: boolean) {
+  const patched = playlistDetail.patchPlayStats(playlistId(), trackId, { loved })
+  playStats.value = patched ?? patchTrackPlayStatsLoved(playStats.value, trackId, loved)
 }
 
 function resolveMessageForAlbum(albumId: string): string | null {
@@ -741,6 +747,7 @@ watch(showTracklist, async (enabled) => {
             @workflow-action="handleWorkflowAction(member.album.id, $event)"
             @undo-workflow="handleUndoWorkflow(member.album.id)"
             @resolve-from-playlist="handleResolveFromPlaylist(member.album.id)"
+            @loved-change="handleLovedChange"
           />
         </li>
       </ul>

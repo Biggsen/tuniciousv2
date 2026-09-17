@@ -141,6 +141,11 @@ export async function scrobbleTrack(
   )
 }
 
+export interface LastfmTrackUserInfo {
+  playcount: number
+  loved: boolean
+}
+
 export function parseUserTrackPlaycount(data: Record<string, unknown>): number {
   const trackData = data.track as { userplaycount?: string | number } | undefined
   const userPlaycount = trackData?.userplaycount
@@ -150,16 +155,110 @@ export function parseUserTrackPlaycount(data: Record<string, unknown>): number {
   return Number(userPlaycount)
 }
 
-export async function fetchTrackPlaycount(
+export function parseUserTrackLoved(data: Record<string, unknown>): boolean {
+  const trackData = data.track as { userloved?: string | number } | undefined
+  return trackData?.userloved === 1 || trackData?.userloved === '1'
+}
+
+export function parseLastfmTrackUserInfo(data: Record<string, unknown>): LastfmTrackUserInfo {
+  return {
+    playcount: parseUserTrackPlaycount(data),
+    loved: parseUserTrackLoved(data),
+  }
+}
+
+type LastfmLovedTrack = {
+  name?: string
+  artist?: string | { name?: string; '#text'?: string }
+}
+
+function asArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+function lovedTrackArtistName(artist: LastfmLovedTrack['artist']): string {
+  if (!artist) return ''
+  if (typeof artist === 'string') return artist
+  return artist.name ?? artist['#text'] ?? ''
+}
+
+export function parseLovedTracksPage(data: Record<string, unknown>): {
+  tracks: Array<{ artist: string; title: string }>
+  page: number
+  totalPages: number
+} {
+  const root = data.lovedtracks as
+    | {
+        track?: LastfmLovedTrack | LastfmLovedTrack[]
+        '@attr'?: { page?: string; totalPages?: string }
+      }
+    | undefined
+  const attr = root?.['@attr']
+  const page = Number(attr?.page ?? 1)
+  const totalPages = Number(attr?.totalPages ?? 1)
+
+  const tracks = asArray(root?.track)
+    .map((track) => ({
+      artist: lovedTrackArtistName(track.artist),
+      title: track.name ?? '',
+    }))
+    .filter((track) => track.artist && track.title)
+
+  return {
+    tracks,
+    page: Number.isFinite(page) && page > 0 ? page : 1,
+    totalPages: Number.isFinite(totalPages) && totalPages > 0 ? totalPages : 1,
+  }
+}
+
+export async function fetchTrackUserInfo(
   artist: string,
   track: string,
   username: string,
-): Promise<number> {
+): Promise<LastfmTrackUserInfo> {
   const data = await callLastfmPublicMethod('track.getInfo', {
     artist,
     track,
     username,
     autocorrect: 1,
   })
-  return parseUserTrackPlaycount(data)
+  return parseLastfmTrackUserInfo(data)
+}
+
+export async function fetchTrackPlaycount(
+  artist: string,
+  track: string,
+  username: string,
+): Promise<number> {
+  return (await fetchTrackUserInfo(artist, track, username)).playcount
+}
+
+export async function fetchLovedTracksPage(
+  username: string,
+  page = 1,
+  limit = 50,
+): Promise<ReturnType<typeof parseLovedTracksPage>> {
+  const data = await callLastfmPublicMethod('user.getLovedTracks', {
+    user: username,
+    page,
+    limit,
+  })
+  return parseLovedTracksPage(data)
+}
+
+export async function loveTrack(
+  sessionKey: string | undefined,
+  artist: string,
+  track: string,
+): Promise<void> {
+  await callLastfmMethod('track.love', { artist, track }, sessionKey)
+}
+
+export async function unloveTrack(
+  sessionKey: string | undefined,
+  artist: string,
+  track: string,
+): Promise<void> {
+  await callLastfmMethod('track.unlove', { artist, track }, sessionKey)
 }

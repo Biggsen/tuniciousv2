@@ -7,6 +7,7 @@ import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import AlbumPipelineHistory from '@/components/album/AlbumPipelineHistory.vue'
 import AlbumRatingStars from '@/components/album/AlbumRatingStars.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TrackLovedHeart from '@/components/lastfm/TrackLovedHeart.vue'
 import TrackResolvePanel from '@/components/youtube/TrackResolvePanel.vue'
 import {
   clearArtistPreferredYouTubeChannel,
@@ -17,7 +18,7 @@ import { archiveAlbum, isAlbumArchived, unarchiveAlbum } from '@/lib/album/archi
 import { excludeTrackFromAlbum, getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
 import { isAdminUid } from '@/lib/auth/admin'
-import { isLastfmConnected, refreshAlbumPlaycounts } from '@/lib/lastfm/scrobble'
+import { isLastfmConnected, refreshAlbumPlaycounts, setTrackLoved } from '@/lib/lastfm/scrobble'
 import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
 import {
   getAlbumEvaluationStageContext,
@@ -25,7 +26,7 @@ import {
 } from '@/lib/pipeline/ratingContext'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
-import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
+import { getTrackPlayStatsMap, patchTrackPlayStatsLoved } from '@/lib/sessions/firestore'
 import { deleteMappingsForTrackIds, getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { parsePlaylistIdFromInput } from '@/lib/youtube/parseUrl'
 import {
@@ -37,7 +38,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { usePlaylistDetailStore } from '@/stores/playlistDetail'
-import type { Album, Artist } from '@/types/library'
+import type { Album, Artist, Track } from '@/types/library'
 import type { StarRating } from '@/types/pipeline'
 import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
@@ -78,6 +79,7 @@ const playError = ref<string | null>(null)
 const lastfmConnected = ref(false)
 const refreshingPlaycounts = ref(false)
 const playcountMessage = ref<string | null>(null)
+const togglingLovedIds = ref<Set<string>>(new Set())
 const archiveDialogOpen = ref(false)
 const archiving = ref(false)
 const trackPendingDelete = ref<{ id: string; title: string } | null>(null)
@@ -145,6 +147,40 @@ async function loadMappings() {
 
 function trackPlaycount(trackId: string): number {
   return playStats.value.get(trackId)?.playcount ?? 0
+}
+
+function isTrackLoved(trackId: string): boolean {
+  return playStats.value.get(trackId)?.loved === true
+}
+
+function isTogglingLoved(trackId: string): boolean {
+  return togglingLovedIds.value.has(trackId)
+}
+
+async function handleToggleLoved(track: Track) {
+  if (!auth.user || !album.value || !lastfmConnected.value) return
+
+  const nextLoved = !isTrackLoved(track.id)
+  const playlistId = route.query.playlistId
+  togglingLovedIds.value = new Set(togglingLovedIds.value).add(track.id)
+  playStats.value = patchTrackPlayStatsLoved(playStats.value, track.id, nextLoved)
+  if (typeof playlistId === 'string' && playlistId) {
+    playlistDetail.patchPlayStats(playlistId, track.id, { loved: nextLoved })
+  }
+
+  try {
+    await setTrackLoved(auth.user.uid, album.value, track, nextLoved)
+  } catch (err) {
+    playStats.value = patchTrackPlayStatsLoved(playStats.value, track.id, !nextLoved)
+    if (typeof playlistId === 'string' && playlistId) {
+      playlistDetail.patchPlayStats(playlistId, track.id, { loved: !nextLoved })
+    }
+    error.value = err instanceof Error ? err.message : 'Failed to update Last.fm love'
+  } finally {
+    const next = new Set(togglingLovedIds.value)
+    next.delete(track.id)
+    togglingLovedIds.value = next
+  }
 }
 
 async function load() {
@@ -686,7 +722,7 @@ onMounted(load)
         <li
           v-for="(track, index) in album.tracks"
           :key="track.id"
-          class="grid grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
+          class="grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
           :class="isCurrentTrack(track.id) ? 'bg-accent/10' : ''"
         >
           <button
@@ -724,6 +760,12 @@ onMounted(load)
           >
             {{ trackPlaycount(track.id) }}
           </span>
+          <TrackLovedHeart
+            :loved="isTrackLoved(track.id)"
+            :can-toggle="lastfmConnected"
+            :busy="isTogglingLoved(track.id)"
+            @toggle="handleToggleLoved(track)"
+          />
           <TrackResolvePanel
             v-if="auth.user"
             :uid="auth.user.uid"
