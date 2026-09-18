@@ -101,6 +101,18 @@ const resolvedCount = computed(() => {
 
 const artistName = computed(() => primaryArtist.value?.name ?? album.value?.artist ?? '')
 
+const lastfmArtistOverride = computed(() => {
+  const override = primaryArtist.value?.scrobbleName?.trim()
+  if (!override) return null
+  if (override.toLowerCase() === artistName.value.trim().toLowerCase()) return null
+  return override
+})
+
+const lastfmLookupArtist = computed(() => {
+  const override = primaryArtist.value?.scrobbleName?.trim()
+  return override || artistName.value
+})
+
 const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
 
 const evaluationStage = ref<AlbumEvaluationStageContext | null>(null)
@@ -533,6 +545,9 @@ onMounted(load)
           >
             {{ artistName }}
           </RouterLink>
+          <p v-if="lastfmArtistOverride" class="mt-1 text-xs text-text-muted">
+            Last.fm as {{ lastfmArtistOverride }}
+          </p>
           <p class="mt-2 text-xs text-text-muted">
             <template v-if="album.albumYear">{{ album.albumYear }}</template>
             <template v-if="album.type"> · {{ album.type }}</template>
@@ -582,7 +597,7 @@ onMounted(load)
               MusicBrainz
             </RouterLink>
             <a
-              :href="lastfmAlbumUrl(artistName, album.title, lastfmUsername)"
+              :href="lastfmAlbumUrl(lastfmLookupArtist, album.title, lastfmUsername)"
               target="_blank"
               rel="noopener noreferrer"
               class="font-medium text-text-muted transition-colors hover:text-accent"
