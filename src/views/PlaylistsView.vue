@@ -15,6 +15,7 @@ import {
   deletePlaylist,
   getPlaylistStatsMap,
   listPlaylists,
+  listPlaylistsByPipelineId,
   type PlaylistStats,
 } from '@/lib/playlist/firestore'
 import {
@@ -43,6 +44,7 @@ const newName = ref('')
 const showSetup = ref(false)
 const funnelOpenState = ref<Record<string, boolean>>({})
 const deletingPipelineId = ref<string | null>(null)
+const reloadingPipelineId = ref<string | null>(null)
 const deletingPlaylistId = ref<string | null>(null)
 const deleteStagePlaylists = ref(false)
 
@@ -191,8 +193,12 @@ async function refreshPlaylistStats(playlistIds: string[]) {
   error.value = null
   try {
     const fresh = await getPlaylistStatsMap(auth.user.uid, playlistIds)
-    playlistStats.value = fresh
-    savePlaylistStatsCache(auth.user.uid, fresh)
+    const merged = new Map(playlistStats.value)
+    for (const [playlistId, stats] of fresh) {
+      merged.set(playlistId, stats)
+    }
+    playlistStats.value = merged
+    savePlaylistStatsCache(auth.user.uid, merged)
     statsUpdatedAt.value = Date.now()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to refresh playlist stats'
@@ -237,8 +243,34 @@ async function load() {
 }
 
 async function handleReloadStats() {
-  if (!auth.user || refreshingStats.value) return
+  if (!auth.user || refreshingStats.value || reloadingPipelineId.value) return
   await refreshPlaylistStats(playlists.value.map((playlist) => playlist.id))
+}
+
+async function handleReloadFunnel(pipelineId: string) {
+  if (!auth.user || refreshingStats.value || reloadingPipelineId.value) return
+
+  reloadingPipelineId.value = pipelineId
+  error.value = null
+
+  try {
+    const [pipelinePlaylists, stages] = await Promise.all([
+      listPlaylistsByPipelineId(auth.user.uid, pipelineId),
+      listStagesByPipeline(auth.user.uid, pipelineId),
+    ])
+    playlists.value = [
+      ...playlists.value.filter((playlist) => playlist.pipelineId !== pipelineId),
+      ...pipelinePlaylists,
+    ]
+    const nextStages = new Map(pipelineStages.value)
+    nextStages.set(pipelineId, stages)
+    pipelineStages.value = nextStages
+    await refreshPlaylistStats(pipelinePlaylists.map((playlist) => playlist.id))
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reload funnel playlists'
+  } finally {
+    reloadingPipelineId.value = null
+  }
 }
 
 function formatStatsUpdatedAt(): string | null {
@@ -402,7 +434,7 @@ onMounted(() => {
         <button
           type="button"
           class="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text disabled:opacity-50"
-          :disabled="refreshingStats"
+          :disabled="refreshingStats || reloadingPipelineId !== null"
           @click="handleReloadStats"
         >
           {{ refreshingStats ? 'Refreshing…' : 'Reload resolve stats' }}
@@ -427,14 +459,28 @@ onMounted(() => {
                 {{ group.playlists.length }} stage playlist{{ group.playlists.length === 1 ? '' : 's' }}
               </span>
             </span>
-            <button
-              type="button"
-              class="shrink-0 rounded-lg border border-emerald-500/30 px-2.5 py-1 text-xs font-normal text-emerald-100/90 transition-colors hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200 disabled:opacity-50"
-              :disabled="deletingPipelineId === group.pipeline.id"
-              @click.stop.prevent="requestDeletePipeline(group.pipeline)"
-            >
-              {{ deletingPipelineId === group.pipeline.id ? 'Deleting…' : 'Delete funnel' }}
-            </button>
+            <span class="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                class="rounded-lg border border-emerald-500/30 px-2.5 py-1 text-xs font-normal text-emerald-100/90 transition-colors hover:bg-emerald-500/10 disabled:opacity-50"
+                :disabled="
+                  reloadingPipelineId !== null ||
+                  refreshingStats ||
+                  deletingPipelineId === group.pipeline.id
+                "
+                @click.stop.prevent="handleReloadFunnel(group.pipeline.id)"
+              >
+                {{ reloadingPipelineId === group.pipeline.id ? 'Reloading…' : 'Reload' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-emerald-500/30 px-2.5 py-1 text-xs font-normal text-emerald-100/90 transition-colors hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200 disabled:opacity-50"
+                :disabled="deletingPipelineId === group.pipeline.id || reloadingPipelineId !== null"
+                @click.stop.prevent="requestDeletePipeline(group.pipeline)"
+              >
+                {{ deletingPipelineId === group.pipeline.id ? 'Deleting…' : 'Delete funnel' }}
+              </button>
+            </span>
           </summary>
           <ul class="divide-y divide-border border-t border-emerald-500/15">
             <li
