@@ -229,6 +229,24 @@ export const usePlaybackStore = defineStore('playback', () => {
     return startPlayback(0)
   }
 
+  async function playFromPlaylistAtTrack(
+    members: PlaylistMember[],
+    playlistId: string,
+    uid: string,
+    trackId: string,
+    albumId: string,
+  ) {
+    await setQueueFromPlaylist(members, playlistId, uid)
+    const index = queue.value.findIndex(
+      (item) => item.trackId === trackId && item.albumId === albumId,
+    )
+    if (index < 0) {
+      error.value = 'This track is not in the playlist'
+      return false
+    }
+    return startPlayback(index)
+  }
+
   async function playRandomFromPlaylist(
     members: PlaylistMember[],
     playlistId: string,
@@ -533,6 +551,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     setQueueFromAlbum,
     startPlayback,
     playFromPlaylist,
+    playFromPlaylistAtTrack,
     playRandomFromPlaylist,
     playFromAlbum,
     playFromAlbumAtTrack,

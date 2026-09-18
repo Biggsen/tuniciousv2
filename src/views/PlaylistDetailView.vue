@@ -26,6 +26,10 @@ import {
   savePlaylistSearchQuery,
   savePlaylistSortPreference,
 } from '@/lib/playlist/persistSort'
+import {
+  loadPlaylistTracklistOpen,
+  savePlaylistTracklistOpen,
+} from '@/lib/playlist/persistTracklist'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import {
@@ -62,7 +66,8 @@ const nameDraft = ref('')
 const savingName = ref(false)
 const nameError = ref<string | null>(null)
 const menuOpen = ref(false)
-const showTracklist = ref(false)
+const playlistId = () => String(route.params.id)
+const showTracklist = ref(loadPlaylistTracklistOpen(playlistId()))
 const savedSort = loadPlaylistSortPreference()
 const sortField = ref<PlaylistSortField>(savedSort.field)
 const sortAscending = ref(savedSort.ascending)
@@ -76,8 +81,6 @@ const pendingSubmissionRating = ref<number | null>(null)
 const resolvingAlbumId = ref<string | null>(null)
 const resolveProgress = ref('')
 const resolveMessages = ref<Map<string, string>>(new Map())
-
-const playlistId = () => String(route.params.id)
 
 const memberAlbumIds = computed(() => members.value.map((member) => member.album.id))
 
@@ -296,6 +299,37 @@ async function handlePlay() {
   }
 }
 
+async function handlePlayTrack(albumId: string, trackId: string) {
+  if (!auth.user) return
+
+  const current = playback.currentItem
+  if (
+    playback.showPlayerBar &&
+    current?.trackId === trackId &&
+    current.albumId === albumId
+  ) {
+    playback.togglePlayPause()
+    return
+  }
+
+  playError.value = null
+  try {
+    await ensureTrackDataLoaded()
+    const started = await playback.playFromPlaylistAtTrack(
+      members.value,
+      playlistId(),
+      auth.user.uid,
+      trackId,
+      albumId,
+    )
+    if (!started) {
+      playError.value = playback.error ?? 'This track is not resolved'
+    }
+  } catch (err) {
+    playError.value = err instanceof Error ? err.message : 'Failed to start playback'
+  }
+}
+
 async function handlePlayRandom() {
   if (!auth.user) return
   playError.value = null
@@ -468,6 +502,12 @@ function toggleSortDirection() {
   sortAscending.value = !sortAscending.value
 }
 
+function toggleTracklist() {
+  const next = !showTracklist.value
+  showTracklist.value = next
+  savePlaylistTracklistOpen(playlistId(), next)
+}
+
 watch([sortField, sortAscending], ([field, ascending]) => {
   savePlaylistSortPreference({ field, ascending })
 })
@@ -480,7 +520,7 @@ onMounted(() => load())
 watch(
   () => route.params.id,
   () => {
-    showTracklist.value = false
+    showTracklist.value = loadPlaylistTracklistOpen(playlistId())
     resolvingAlbumId.value = null
     resolveProgress.value = ''
     resolveMessages.value = new Map()
@@ -614,7 +654,7 @@ watch(showTracklist, async (enabled) => {
             role="switch"
             :aria-checked="showTracklist"
             :disabled="hydratingTracklist"
-            @click="showTracklist = !showTracklist"
+            @click="toggleTracklist"
           >
             <span
               class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform"
@@ -735,6 +775,7 @@ watch(showTracklist, async (enabled) => {
             @workflow-action="handleWorkflowAction(member.album.id, $event)"
             @undo-workflow="handleUndoWorkflow(member.album.id)"
             @resolve-from-playlist="handleResolveFromPlaylist(member.album.id)"
+            @play-track="handlePlayTrack(member.album.id, $event)"
           />
         </li>
       </ul>

@@ -8,12 +8,14 @@ import { setTrackLoved } from '@/lib/lastfm/scrobble'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import { useAuthStore } from '@/stores/auth'
+import { usePlaybackStore } from '@/stores/playback'
 import { usePlayStatsStore } from '@/stores/playStats'
 import type { PlaylistMember, Track } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const auth = useAuthStore()
+const playback = usePlaybackStore()
 const playStats = usePlayStatsStore()
 
 const props = defineProps<{
@@ -40,6 +42,7 @@ const emit = defineEmits<{
   workflowAction: [action: WorkflowAction]
   undoWorkflow: []
   resolveFromPlaylist: []
+  playTrack: [trackId: string]
 }>()
 
 const menuOpen = ref(false)
@@ -69,6 +72,16 @@ const resolveFromPlaylistLabel = computed(() => {
     ? 'Resolve from playlist'
     : 'Resolve via Topic channel'
 })
+
+function isCurrentTrack(trackId: string): boolean {
+  if (!playback.showPlayerBar) return false
+  const current = playback.currentItem
+  return current?.trackId === trackId && current.albumId === album.value.id
+}
+
+function isTrackPlaying(trackId: string): boolean {
+  return isCurrentTrack(trackId) && playback.isPlaying
+}
 
 function trackPlaycount(trackId: string): number {
   return playStats.byTrackId.get(trackId)?.playcount ?? 0
@@ -200,13 +213,33 @@ function actionLabel(action: WorkflowAction): string {
 
       <div v-if="showTracklist" class="mb-4 min-h-0 flex-1">
         <p class="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">Tracks</p>
-        <ul class="space-y-1 text-sm">
+        <ul class="text-sm">
           <li
             v-for="track in album.tracks"
             :key="track.id"
-            class="flex items-center gap-2"
+            class="flex items-center gap-1 rounded-md px-0.5 transition-colors"
+            :class="isCurrentTrack(track.id) ? 'bg-accent/10' : ''"
           >
-            <span class="min-w-0 flex-1 truncate">{{ track.title }}</span>
+            <button
+              type="button"
+              class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] leading-none transition-colors hover:bg-white/5 hover:text-accent"
+              :title="
+                isTrackPlaying(track.id)
+                  ? 'Pause'
+                  : isCurrentTrack(track.id)
+                    ? 'Resume'
+                    : 'Play track'
+              "
+              @click="emit('playTrack', track.id)"
+            >
+              {{ isTrackPlaying(track.id) ? '⏸' : '▶' }}
+            </button>
+            <span
+              class="min-w-0 flex-1 truncate"
+              :class="isCurrentTrack(track.id) ? 'text-accent' : ''"
+            >
+              {{ track.title }}
+            </span>
             <span class="shrink-0 tabular-nums text-xs text-text-muted">
               {{ trackPlaycount(track.id) }}
             </span>
