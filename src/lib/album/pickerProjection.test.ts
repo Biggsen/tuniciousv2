@@ -90,6 +90,19 @@ describe('buildAlbumPickerItemFromAlbum', () => {
 
     expect(buildAlbumPickerItemFromAlbum(album).trackIds).toEqual(['t1', 't2'])
   })
+
+  it('reindexes search fields when the display title changes', () => {
+    const album = makeAlbum({
+      id: 'a3',
+      title: 'and the Anonymous Nobody...',
+      artist: 'De La Soul',
+    })
+
+    const projection = buildAlbumPickerItemFromAlbum(album)
+    expect(projection.title).toBe('and the Anonymous Nobody...')
+    expect(projection.titleLower).toBe('and the anonymous nobody...')
+    expect(projection.titleTokens).toEqual(['and', 'the', 'anonymous', 'nobody'])
+  })
 })
 
 describe('mergeAlbumPickerMatches', () => {

@@ -530,6 +530,16 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   const hasPersistedPlayback = computed(() => loadPlaybackState() !== null)
 
+  function patchTrackTitle(trackId: string, title: string): void {
+    let changed = false
+    const next = queue.value.map((item) => {
+      if (item.trackId !== trackId) return item
+      changed = true
+      return { ...item, title }
+    })
+    if (changed) queue.value = next
+  }
+
   return {
     queue,
     sourcePlaylistId,
@@ -567,5 +577,6 @@ export const usePlaybackStore = defineStore('playback', () => {
     clearQueue,
     resumeFromPersisted,
     hasPersistedPlayback,
+    patchTrackTitle,
   }
 })

@@ -44,6 +44,37 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     cacheById.value = next
   }
 
+  function patchAlbumInCache(albumId: string, patch: (album: PlaylistMember['album']) => PlaylistMember['album']): void {
+    let changed = false
+    const next = new Map(cacheById.value)
+    for (const [id, cache] of next) {
+      let membersChanged = false
+      const members = cache.members.map((member) => {
+        if (member.album.id !== albumId) return member
+        membersChanged = true
+        return { ...member, album: patch(member.album) }
+      })
+      if (membersChanged) {
+        next.set(id, { ...cache, members })
+        changed = true
+      }
+    }
+    if (changed) cacheById.value = next
+  }
+
+  function patchAlbumTitle(albumId: string, title: string): void {
+    patchAlbumInCache(albumId, (album) => ({ ...album, title }))
+  }
+
+  function patchTrackTitle(albumId: string, trackId: string, title: string): void {
+    patchAlbumInCache(albumId, (album) => ({
+      ...album,
+      tracks: album.tracks.map((track) =>
+        track.id === trackId ? { ...track, title } : track,
+      ),
+    }))
+  }
+
   function invalidate(playlistId?: string): void {
     if (!playlistId) {
       cacheById.value = new Map()
@@ -161,6 +192,8 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     loadPlaylistShell,
     ensureAlbumsHydrated,
     ensureTrackData,
+    patchAlbumTitle,
+    patchTrackTitle,
     invalidate,
   }
 })

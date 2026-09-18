@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
@@ -15,7 +15,13 @@ import {
 } from '@/lib/artist/firestore'
 import { formatDuration } from '@/lib/musicbrainz/format'
 import { archiveAlbum, isAlbumArchived, unarchiveAlbum } from '@/lib/album/archive'
-import { excludeTrackFromAlbum, getAlbumById, updateAlbumRating } from '@/lib/album/firestore'
+import {
+  excludeTrackFromAlbum,
+  getAlbumById,
+  updateAlbumRating,
+  updateAlbumTitle,
+  updateTrackTitle,
+} from '@/lib/album/firestore'
 import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
 import { isAdminUid } from '@/lib/auth/admin'
 import { isLastfmConnected, refreshAlbumPlaycounts, setTrackLoved } from '@/lib/lastfm/scrobble'
@@ -84,6 +90,17 @@ const archiveDialogOpen = ref(false)
 const archiving = ref(false)
 const trackPendingDelete = ref<{ id: string; title: string } | null>(null)
 const deletingTrack = ref(false)
+const titleDraft = ref('')
+const savingTitle = ref(false)
+const titleError = ref<string | null>(null)
+const editingTitle = ref(false)
+const albumTitleInput = ref<HTMLInputElement | null>(null)
+const trackTitleDrafts = ref<Record<string, string>>({})
+const savingTrackId = ref<string | null>(null)
+const trackTitleError = ref<string | null>(null)
+const trackTitleErrorId = ref<string | null>(null)
+const editingTrackId = ref<string | null>(null)
+const trackTitleInput = ref<HTMLInputElement | null>(null)
 
 const isAdmin = computed(() => isAdminUid(auth.user?.uid))
 const isArchived = computed(() => (album.value ? isAlbumArchived(album.value) : false))
@@ -125,6 +142,104 @@ const ratingDisplay = computed(() =>
       })
     : null,
 )
+
+async function startEditAlbumTitle() {
+  if (!album.value) return
+  titleDraft.value = album.value.title
+  titleError.value = null
+  editingTrackId.value = null
+  editingTitle.value = true
+  await nextTick()
+  albumTitleInput.value?.focus()
+  albumTitleInput.value?.select()
+}
+
+function cancelEditAlbumTitle() {
+  if (!album.value) return
+  titleDraft.value = album.value.title
+  titleError.value = null
+  editingTitle.value = false
+}
+
+async function handleSaveTitle() {
+  if (!auth.user || !album.value || savingTitle.value) return
+  titleError.value = null
+  savingTitle.value = true
+  try {
+    album.value = await updateAlbumTitle(auth.user.uid, album.value.id, titleDraft.value)
+    titleDraft.value = album.value.title
+    library.patchCardTitle(album.value.id, album.value.title)
+    playlistDetail.patchAlbumTitle?.(album.value.id, album.value.title)
+    editingTitle.value = false
+  } catch (err) {
+    titleError.value = err instanceof Error ? err.message : 'Failed to update title'
+  } finally {
+    savingTitle.value = false
+  }
+}
+
+function syncTrackTitleDrafts(tracks: Track[]) {
+  const drafts: Record<string, string> = {}
+  for (const track of tracks) {
+    drafts[track.id] = track.title
+  }
+  trackTitleDrafts.value = drafts
+}
+
+function isTrackTitleDirty(track: Track): boolean {
+  return (trackTitleDrafts.value[track.id] ?? '').trim() !== track.title
+}
+
+function setTrackTitleInput(el: unknown) {
+  trackTitleInput.value = el instanceof HTMLInputElement ? el : null
+}
+
+async function startEditTrackTitle(track: Track) {
+  editingTitle.value = false
+  trackTitleDrafts.value = { ...trackTitleDrafts.value, [track.id]: track.title }
+  trackTitleError.value = null
+  trackTitleErrorId.value = null
+  editingTrackId.value = track.id
+  await nextTick()
+  trackTitleInput.value?.focus()
+  trackTitleInput.value?.select()
+}
+
+function cancelEditTrackTitle(track: Track) {
+  trackTitleDrafts.value = { ...trackTitleDrafts.value, [track.id]: track.title }
+  if (trackTitleErrorId.value === track.id) {
+    trackTitleError.value = null
+    trackTitleErrorId.value = null
+  }
+  if (editingTrackId.value === track.id) editingTrackId.value = null
+}
+
+async function handleSaveTrackTitle(track: Track) {
+  if (!auth.user || !album.value || savingTrackId.value) return
+  trackTitleError.value = null
+  trackTitleErrorId.value = null
+  savingTrackId.value = track.id
+  try {
+    album.value = await updateTrackTitle(
+      auth.user.uid,
+      album.value.id,
+      track.id,
+      trackTitleDrafts.value[track.id] ?? '',
+    )
+    const updated = album.value.tracks.find((item) => item.id === track.id)
+    if (updated) {
+      trackTitleDrafts.value = { ...trackTitleDrafts.value, [track.id]: updated.title }
+      playlistDetail.patchTrackTitle?.(album.value.id, track.id, updated.title)
+      playback.patchTrackTitle?.(track.id, updated.title)
+    }
+    editingTrackId.value = null
+  } catch (err) {
+    trackTitleErrorId.value = track.id
+    trackTitleError.value = err instanceof Error ? err.message : 'Failed to update track title'
+  } finally {
+    savingTrackId.value = null
+  }
+}
 
 async function handleRatingChange(next: StarRating | null) {
   if (!auth.user || !album.value || !ratingDisplay.value?.editable) return
@@ -200,6 +315,13 @@ async function load() {
       error.value = 'Album not found'
       return
     }
+    titleDraft.value = album.value.title
+    titleError.value = null
+    editingTitle.value = false
+    syncTrackTitleDrafts(album.value.tracks)
+    editingTrackId.value = null
+    trackTitleError.value = null
+    trackTitleErrorId.value = null
     primaryArtist.value = await getArtistById(auth.user.uid, album.value.artistId)
     lastfmConnected.value = await isLastfmConnected(auth.user.uid)
     evaluationStage.value = await getAlbumEvaluationStageContext(auth.user.uid, album.value.id)
@@ -481,6 +603,7 @@ async function handleRemoveTrack() {
   const trackId = trackPendingDelete.value.id
   try {
     album.value = await excludeTrackFromAlbum(auth.user.uid, album.value.id, trackId)
+    syncTrackTitleDrafts(album.value.tracks)
     mappings.value.delete(trackId)
     mappings.value = new Map(mappings.value)
     library.removeMappingTrackIds([trackId])
@@ -538,7 +661,57 @@ onMounted(load)
           />
         </div>
         <div class="min-w-0 flex-1">
-          <h2 class="text-2xl font-semibold">{{ album.title }}</h2>
+          <div v-if="editingTitle" class="flex flex-wrap items-start gap-2">
+            <input
+              ref="albumTitleInput"
+              v-model="titleDraft"
+              type="text"
+              aria-label="Album title"
+              class="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-2xl font-semibold outline-none focus:border-accent"
+              :disabled="savingTitle"
+              @keydown.enter.prevent="handleSaveTitle"
+              @keydown.escape="cancelEditAlbumTitle"
+            />
+            <button
+              type="button"
+              class="mt-1 shrink-0 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-muted disabled:opacity-50"
+              :disabled="savingTitle || !titleDraft.trim()"
+              @click="handleSaveTitle"
+            >
+              {{ savingTitle ? 'Saving…' : 'Save' }}
+            </button>
+            <button
+              type="button"
+              class="mt-1 shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-50"
+              :disabled="savingTitle"
+              @click="cancelEditAlbumTitle"
+            >
+              Cancel
+            </button>
+          </div>
+          <div v-else class="flex min-w-0 items-center gap-2">
+            <h2 class="min-w-0 text-2xl font-semibold">{{ album.title }}</h2>
+            <button
+              type="button"
+              class="shrink-0 rounded p-1 text-text-muted/40 transition-colors hover:text-text-muted"
+              title="Edit album title"
+              aria-label="Edit album title"
+              @click="startEditAlbumTitle"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
+                />
+              </svg>
+            </button>
+          </div>
+          <p v-if="titleError" class="mt-1 text-xs text-red-300">{{ titleError }}</p>
           <RouterLink
             :to="{ name: 'artist-detail', params: { id: album.artistId } }"
             class="mt-1 inline-block text-sm text-text-muted transition-colors hover:text-accent"
@@ -754,13 +927,68 @@ onMounted(load)
             {{ index + 1 }}
           </span>
           <div class="min-w-0 flex-1">
-            <p
-              class="truncate font-medium"
-              :class="isCurrentTrack(track.id) ? 'text-accent' : ''"
-            >
-              {{ track.title }}
-            </p>
+            <div v-if="editingTrackId === track.id" class="flex min-w-0 flex-wrap items-center gap-2">
+              <input
+                :ref="setTrackTitleInput"
+                v-model="trackTitleDrafts[track.id]"
+                type="text"
+                :aria-label="`Track ${index + 1} title`"
+                class="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1 font-medium outline-none focus:border-accent"
+                :disabled="savingTrackId === track.id"
+                @keydown.enter.prevent="handleSaveTrackTitle(track)"
+                @keydown.escape.prevent="cancelEditTrackTitle(track)"
+              />
+              <button
+                type="button"
+                class="shrink-0 text-xs font-medium text-accent transition-colors hover:text-accent-muted disabled:opacity-50"
+                :disabled="savingTrackId === track.id || !(trackTitleDrafts[track.id] ?? '').trim()"
+                @click="handleSaveTrackTitle(track)"
+              >
+                {{ savingTrackId === track.id ? 'Saving…' : 'Save' }}
+              </button>
+              <button
+                type="button"
+                class="shrink-0 text-xs text-text-muted transition-colors hover:text-text disabled:opacity-50"
+                :disabled="savingTrackId === track.id"
+                @click="cancelEditTrackTitle(track)"
+              >
+                Cancel
+              </button>
+            </div>
+            <div v-else class="flex min-w-0 items-center gap-1.5">
+              <p
+                class="min-w-0 truncate font-medium"
+                :class="isCurrentTrack(track.id) ? 'text-accent' : ''"
+              >
+                {{ track.title }}
+              </p>
+              <button
+                type="button"
+                class="shrink-0 rounded p-0.5 text-text-muted/35 transition-colors hover:text-text-muted"
+                :title="`Edit ${track.title}`"
+                :aria-label="`Edit track ${index + 1} title`"
+                @click="startEditTrackTitle(track)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  class="h-3 w-3"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
+                  />
+                </svg>
+              </button>
+            </div>
             <p class="text-xs text-text-muted tabular-nums">{{ formatDuration(track.lengthMs) }}</p>
+            <p
+              v-if="trackTitleError && trackTitleErrorId === track.id"
+              class="text-xs text-red-300"
+            >
+              {{ trackTitleError }}
+            </p>
           </div>
           <span
             class="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted"

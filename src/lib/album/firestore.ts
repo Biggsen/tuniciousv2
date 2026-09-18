@@ -26,6 +26,7 @@ import {
   filterTrackIdsByExclusions,
 } from '@/lib/album/entryOverlay'
 import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
+import { replaceTrackTitle } from '@/lib/album/trackTitle'
 import { deleteTrackMapping } from '@/lib/youtube/firestore'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
 import { ensureArtistImages } from '@/lib/artist/syncImages'
@@ -726,6 +727,57 @@ export async function importReleaseToLibrary(
   }
 
   return album
+}
+
+export async function updateAlbumTitle(
+  uid: string,
+  albumId: string,
+  title: string,
+): Promise<Album> {
+  const trimmed = title.trim()
+  if (!trimmed) {
+    throw new Error('Album title is required')
+  }
+
+  const current = await getAlbumById(uid, albumId)
+  if (!current) throw new Error('Album not found')
+  if (current.title === trimmed) return current
+
+  const ref = doc(getFirestoreDb(), 'albums', albumId)
+  await updateDoc(ref, { title: trimmed })
+
+  const updated = await getAlbumById(uid, albumId)
+  if (!updated) throw new Error('Album not found')
+  await upsertAlbumPickerItem(uid, updated)
+  return updated
+}
+
+export async function updateTrackTitle(
+  uid: string,
+  albumId: string,
+  trackId: string,
+  title: string,
+): Promise<Album> {
+  const ref = doc(getFirestoreDb(), 'albums', albumId)
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) {
+    throw new Error('Album not found')
+  }
+
+  const catalog = toAlbum(snapshot.id, snapshot.data() as AlbumDocument)
+  const nextTracks = replaceTrackTitle(catalog.tracks, trackId, title)
+  const unchanged = nextTracks.every(
+    (track, index) => track.title === catalog.tracks[index]?.title,
+  )
+  if (!unchanged) {
+    await updateDoc(ref, {
+      tracks: nextTracks.map((track) => omitUndefined(track)),
+    })
+  }
+
+  const updated = await getAlbumById(uid, albumId)
+  if (!updated) throw new Error('Album not found')
+  return updated
 }
 
 export async function setAlbumYouTubePlaylist(
