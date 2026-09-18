@@ -26,7 +26,7 @@ import {
 } from '@/lib/pipeline/ratingContext'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { buildArtistResolveContext } from '@/lib/youtube/context'
-import { getTrackPlayStatsMap, patchTrackPlayStatsLoved } from '@/lib/sessions/firestore'
+import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
 import { deleteMappingsForTrackIds, getMappingsForTrackIds } from '@/lib/youtube/firestore'
 import { parsePlaylistIdFromInput } from '@/lib/youtube/parseUrl'
 import {
@@ -37,10 +37,10 @@ import { resolveAllAlbumTracks } from '@/lib/youtube/resolve'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
+import { usePlayStatsStore } from '@/stores/playStats'
 import { usePlaylistDetailStore } from '@/stores/playlistDetail'
 import type { Album, Artist, Track } from '@/types/library'
 import type { StarRating } from '@/types/pipeline'
-import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
@@ -48,6 +48,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const library = useLibraryStore()
 const playback = usePlaybackStore()
+const playStats = usePlayStatsStore()
 
 const backLink = computed(() => {
   const playlistId = route.query.playlistId
@@ -66,7 +67,6 @@ const backLink = computed(() => {
 const album = ref<Album | null>(null)
 const primaryArtist = ref<Artist | null>(null)
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
-const playStats = ref<Map<string, TrackPlayStats>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
 const resolvingAll = ref(false)
@@ -141,16 +141,16 @@ async function loadMappings() {
     getTrackPlayStatsMap(auth.user.uid, trackIds),
   ])
   mappings.value = loadedMappings
-  playStats.value = loadedStats
+  playStats.hydrate(loadedStats)
   library.upsertMappings(loadedMappings.values())
 }
 
 function trackPlaycount(trackId: string): number {
-  return playStats.value.get(trackId)?.playcount ?? 0
+  return playStats.byTrackId.get(trackId)?.playcount ?? 0
 }
 
 function isTrackLoved(trackId: string): boolean {
-  return playStats.value.get(trackId)?.loved === true
+  return playStats.byTrackId.get(trackId)?.loved === true
 }
 
 function isTogglingLoved(trackId: string): boolean {
@@ -161,20 +161,13 @@ async function handleToggleLoved(track: Track) {
   if (!auth.user || !album.value || !lastfmConnected.value) return
 
   const nextLoved = !isTrackLoved(track.id)
-  const playlistId = route.query.playlistId
   togglingLovedIds.value = new Set(togglingLovedIds.value).add(track.id)
-  playStats.value = patchTrackPlayStatsLoved(playStats.value, track.id, nextLoved)
-  if (typeof playlistId === 'string' && playlistId) {
-    playlistDetail.patchPlayStats(playlistId, track.id, { loved: nextLoved })
-  }
+  playStats.setLoved(track.id, nextLoved)
 
   try {
     await setTrackLoved(auth.user.uid, album.value, track, nextLoved)
   } catch (err) {
-    playStats.value = patchTrackPlayStatsLoved(playStats.value, track.id, !nextLoved)
-    if (typeof playlistId === 'string' && playlistId) {
-      playlistDetail.patchPlayStats(playlistId, track.id, { loved: !nextLoved })
-    }
+    playStats.setLoved(track.id, !nextLoved)
     error.value = err instanceof Error ? err.message : 'Failed to update Last.fm love'
   } finally {
     const next = new Set(togglingLovedIds.value)

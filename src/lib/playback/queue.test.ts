@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   pickRandomPlayableIndex,
   playlistMembersNeedHydration,
+  shuffleQueueItems,
   shuffleResolvedQueueItems,
 } from '@/lib/playback/queue'
 import type { PlaylistMember } from '@/types/library'
@@ -46,6 +47,29 @@ describe('pickRandomPlayableIndex', () => {
       const index = pickRandomPlayableIndex(queue)
       expect([0, 2]).toContain(index)
     }
+  })
+})
+
+describe('shuffleQueueItems', () => {
+  it('keeps every track, including unresolved ones', () => {
+    const original = [
+      item({ trackId: 't1', videoId: 'v1', albumId: 'album-a' }),
+      item({ trackId: 't2', albumId: 'album-a' }),
+      item({ trackId: 't3', videoId: 'v3', albumId: 'album-b' }),
+    ]
+    const shuffled = shuffleQueueItems(original)
+    expect(shuffled.map((row) => row.trackId).sort()).toEqual(['t1', 't2', 't3'])
+    expect(shuffled).toHaveLength(3)
+  })
+
+  it('does not mutate the input array', () => {
+    const original = [
+      item({ trackId: 't1', videoId: 'v1' }),
+      item({ trackId: 't2', videoId: 'v2' }),
+    ]
+    const copy = [...original]
+    shuffleQueueItems(original)
+    expect(original).toEqual(copy)
   })
 })
 

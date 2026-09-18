@@ -9,7 +9,6 @@ import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
 import { getAlbumById } from '@/lib/album/firestore'
 import { getArtistById } from '@/lib/artist/firestore'
 import { isLastfmConnected, refreshPlaylistPlaycounts } from '@/lib/lastfm/scrobble'
-import { patchTrackPlayStatsLoved } from '@/lib/sessions/firestore'
 import { reorderPlaylistMember, updatePlaylist } from '@/lib/playlist/firestore'
 import {
   applyWorkflowAction,
@@ -39,7 +38,6 @@ import { usePlaybackStore } from '@/stores/playback'
 import { usePlaylistDetailStore } from '@/stores/playlistDetail'
 import type { Playlist, PlaylistMember } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
-import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const route = useRoute()
@@ -51,7 +49,6 @@ const playlistDetail = usePlaylistDetailStore()
 const playlist = ref<Playlist | null>(null)
 const members = ref<PlaylistMember[]>([])
 const mappings = ref<Map<string, TrackYouTubeMapping>>(new Map())
-const playStats = ref<Map<string, TrackPlayStats>>(new Map())
 const trackDataLoaded = ref(false)
 const loading = ref(true)
 const reloading = ref(false)
@@ -119,7 +116,6 @@ function applyCacheToView(entry: {
   playlist: Playlist
   members: PlaylistMember[]
   mappings: Map<string, TrackYouTubeMapping>
-  playStats: Map<string, TrackPlayStats>
   trackDataLoaded: boolean
   workflowEnabled: boolean
   workflowBlockedReason: string | null
@@ -128,7 +124,6 @@ function applyCacheToView(entry: {
   playlist.value = entry.playlist
   members.value = entry.members
   mappings.value = entry.mappings
-  playStats.value = entry.playStats
   trackDataLoaded.value = entry.trackDataLoaded
   workflowEnabled.value = entry.workflowEnabled
   workflowBlockedReason.value = entry.workflowBlockedReason
@@ -144,7 +139,6 @@ async function ensureTrackDataLoaded(force = false) {
   const result = await playlistDetail.ensureTrackData(auth.user.uid, playlistId(), { force })
   members.value = result.members
   mappings.value = result.mappings
-  playStats.value = result.playStats
   trackDataLoaded.value = true
 }
 
@@ -345,11 +339,6 @@ function startRename() {
   editingName.value = true
   nameError.value = null
   menuOpen.value = false
-}
-
-function handleLovedChange(trackId: string, loved: boolean) {
-  const patched = playlistDetail.patchPlayStats(playlistId(), trackId, { loved })
-  playStats.value = patched ?? patchTrackPlayStatsLoved(playStats.value, trackId, loved)
 }
 
 function resolveMessageForAlbum(albumId: string): string | null {
@@ -725,7 +714,6 @@ watch(showTracklist, async (enabled) => {
             :member="member"
             :playlist-id="playlistId()"
             :mappings="mappings"
-            :play-stats="playStats"
             :show-tracklist="showTracklist && trackDataLoaded"
             :show-resolve-stats="trackDataLoaded"
             :can-move-up="memberPosition(member.album.id) > 0"
@@ -747,7 +735,6 @@ watch(showTracklist, async (enabled) => {
             @workflow-action="handleWorkflowAction(member.album.id, $event)"
             @undo-workflow="handleUndoWorkflow(member.album.id)"
             @resolve-from-playlist="handleResolveFromPlaylist(member.album.id)"
-            @loved-change="handleLovedChange"
           />
         </li>
       </ul>

@@ -8,18 +8,18 @@ import { setTrackLoved } from '@/lib/lastfm/scrobble'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
 import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import { useAuthStore } from '@/stores/auth'
+import { usePlayStatsStore } from '@/stores/playStats'
 import type { PlaylistMember, Track } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
-import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const auth = useAuthStore()
+const playStats = usePlayStatsStore()
 
 const props = defineProps<{
   member: PlaylistMember
   playlistId: string
   mappings: Map<string, TrackYouTubeMapping>
-  playStats: Map<string, TrackPlayStats>
   showTracklist: boolean
   showResolveStats?: boolean
   canMoveUp: boolean
@@ -40,7 +40,6 @@ const emit = defineEmits<{
   workflowAction: [action: WorkflowAction]
   undoWorkflow: []
   resolveFromPlaylist: []
-  lovedChange: [trackId: string, loved: boolean]
 }>()
 
 const menuOpen = ref(false)
@@ -72,11 +71,11 @@ const resolveFromPlaylistLabel = computed(() => {
 })
 
 function trackPlaycount(trackId: string): number {
-  return props.playStats.get(trackId)?.playcount ?? 0
+  return playStats.byTrackId.get(trackId)?.playcount ?? 0
 }
 
 function isTrackLoved(trackId: string): boolean {
-  return props.playStats.get(trackId)?.loved === true
+  return playStats.byTrackId.get(trackId)?.loved === true
 }
 
 function isTogglingLoved(trackId: string): boolean {
@@ -89,12 +88,12 @@ async function handleToggleLoved(track: Track) {
   const nextLoved = !isTrackLoved(track.id)
   lovedToggleError.value = null
   togglingLovedIds.value = new Set(togglingLovedIds.value).add(track.id)
-  emit('lovedChange', track.id, nextLoved)
+  playStats.setLoved(track.id, nextLoved)
 
   try {
     await setTrackLoved(auth.user.uid, album.value, track, nextLoved)
   } catch (err) {
-    emit('lovedChange', track.id, !nextLoved)
+    playStats.setLoved(track.id, !nextLoved)
     lovedToggleError.value = err instanceof Error ? err.message : 'Failed to update Last.fm love'
   } finally {
     const next = new Set(togglingLovedIds.value)

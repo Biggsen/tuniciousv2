@@ -3,8 +3,10 @@ import {
   createTrackListenRecord,
   endPlaybackSession,
   finalizeTrackListenRecord,
+  getTrackPlayStats,
 } from '@/lib/sessions/firestore'
 import { handleListenFinalized } from '@/lib/lastfm/scrobble'
+import { usePlayStatsStore } from '@/stores/playStats'
 import type { PlaybackQueueItem } from '@/types/playback'
 import type { ListenEndReason } from '@/types/sessions'
 
@@ -41,13 +43,22 @@ async function finalizeActiveListen(endReason: ListenEndReason) {
   activeListen = null
 
   try {
-    await finalizeTrackListenRecord(
+    const result = await finalizeTrackListenRecord(
       activeUid,
       listenId,
       listenedMs,
       trackLengthMs,
       endReason,
     )
+    if (result.completed && result.trackId) {
+      const playStats = usePlayStatsStore()
+      const latest = await getTrackPlayStats(activeUid, result.trackId)
+      if (latest) {
+        playStats.hydrate(new Map([[result.trackId, latest]]))
+      } else {
+        playStats.increment(result.trackId)
+      }
+    }
     await handleListenFinalized(activeUid, listenId)
   } catch (err) {
     console.error('Failed to finalize listen record', err)

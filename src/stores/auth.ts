@@ -11,6 +11,7 @@ import { ref } from 'vue'
 
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase'
 import { ensureUserProfile, getUserProfile } from '@/lib/userProfile'
+import { usePlayStatsStore } from '@/stores/playStats'
 import type { UserProfile } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -46,6 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       } else {
         profile.value = null
+        usePlayStatsStore().reset()
       }
 
       ready.value = true

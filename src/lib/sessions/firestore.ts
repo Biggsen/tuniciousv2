@@ -181,7 +181,7 @@ export async function finalizeTrackListenRecord(
   listenedMs: number,
   trackLengthMs: number | undefined,
   endReason: ListenEndReason,
-): Promise<void> {
+): Promise<{ completed: boolean; trackId?: string }> {
   const completed = isListenCompleted(listenedMs, trackLengthMs, endReason)
   const ref = doc(getFirestoreDb(), 'users', uid, 'track_listens', listenId)
 
@@ -195,12 +195,13 @@ export async function finalizeTrackListenRecord(
     }),
   )
 
-  if (completed) {
-    const snapshot = await getDoc(ref)
-    if (!snapshot.exists()) return
-    const data = snapshot.data() as TrackListenRecordDocument
-    await incrementTrackPlaycount(uid, data.trackId)
-  }
+  if (!completed) return { completed: false }
+
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) return { completed: false }
+  const data = snapshot.data() as TrackListenRecordDocument
+  await incrementTrackPlaycount(uid, data.trackId)
+  return { completed: true, trackId: data.trackId }
 }
 
 export async function getTrackListenById(
@@ -223,13 +224,14 @@ export async function syncTrackPlaycountFromLastfm(
   trackId: string,
   lastfmPlaycount: number,
   loved?: boolean,
+  playcount = lastfmPlaycount,
 ): Promise<void> {
   const ref = trackStatsDoc(uid, trackId)
   await setDoc(
     ref,
     omitUndefined({
       trackId,
-      playcount: lastfmPlaycount,
+      playcount,
       loved,
       lastSyncedAt: serverTimestamp(),
       lastfmPlaycountAtSync: lastfmPlaycount,
@@ -247,23 +249,6 @@ export async function syncTrackLovedFromLastfm(
   await setDoc(ref, { trackId, loved }, { merge: true })
 }
 
-export function patchTrackPlayStatsLoved(
-  stats: Map<string, TrackPlayStats>,
-  trackId: string,
-  loved: boolean,
-): Map<string, TrackPlayStats> {
-  const next = new Map(stats)
-  const current = next.get(trackId)
-  next.set(trackId, {
-    trackId,
-    playcount: current?.playcount ?? 0,
-    lastPlayedAt: current?.lastPlayedAt,
-    lastSyncedAt: current?.lastSyncedAt,
-    lastfmPlaycountAtSync: current?.lastfmPlaycountAtSync,
-    loved,
-  })
-  return next
-}
 
 async function incrementTrackPlaycount(uid: string, trackId: string): Promise<void> {
   const ref = trackStatsDoc(uid, trackId)

@@ -14,6 +14,7 @@ import {
   normalizeForLastfm,
   meetsScrobbleThreshold,
 } from '@/lib/lastfm/normalize'
+import { nextPlaycountFromLastfm, type LastfmPlaycountMode } from '@/lib/sessions/playStats'
 import {
   getTrackListenById,
   markListenScrobbled,
@@ -21,6 +22,7 @@ import {
   syncTrackPlaycountFromLastfm,
 } from '@/lib/sessions/firestore'
 import { getUserProfile } from '@/lib/userProfile'
+import { usePlayStatsStore } from '@/stores/playStats'
 import type { Album, PlaylistMember, Track } from '@/types/library'
 import type { PlaybackQueueItem } from '@/types/playback'
 
@@ -118,6 +120,18 @@ export async function handleListenFinalized(uid: string, listenId: string): Prom
   }
 }
 
+async function persistLastfmTrackInfo(
+  uid: string,
+  trackId: string,
+  info: { playcount: number; loved: boolean },
+  mode: LastfmPlaycountMode,
+): Promise<void> {
+  const playStats = usePlayStatsStore()
+  const playcount = nextPlaycountFromLastfm(playStats.playcount(trackId), info.playcount, mode)
+  await syncTrackPlaycountFromLastfm(uid, trackId, info.playcount, info.loved, playcount)
+  playStats.applyFromLastfm(trackId, info.playcount, info.loved, mode)
+}
+
 async function syncPlaycountForTrack(
   uid: string,
   username: string,
@@ -127,7 +141,7 @@ async function syncPlaycountForTrack(
 ): Promise<void> {
   try {
     const info = await fetchTrackUserInfo(artist, track, username)
-    await syncTrackPlaycountFromLastfm(uid, trackId, info.playcount, info.loved)
+    await persistLastfmTrackInfo(uid, trackId, info, 'floor')
   } catch (error) {
     console.error('Last.fm playcount sync failed', error)
   }
@@ -187,12 +201,13 @@ async function refreshAlbumPlaycountsWithKeys(
     const bulkLoved = matchLovedTrack(artist, album.artist, track, lovedKeys)
     try {
       const info = await fetchTrackUserInfo(artist, track, username)
-      await syncTrackPlaycountFromLastfm(uid, libraryTrack.id, info.playcount, info.loved)
+      await persistLastfmTrackInfo(uid, libraryTrack.id, info, 'authoritative')
       synced++
     } catch {
       // Only persist a positive loved-list match. A miss must not clear an existing love.
       if (bulkLoved) {
         await syncTrackLovedFromLastfm(uid, libraryTrack.id, true)
+        usePlayStatsStore().setLoved(libraryTrack.id, true)
       }
     }
   }
@@ -265,5 +280,6 @@ export async function setTrackLoved(
   }
 
   await syncTrackLovedFromLastfm(uid, track.id, loved)
+  usePlayStatsStore().setLoved(track.id, loved)
   invalidateLovedKeysCache()
 }

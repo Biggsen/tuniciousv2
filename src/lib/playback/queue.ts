@@ -40,18 +40,24 @@ export function buildQueueFromPlaylist(
   return queue
 }
 
-export function shuffleResolvedQueueItems(items: PlaybackQueueItem[]): PlaybackQueueItem[] {
-  const resolved = items.filter((item) => item.videoId)
-  const shuffled = [...resolved]
-
+function fisherYatesShuffle<T>(items: T[]): T[] {
+  const shuffled = [...items]
   for (let index = shuffled.length - 1; index > 0; index--) {
     const swapIndex = Math.floor(Math.random() * (index + 1))
     const current = shuffled[index]
-    shuffled[index] = shuffled[swapIndex]
+    shuffled[index] = shuffled[swapIndex]!
     shuffled[swapIndex] = current
   }
-
   return shuffled
+}
+
+/** Shuffle the full queue so random play is not just a random start index. */
+export function shuffleQueueItems(items: PlaybackQueueItem[]): PlaybackQueueItem[] {
+  return fisherYatesShuffle(items)
+}
+
+export function shuffleResolvedQueueItems(items: PlaybackQueueItem[]): PlaybackQueueItem[] {
+  return fisherYatesShuffle(items.filter((item) => item.videoId))
 }
 
 /** Random index among items that already have a videoId, or -1 if none. */

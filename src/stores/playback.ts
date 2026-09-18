@@ -10,6 +10,7 @@ import {
 import {
   buildQueueFromAlbum,
   buildQueueFromPlaylist,
+  shuffleQueueItems,
 } from '@/lib/playback/queue'
 import { listPlaylistMembers } from '@/lib/playlist/firestore'
 import {
@@ -238,8 +239,8 @@ export const usePlaybackStore = defineStore('playback', () => {
       error.value = 'No tracks to play'
       return false
     }
-    const startIndex = Math.floor(Math.random() * queue.value.length)
-    return startPlayback(startIndex)
+    queue.value = shuffleQueueItems(queue.value)
+    return startPlayback(0)
   }
 
   function loadCurrentVideo(autoplay = true) {

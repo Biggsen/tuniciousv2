@@ -9,8 +9,8 @@ import {
 import { listPlaylistWorkflowStates, type PlaylistWorkflowRowState } from '@/lib/pipeline/service'
 import { getTrackPlayStatsMap } from '@/lib/sessions/firestore'
 import { getMappingsForTrackIds } from '@/lib/youtube/firestore'
+import { usePlayStatsStore } from '@/stores/playStats'
 import type { Playlist, PlaylistMember } from '@/types/library'
-import type { TrackPlayStats } from '@/types/sessions'
 import type { TrackYouTubeMapping } from '@/types/youtube'
 
 interface PlaylistDetailCache {
@@ -18,7 +18,6 @@ interface PlaylistDetailCache {
   members: PlaylistMember[]
   albumsHydrated: boolean
   mappings: Map<string, TrackYouTubeMapping>
-  playStats: Map<string, TrackPlayStats>
   trackDataLoaded: boolean
   workflowEnabled: boolean
   workflowBlockedReason: string | null
@@ -31,7 +30,6 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     string,
     Promise<{
       mappings: Map<string, TrackYouTubeMapping>
-      playStats: Map<string, TrackPlayStats>
       members: PlaylistMember[]
     }>
   >()
@@ -85,7 +83,6 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
       members,
       albumsHydrated: false,
       mappings: new Map(),
-      playStats: new Map(),
       trackDataLoaded: false,
       workflowEnabled: workflowState.enabled,
       workflowBlockedReason: workflowState.blockedReason ?? null,
@@ -113,7 +110,6 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     options: { force?: boolean } = {},
   ): Promise<{
     mappings: Map<string, TrackYouTubeMapping>
-    playStats: Map<string, TrackPlayStats>
     members: PlaylistMember[]
   }> {
     const members = await ensureAlbumsHydrated(uid, playlistId)
@@ -124,7 +120,6 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     if (cached.trackDataLoaded && !options.force) {
       return {
         mappings: cached.mappings,
-        playStats: cached.playStats,
         members: cached.members,
       }
     }
@@ -138,16 +133,16 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
         getMappingsForTrackIds(uid, trackIds),
         getTrackPlayStatsMap(uid, trackIds),
       ])
+      usePlayStatsStore().hydrate(playStats)
       const latest = getCached(playlistId) ?? cached
       setCached(playlistId, {
         ...latest,
         members,
         albumsHydrated: true,
         mappings,
-        playStats,
         trackDataLoaded: true,
       })
-      return { mappings, playStats, members }
+      return { mappings, members }
     })()
 
     trackDataInflight.set(playlistId, loadPromise)
@@ -160,32 +155,12 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     }
   }
 
-  function patchPlayStats(
-    playlistId: string,
-    trackId: string,
-    patch: Partial<TrackPlayStats>,
-  ): Map<string, TrackPlayStats> | null {
-    const cached = getCached(playlistId)
-    if (!cached) return null
-    const playStats = new Map(cached.playStats)
-    const current = playStats.get(trackId)
-    playStats.set(trackId, {
-      trackId,
-      playcount: current?.playcount ?? 0,
-      ...current,
-      ...patch,
-    })
-    setCached(playlistId, { ...cached, playStats })
-    return playStats
-  }
-
   return {
     getCached,
     setCached,
     loadPlaylistShell,
     ensureAlbumsHydrated,
     ensureTrackData,
-    patchPlayStats,
     invalidate,
   }
 })
