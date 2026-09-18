@@ -290,7 +290,7 @@ onMounted(async () => {
               </div>
             <div class="flex flex-1 flex-col p-3">
               <p
-                class="line-clamp-2 text-sm font-medium leading-snug"
+                class="text-sm font-medium leading-snug"
                 :class="isPlayingAlbum(album.id) ? 'text-accent' : ''"
               >{{ album.title }}</p>
               <p class="mt-1 truncate text-xs text-text-muted">{{ album.artist }}</p>

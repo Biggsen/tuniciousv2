@@ -72,7 +72,7 @@ function statusClass(album: StagedAlbum): string {
             </div>
           </div>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">{{ album.albumName }}</p>
+            <p class="text-sm font-medium">{{ album.albumName }}</p>
             <p class="mt-0.5 truncate text-xs text-text-muted">{{ album.albumArtist }}</p>
             <p class="mt-1 text-[11px] text-text-muted">
               {{ album.tracks.length }} tracks

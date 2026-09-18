@@ -28,7 +28,7 @@ const progressPercent = computed(() => {
           <p v-if="playback.currentItem" class="truncate text-sm font-medium">
             {{ playback.currentItem.title }}
           </p>
-          <p v-if="playback.currentItem" class="truncate text-xs text-text-muted">
+          <p v-if="playback.currentItem" class="text-xs text-text-muted">
             {{ playback.currentItem.artist }}
             · {{ playback.currentItem.albumTitle }}
           </p>

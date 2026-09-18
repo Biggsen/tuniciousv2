@@ -198,7 +198,7 @@ async function addAlbum(albumId: string) {
                   />
                 </div>
                 <span class="min-w-0 flex-1">
-                  <span class="block truncate font-medium">{{ album.title }}</span>
+                  <span class="block font-medium">{{ album.title }}</span>
                   <span class="block truncate text-xs text-text-muted">
                     {{ album.artist }} · {{ yearLabel(album) }}
                   </span>

@@ -668,7 +668,7 @@ async function runAutoThisAlbum() {
             >
               <RouterLink
                 :to="{ name: 'album-detail', params: { id: libAlbum.id } }"
-                class="min-w-0 truncate transition-colors hover:text-accent"
+                class="min-w-0 transition-colors hover:text-accent"
                 :class="album.libraryAlbumId === libAlbum.id ? 'font-medium text-accent' : ''"
               >
                 {{ libAlbum.title }}

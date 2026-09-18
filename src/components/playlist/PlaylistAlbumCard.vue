@@ -188,7 +188,7 @@ const overlayButtonClass =
               params: { id: album.id },
               query: { playlistId },
             }"
-            class="mt-0.5 block truncate text-base font-semibold transition-colors hover:text-accent"
+            class="mt-0.5 block text-base font-semibold transition-colors hover:text-accent"
           >
             {{ album.title }}
           </RouterLink>

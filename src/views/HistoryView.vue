@@ -104,7 +104,7 @@ onMounted(async () => {
           >
             <div class="min-w-0">
               <p class="truncate font-medium">{{ listen.title }}</p>
-              <p class="mt-0.5 truncate text-sm text-text-muted">
+              <p class="mt-0.5 text-sm text-text-muted">
                 {{ listen.artist }} · {{ listen.albumTitle }}
               </p>
               <p
@@ -149,7 +149,7 @@ onMounted(async () => {
             <div class="min-w-0">
               <RouterLink
                 :to="{ name: 'album-detail', params: { id: session.albumId } }"
-                class="truncate font-medium text-accent hover:underline"
+                class="font-medium text-accent hover:underline"
               >
                 {{ session.albumTitle }}
               </RouterLink>

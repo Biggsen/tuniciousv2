@@ -102,7 +102,7 @@ onMounted(async () => {
       >
         <div class="min-w-0">
           <p class="truncate font-medium">{{ playback.currentItem!.title }}</p>
-          <p class="mt-0.5 truncate text-sm text-text-muted">
+          <p class="mt-0.5 text-sm text-text-muted">
             {{ playback.currentItem!.artist }} · {{ playback.currentItem!.albumTitle }}
           </p>
           <RouterLink
@@ -131,7 +131,7 @@ onMounted(async () => {
       >
         <div class="min-w-0">
           <p class="truncate font-medium">{{ resumeLabel.title }}</p>
-          <p class="mt-0.5 truncate text-sm text-text-muted">
+          <p class="mt-0.5 text-sm text-text-muted">
             {{ resumeLabel.artist }} · {{ resumeLabel.albumTitle }}
           </p>
           <RouterLink
@@ -228,7 +228,7 @@ onMounted(async () => {
             >
               {{ listen.title }}
             </RouterLink>
-            <p class="mt-0.5 truncate text-sm text-text-muted">
+            <p class="mt-0.5 text-sm text-text-muted">
               {{ listen.artist }} · {{ listen.albumTitle }}
             </p>
           </div>
