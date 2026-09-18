@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import {
@@ -27,6 +27,7 @@ const search = ref('')
 const debouncedSearch = ref('')
 const hasSearched = ref(false)
 const error = ref<string | null>(null)
+const searchInput = ref<HTMLInputElement | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 const availableAlbums = computed(() =>
@@ -82,11 +83,36 @@ watch(debouncedSearch, async () => {
   await loadAlbums({ reset: true })
 })
 
-async function toggle() {
-  open.value = !open.value
-  if (open.value && !albums.value.length) {
-    await loadAlbums({ reset: true })
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && open.value) {
+    event.preventDefault()
+    closePanel()
   }
+}
+
+watch(open, async (isOpen) => {
+  if (isOpen) {
+    window.addEventListener('keydown', onKeydown)
+    await nextTick()
+    searchInput.value?.focus()
+    return
+  }
+  window.removeEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  window.removeEventListener('keydown', onKeydown)
+})
+
+async function openPanel() {
+  if (open.value) return
+  open.value = true
+  await loadAlbums({ reset: true })
+}
+
+function closePanel() {
+  open.value = false
 }
 
 async function loadMore() {
@@ -103,69 +129,95 @@ async function addAlbum(albumId: string) {
   <div>
     <button
       type="button"
-      class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-white/5"
-      @click="toggle"
+      class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
+      @click="openPanel"
     >
-      {{ open ? 'Hide library' : 'Add from library' }}
+      Add from library
     </button>
 
-    <div
-      v-if="open"
-      class="mt-4 rounded-xl border border-border bg-surface-raised/50 p-4"
-    >
-      <div class="mb-3">
-        <input
-          v-model="search"
-          type="text"
-          placeholder="Search by title or artist"
-          class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </div>
-      <p v-if="loading" class="text-sm text-text-muted">Loading library…</p>
-      <p v-else-if="error" class="text-sm text-red-300">{{ error }}</p>
-      <p v-else-if="!availableAlbums.length" class="text-sm text-text-muted">
-        <span v-if="hasSearched">No albums match this search.</span>
-        <template v-else>
-          No more albums to add. Import albums from the
-          <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
-          first.
-        </template>
-      </p>
-
-      <ul v-else class="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-        <li v-for="album in availableAlbums" :key="album.id">
-          <button
-            type="button"
-            class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
-            @click="addAlbum(album.id)"
-          >
-            <div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-surface">
-              <img
-                v-if="pickAlbumCoverSmall(album)"
-                :src="pickAlbumCoverSmall(album)"
-                :alt="album.title"
-                class="h-full w-full object-cover"
-              />
-            </div>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate font-medium">{{ album.title }}</span>
-              <span class="block truncate text-xs text-text-muted">
-                {{ album.artist }} · {{ yearLabel(album) }}
-              </span>
-            </span>
-          </button>
-        </li>
-      </ul>
-      <div v-if="hasMore" class="mt-3">
+    <Teleport to="body">
+      <div
+        v-if="open"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-from-library-title"
+      >
         <button
           type="button"
-          class="rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:bg-white/5 disabled:opacity-50"
-          :disabled="loadingMore"
-          @click="loadMore"
+          class="absolute inset-0 bg-black/60"
+          aria-label="Close dialog"
+          @click="closePanel"
+        />
+        <div
+          class="relative flex max-h-[min(36rem,calc(100vh-2rem))] w-full max-w-lg flex-col rounded-xl border border-border bg-surface-raised p-5 shadow-xl"
         >
-          {{ loadingMore ? 'Loading…' : 'Load more' }}
-        </button>
+          <div class="mb-3 flex items-start justify-between gap-3">
+            <h2 id="add-from-library-title" class="text-lg font-semibold">Add from library</h2>
+            <button
+              type="button"
+              class="rounded-lg border border-border px-2.5 py-1 text-sm text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+              @click="closePanel"
+            >
+              Close
+            </button>
+          </div>
+          <input
+            ref="searchInput"
+            v-model="search"
+            type="text"
+            placeholder="Search by title or artist"
+            class="mb-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <p v-if="loading" class="text-sm text-text-muted">Loading library…</p>
+          <p v-else-if="error" class="text-sm text-red-300">{{ error }}</p>
+          <p v-else-if="!availableAlbums.length" class="text-sm text-text-muted">
+            <span v-if="hasSearched">No albums match this search.</span>
+            <template v-else>
+              No more albums to add. Import albums from the
+              <RouterLink to="/library" class="text-accent hover:underline">library</RouterLink>
+              first.
+            </template>
+          </p>
+          <ul
+            v-else
+            class="min-h-0 flex-1 divide-y divide-border overflow-y-auto rounded-lg border border-border"
+          >
+            <li v-for="album in availableAlbums" :key="album.id">
+              <button
+                type="button"
+                class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
+                @click="addAlbum(album.id)"
+              >
+                <div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-surface">
+                  <img
+                    v-if="pickAlbumCoverSmall(album)"
+                    :src="pickAlbumCoverSmall(album)"
+                    :alt="album.title"
+                    class="h-full w-full object-cover"
+                  />
+                </div>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate font-medium">{{ album.title }}</span>
+                  <span class="block truncate text-xs text-text-muted">
+                    {{ album.artist }} · {{ yearLabel(album) }}
+                  </span>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <div v-if="hasMore" class="mt-3">
+            <button
+              type="button"
+              class="rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:bg-white/5 disabled:opacity-50"
+              :disabled="loadingMore"
+              @click="loadMore"
+            >
+              {{ loadingMore ? 'Loading…' : 'Load more' }}
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>

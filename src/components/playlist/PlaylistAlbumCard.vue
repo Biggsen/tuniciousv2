@@ -6,13 +6,11 @@ import TrackLovedHeart from '@/components/lastfm/TrackLovedHeart.vue'
 import { pickAlbumCoverSmall } from '@/lib/album/coverArt'
 import { setTrackLoved } from '@/lib/lastfm/scrobble'
 import { lastfmAlbumUrl, rymSearchUrl } from '@/lib/playlist/externalLinks'
-import { countAlbumResolvedTracks } from '@/lib/youtube/albumResolve'
 import { useAuthStore } from '@/stores/auth'
 import { usePlaybackStore } from '@/stores/playback'
 import { usePlayStatsStore } from '@/stores/playStats'
 import type { PlaylistMember, Track } from '@/types/library'
 import type { WorkflowAction } from '@/types/pipeline'
-import type { TrackYouTubeMapping } from '@/types/youtube'
 
 const auth = useAuthStore()
 const playback = usePlaybackStore()
@@ -21,18 +19,12 @@ const playStats = usePlayStatsStore()
 const props = defineProps<{
   member: PlaylistMember
   playlistId: string
-  mappings: Map<string, TrackYouTubeMapping>
   showTracklist: boolean
-  showResolveStats?: boolean
   canMoveUp: boolean
   canMoveDown: boolean
   workflowActions?: WorkflowAction[]
   canUndoWorkflow?: boolean
   workflowBlockedReason?: string
-  resolvingFromPlaylist?: boolean
-  resolveFromPlaylistProgress?: string
-  resolveFromPlaylistMessage?: string | null
-  resolveFromPlaylistDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,7 +33,6 @@ const emit = defineEmits<{
   moveDown: []
   workflowAction: [action: WorkflowAction]
   undoWorkflow: []
-  resolveFromPlaylist: []
   playTrack: [trackId: string]
 }>()
 
@@ -53,25 +44,6 @@ const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
 const lastfmConnected = computed(() => Boolean(auth.profile?.lastfm?.sessionKey))
 const togglingLovedIds = ref<Set<string>>(new Set())
 const lovedToggleError = ref<string | null>(null)
-
-const resolveStats = computed(() =>
-  countAlbumResolvedTracks(album.value, props.mappings),
-)
-
-const resolvedPercent = computed(() => {
-  if (resolveStats.value.total === 0) return 0
-  return Math.round((resolveStats.value.resolved / resolveStats.value.total) * 100)
-})
-
-const resolveFromPlaylistLabel = computed(() => {
-  if (props.resolvingFromPlaylist) {
-    const progress = props.resolveFromPlaylistProgress?.trim()
-    return progress ? `Resolving… ${progress}` : 'Resolving…'
-  }
-  return album.value.youtubePlaylistId
-    ? 'Resolve from playlist'
-    : 'Resolve via Topic channel'
-})
 
 function isCurrentTrack(trackId: string): boolean {
   if (!playback.showPlayerBar) return false
@@ -119,40 +91,92 @@ function closeMenu() {
   menuOpen.value = false
 }
 
-function actionLabel(action: WorkflowAction): string {
-  if (action === 'start') return 'Start'
-  if (action === 'yes') return 'Yes'
-  return 'No'
-}
+const canStart = computed(() => props.workflowActions?.includes('start') ?? false)
+const canYes = computed(() => props.workflowActions?.includes('yes') ?? false)
+const canNo = computed(() => props.workflowActions?.includes('no') ?? false)
+const showCoverWorkflow = computed(
+  () => canStart.value || canYes.value || canNo.value || props.canUndoWorkflow || Boolean(props.workflowBlockedReason),
+)
+
+const overlayButtonClass =
+  'absolute z-10 rounded-md bg-black/70 px-2.5 py-1 text-xs font-medium text-white shadow-sm backdrop-blur-sm opacity-0 pointer-events-none transition-opacity transition-colors group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 hover:bg-black/85'
 </script>
 
 <template>
   <article class="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-raised/50">
-    <RouterLink
-      :to="{
-        name: 'album-detail',
-        params: { id: album.id },
-        query: { playlistId },
-      }"
-      class="group block"
-    >
-      <div class="aspect-square w-full overflow-hidden bg-surface">
-        <img
-          v-if="pickAlbumCoverSmall(album)"
-          :src="pickAlbumCoverSmall(album)"
-          :alt="album.title"
-          loading="lazy"
-          decoding="async"
-          class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-        />
-        <div
-          v-else
-          class="flex h-full w-full items-center justify-center text-xs text-text-muted"
-        >
-          No art
+    <div class="group relative">
+      <RouterLink
+        :to="{
+          name: 'album-detail',
+          params: { id: album.id },
+          query: { playlistId },
+        }"
+        class="block"
+      >
+        <div class="aspect-square w-full overflow-hidden bg-surface">
+          <img
+            v-if="pickAlbumCoverSmall(album)"
+            :src="pickAlbumCoverSmall(album)"
+            :alt="album.title"
+            loading="lazy"
+            decoding="async"
+            class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+          />
+          <div
+            v-else
+            class="flex h-full w-full items-center justify-center text-xs text-text-muted"
+          >
+            No art
+          </div>
         </div>
-      </div>
-    </RouterLink>
+      </RouterLink>
+
+      <template v-if="showCoverWorkflow">
+        <button
+          v-if="canNo"
+          type="button"
+          class="left-2 top-2"
+          :class="overlayButtonClass"
+          @click.stop="emit('workflowAction', 'no')"
+        >
+          No
+        </button>
+        <button
+          v-if="canYes"
+          type="button"
+          class="right-2 top-2"
+          :class="overlayButtonClass"
+          @click.stop="emit('workflowAction', 'yes')"
+        >
+          Yes
+        </button>
+        <button
+          v-if="canStart"
+          type="button"
+          class="right-2 top-2"
+          :class="overlayButtonClass"
+          @click.stop="emit('workflowAction', 'start')"
+        >
+          Start
+        </button>
+        <button
+          v-if="canUndoWorkflow"
+          type="button"
+          class="bottom-2 right-2"
+          :class="overlayButtonClass"
+          @click.stop="emit('undoWorkflow')"
+        >
+          Undo
+        </button>
+        <p
+          v-if="workflowBlockedReason"
+          class="pointer-events-none absolute inset-x-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-1 text-[11px] text-amber-200 backdrop-blur-sm"
+          :class="canUndoWorkflow ? 'right-16' : ''"
+        >
+          {{ workflowBlockedReason }}
+        </p>
+      </template>
+    </div>
 
     <div class="flex flex-1 flex-col p-4">
       <div class="mb-3 flex items-start justify-between gap-2">
@@ -255,70 +279,8 @@ function actionLabel(action: WorkflowAction): string {
       </div>
 
       <div class="mt-auto">
-        <div
-          v-if="workflowActions?.length || canUndoWorkflow || workflowBlockedReason"
-          class="mb-3 rounded-lg border border-border bg-surface px-3 py-2"
-        >
-          <p class="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">Workflow</p>
-          <p v-if="workflowBlockedReason" class="mb-2 text-xs text-amber-300">
-            {{ workflowBlockedReason }}
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="action in workflowActions"
-              :key="action"
-              type="button"
-              class="rounded-md border border-border px-2.5 py-1 text-xs transition-colors hover:bg-white/5"
-              @click="emit('workflowAction', action)"
-            >
-              {{ actionLabel(action) }}
-            </button>
-            <button
-              v-if="canUndoWorkflow"
-              type="button"
-              class="rounded-md border border-border px-2.5 py-1 text-xs transition-colors hover:bg-white/5"
-              @click="emit('undoWorkflow')"
-            >
-              Undo
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="showResolveStats !== false"
-          class="mb-1 flex items-center justify-between text-xs"
-          :class="resolvedPercent === 100 ? 'text-emerald-400' : 'text-amber-400'"
-        >
-          <span>Resolved</span>
-          <span>{{ resolveStats.resolved }}/{{ resolveStats.total }} · {{ resolvedPercent }}%</span>
-        </div>
-        <div
-          v-if="showResolveStats !== false"
-          class="h-1.5 overflow-hidden rounded-full bg-white/10"
-        >
-          <div
-            class="h-full rounded-full transition-all"
-            :class="resolvedPercent === 100 ? 'bg-emerald-500/80' : 'bg-amber-500/80'"
-            :style="{ width: `${resolvedPercent}%` }"
-          />
-        </div>
-        <p v-else class="text-xs text-text-muted">
+        <p class="text-xs text-text-muted">
           {{ album.tracks.length }} track{{ album.tracks.length === 1 ? '' : 's' }}
-        </p>
-
-        <button
-          type="button"
-          class="mt-2 w-full rounded-md border border-border px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="resolvingFromPlaylist || resolveFromPlaylistDisabled"
-          @click="emit('resolveFromPlaylist')"
-        >
-          {{ resolveFromPlaylistLabel }}
-        </button>
-        <p
-          v-if="resolveFromPlaylistMessage"
-          class="mt-1 text-xs text-emerald-300"
-        >
-          {{ resolveFromPlaylistMessage }}
         </p>
 
         <div
