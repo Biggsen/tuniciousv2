@@ -57,7 +57,6 @@ const editingName = ref(false)
 const nameDraft = ref('')
 const savingName = ref(false)
 const nameError = ref<string | null>(null)
-const menuOpen = ref(false)
 const playlistId = () => String(route.params.id)
 const showTracklist = ref(loadPlaylistTracklistOpen(playlistId()))
 const savedSort = loadPlaylistSortPreference()
@@ -76,12 +75,6 @@ const memberAlbumIds = computed(() => members.value.map((member) => member.album
 const totalTracks = computed(() =>
   members.value.reduce((sum, member) => sum + member.album.tracks.length, 0),
 )
-
-const resolvedTracks = computed(() => {
-  if (!trackDataLoaded.value) return 0
-  const trackIds = members.value.flatMap((member) => member.album.tracks.map((t) => t.id))
-  return trackIds.filter((id) => mappings.value.has(id)).length
-})
 
 const sortedMembers = computed(() => {
   const filtered = members.value.filter((member) =>
@@ -160,13 +153,6 @@ async function load({ showFullPageLoader = true, force = false } = {}) {
   } finally {
     loading.value = false
     reloading.value = false
-  }
-
-  // Background: hydrate mappings so the playlist header can show resolved-track counts.
-  if (auth.user && !trackDataLoaded.value) {
-    void ensureTrackDataLoaded().catch((err) => {
-      console.error('Failed to load playlist resolve stats', err)
-    })
   }
 }
 
@@ -361,7 +347,6 @@ function startRename() {
   nameDraft.value = playlist.value.name
   editingName.value = true
   nameError.value = null
-  menuOpen.value = false
 }
 
 function cancelRename() {
@@ -469,28 +454,6 @@ watch(showTracklist, async (enabled) => {
             :member-album-ids="memberAlbumIds"
             @add="handleAdd"
           />
-          <div class="relative">
-            <button
-              type="button"
-              class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
-              aria-label="Playlist menu"
-              @click="menuOpen = !menuOpen"
-            >
-              ⋮
-            </button>
-            <div
-              v-if="menuOpen"
-              class="absolute right-0 z-10 mt-1 min-w-36 rounded-lg border border-border bg-surface py-1 shadow-lg"
-            >
-              <button
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/5"
-                @click="startRename"
-              >
-                Rename
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -523,15 +486,32 @@ watch(showTracklist, async (enabled) => {
           </button>
         </div>
         <template v-else>
-          <h2 class="text-3xl font-semibold tracking-tight">{{ playlist.name }}</h2>
+          <div class="flex min-w-0 items-center gap-2">
+            <h2 class="min-w-0 text-3xl font-semibold tracking-tight">{{ playlist.name }}</h2>
+            <button
+              type="button"
+              class="shrink-0 rounded p-1 text-text-muted/40 transition-colors hover:text-text-muted"
+              title="Rename playlist"
+              aria-label="Rename playlist"
+              @click="startRename"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
+                />
+              </svg>
+            </button>
+          </div>
           <p class="mt-2 text-sm text-text-muted">
-            <span>{{ members.length }} album{{ members.length === 1 ? '' : 's' }}</span>
-            <span class="mx-2">·</span>
             <span>{{ totalTracks }} track{{ totalTracks === 1 ? '' : 's' }}</span>
-            <template v-if="trackDataLoaded">
-              <span class="mx-2">·</span>
-              <span>{{ resolvedTracks }}/{{ totalTracks }} resolved</span>
-            </template>
+            <span class="mx-2">·</span>
+            <span>{{ members.length }} album{{ members.length === 1 ? '' : 's' }}</span>
           </p>
         </template>
         <p v-if="nameError" class="mt-2 text-sm text-red-300">{{ nameError }}</p>

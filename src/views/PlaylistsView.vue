@@ -105,21 +105,7 @@ function formatPlaylistCounts(playlistId: string): string {
   const stats = playlistStatsFor(playlistId)
   const albumLabel = stats.albumCount === 1 ? 'album' : 'albums'
   const trackLabel = stats.trackCount === 1 ? 'track' : 'tracks'
-  return `${stats.albumCount} ${albumLabel} · ${stats.trackCount} ${trackLabel}`
-}
-
-function formatPlaylistResolved(playlistId: string): string | null {
-  const stats = playlistStatsFor(playlistId)
-  if (stats.albumCount === 0) return null
-  return `${stats.resolvedAlbumCount}/${stats.albumCount} resolved`
-}
-
-function playlistResolvedClass(playlistId: string): string {
-  const stats = playlistStatsFor(playlistId)
-  if (stats.albumCount > 0 && stats.resolvedAlbumCount === stats.albumCount) {
-    return 'text-emerald-400'
-  }
-  return 'text-amber-400'
+  return `${stats.trackCount} ${trackLabel} · ${stats.albumCount} ${albumLabel}`
 }
 
 function loadFunnelOpenStateFromStorage(): Record<string, boolean> {
@@ -495,13 +481,6 @@ onMounted(() => {
                 <span class="font-medium">{{ playlist.name }}</span>
                 <span class="mt-0.5 block text-xs text-text-muted">
                   {{ formatPlaylistCounts(playlist.id) }}
-                  <template v-if="formatPlaylistResolved(playlist.id)">
-                    ·
-                    <span :class="playlistResolvedClass(playlist.id)">
-                      {{ formatPlaylistResolved(playlist.id) }}
-                    </span>
-                  </template>
-                  · Updated {{ playlist.updatedAt.toLocaleDateString() }}
                 </span>
               </RouterLink>
               <button
@@ -537,13 +516,6 @@ onMounted(() => {
               <span class="font-medium">{{ playlist.name }}</span>
               <span class="mt-0.5 block text-xs text-text-muted">
                 {{ formatPlaylistCounts(playlist.id) }}
-                <template v-if="formatPlaylistResolved(playlist.id)">
-                  ·
-                  <span :class="playlistResolvedClass(playlist.id)">
-                    {{ formatPlaylistResolved(playlist.id) }}
-                  </span>
-                </template>
-                · Updated {{ playlist.updatedAt.toLocaleDateString() }}
               </span>
             </RouterLink>
             <button

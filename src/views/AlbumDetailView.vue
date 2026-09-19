@@ -636,7 +636,7 @@ async function handleArchive() {
     await archiveAlbum(auth.user.uid, album.value.id)
     library.removeCard(album.value.id)
     playlistDetail.invalidate()
-    await router.push({ name: 'library' })
+    await router.push(backLink.value.to)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to archive album'
   } finally {
