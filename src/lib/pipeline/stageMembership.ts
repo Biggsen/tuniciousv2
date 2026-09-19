@@ -184,3 +184,11 @@ export async function closeAllOpenMembershipsForPipeline(
   const openMemberships = await listOpenMembershipsForPipeline(uid, pipelineId)
   await Promise.all(openMemberships.map((membership) => closeStageMembership(uid, membership.id)))
 }
+
+export async function closeAllOpenMembershipsForAlbum(
+  uid: string,
+  albumId: string,
+): Promise<void> {
+  const openMemberships = await listOpenMembershipsForAlbum(uid, albumId)
+  await Promise.all(openMemberships.map((membership) => closeStageMembership(uid, membership.id)))
+}

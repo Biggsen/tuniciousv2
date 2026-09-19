@@ -14,6 +14,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 
+import { isAlbumArchived } from '@/lib/album/archive'
 import {
   albumStubFromPickerItem,
   ensureAlbumPickerForAlbumIds,
@@ -167,9 +168,23 @@ export async function listPlaylistMemberships(
     .sort((a, b) => a.position - b.position)
 }
 
+async function dropArchivedMemberships(
+  uid: string,
+  playlistId: string,
+  memberships: PlaylistMembership[],
+  archivedIds: Set<string>,
+): Promise<PlaylistMembership[]> {
+  if (archivedIds.size === 0) return memberships
+  await Promise.all(
+    [...archivedIds].map((albumId) => removeAlbumFromPlaylist(uid, playlistId, albumId)),
+  )
+  return memberships.filter((membership) => !archivedIds.has(membership.albumId))
+}
+
 /**
  * Lightweight playlist rows from album_picker (track ids only, no titles).
  * Use hydratePlaylistMemberAlbums when tracklists / playback need full docs.
+ * Archived albums are dropped from membership rather than shown.
  */
 export async function listPlaylistMembers(
   uid: string,
@@ -183,7 +198,20 @@ export async function listPlaylistMembers(
 
   if (options.fullAlbums) {
     const albums = await getAlbumsByIdsForUser(uid, albumIds)
-    return memberships
+    const active = await dropArchivedMemberships(
+      uid,
+      playlistId,
+      memberships,
+      new Set(
+        memberships
+          .filter((membership) => {
+            const album = albums.get(membership.albumId)
+            return album ? isAlbumArchived(album) : false
+          })
+          .map((membership) => membership.albumId),
+      ),
+    )
+    return active
       .map((membership) => {
         const album = albums.get(membership.albumId)
         return album ? { membership, album } : null
@@ -193,12 +221,31 @@ export async function listPlaylistMembers(
 
   await ensureAlbumPickerForAlbumIds(uid, albumIds)
   const pickers = await getAlbumPickerItemsByIdsForUser(uid, albumIds)
-  return memberships
+  const active = await dropArchivedMemberships(
+    uid,
+    playlistId,
+    memberships,
+    new Set(
+      memberships
+        .filter((membership) => {
+          const picker = pickers.get(membership.albumId)
+          return Boolean(picker?.archivedAt)
+        })
+        .map((membership) => membership.albumId),
+    ),
+  )
+  return active
     .map((membership) => {
       const picker = pickers.get(membership.albumId)
       return picker ? { membership, album: albumStubFromPickerItem(picker) } : null
     })
     .filter((member): member is PlaylistMember => Boolean(member))
+}
+
+/** Remove an album from every playlist owned by this user. */
+export async function removeAlbumFromAllUserPlaylists(uid: string, albumId: string): Promise<void> {
+  const playlists = await listPlaylists(uid)
+  await Promise.all(playlists.map((playlist) => removeAlbumFromPlaylist(uid, playlist.id, albumId)))
 }
 
 /** Replace stub albums with full album docs (track titles, etc.). */

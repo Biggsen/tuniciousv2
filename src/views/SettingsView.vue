@@ -378,8 +378,9 @@ async function handleRefreshArtistImages() {
     >
       <h2 class="text-lg font-medium">Archived albums</h2>
       <p class="mt-2 text-sm text-text-muted">
-        Albums hidden from the library. Permanent purge from the database can come later once
-        reference checks are in place.
+        Albums removed from the library and dropped from playlists. Restore puts them back in
+        the library only. Permanent purge from the database can come later once reference checks
+        are in place.
       </p>
 
       <p v-if="archivedLoading" class="mt-4 text-sm text-text-muted">Loading archived albums…</p>

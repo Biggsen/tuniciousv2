@@ -62,7 +62,7 @@ async function syncPickerArchiveState(
   await setDoc(ref, patch, { merge: true })
 }
 
-/** Hide a canonical album from the library. Admin only. */
+/** Hide a canonical album from the library and drop playlist/pipeline membership. Admin only. */
 export async function archiveAlbum(uid: string, albumId: string): Promise<void> {
   assertAdmin(uid)
 
@@ -82,6 +82,13 @@ export async function archiveAlbum(uid: string, albumId: string): Promise<void> 
   await syncPickerArchiveState(albumId, {
     archivedAt: serverTimestamp(),
   })
+
+  const [{ removeAlbumFromAllUserPlaylists }, { closeAllOpenMembershipsForAlbum }] = await Promise.all([
+    import('@/lib/playlist/firestore'),
+    import('@/lib/pipeline/stageMembership'),
+  ])
+  await removeAlbumFromAllUserPlaylists(uid, albumId)
+  await closeAllOpenMembershipsForAlbum(uid, albumId)
 }
 
 /** Restore a canonical album to the active library. Admin only. */

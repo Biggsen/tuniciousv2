@@ -635,6 +635,7 @@ async function handleArchive() {
   try {
     await archiveAlbum(auth.user.uid, album.value.id)
     library.removeCard(album.value.id)
+    playlistDetail.invalidate()
     await router.push({ name: 'library' })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to archive album'
@@ -1141,7 +1142,7 @@ onMounted(load)
       <ConfirmDialog
         :open="archiveDialogOpen"
         title="Archive this album?"
-        :message="`“${album.title}” will be hidden from the library. Playlist memberships and history are kept. You can restore it from Settings → Archived albums.`"
+        :message="`“${album.title}” will be removed from the library and from your playlists. Pipeline history is kept. You can restore it from Settings → Archived albums, but it will not rejoin playlists.`"
         confirm-label="Archive album"
         destructive
         :busy="archiving"
