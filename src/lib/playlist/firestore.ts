@@ -22,6 +22,7 @@ import {
   getAlbumsByIdsForUser,
   listAlbums,
 } from '@/lib/album/firestore'
+import { playlistMosaicCoverUrls } from '@/lib/playlist/mosaic'
 import { getFirestoreDb } from '@/lib/firebase'
 import { omitUndefined } from '@/lib/firestore/sanitize'
 import { countAlbumsResolveProgress } from '@/lib/youtube/albumResolve'
@@ -368,6 +369,8 @@ export interface PlaylistStats {
   /** Albums with every track mapped to YouTube. */
   resolvedAlbumCount: number
   resolvedTrackCount: number
+  /** Cover URLs for the first albums in playlist order (up to four). */
+  mosaicCoverUrls?: string[]
 }
 
 export async function getPlaylistStatsMap(
@@ -388,13 +391,18 @@ export async function getPlaylistStatsMap(
   for (let index = 0; index < playlistIds.length; index++) {
     const playlistId = playlistIds[index]
     const snapshot = memberSnapshots[index]
-    const playlistAlbums = []
+    const ranked: Array<{ position: number; album: (typeof albums)[number] }> = []
 
     for (const docSnap of snapshot.docs) {
-      const albumId = (docSnap.data() as PlaylistMembershipDocument).albumId
-      const album = albumById.get(albumId)
+      const membership = docSnap.data() as PlaylistMembershipDocument
+      const album = albumById.get(membership.albumId)
       if (!album) continue
-      playlistAlbums.push(album)
+      ranked.push({ position: membership.position, album })
+    }
+
+    ranked.sort((left, right) => left.position - right.position)
+    const playlistAlbums = ranked.map((entry) => entry.album)
+    for (const album of playlistAlbums) {
       for (const track of album.tracks) {
         allTrackIds.push(track.id)
       }
@@ -414,6 +422,7 @@ export async function getPlaylistStatsMap(
       trackCount: progress.trackCount,
       resolvedAlbumCount: progress.resolvedAlbumCount,
       resolvedTrackCount: progress.resolvedTrackCount,
+      mosaicCoverUrls: playlistMosaicCoverUrls(playlistAlbums),
     })
   }
 

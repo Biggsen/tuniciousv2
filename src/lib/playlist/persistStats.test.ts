@@ -29,6 +29,7 @@ const stats = (partial?: Partial<PlaylistStats>): PlaylistStats => ({
   trackCount: 20,
   resolvedAlbumCount: 1,
   resolvedTrackCount: 10,
+  mosaicCoverUrls: ['https://a.jpg', 'https://b.jpg'],
   ...partial,
 })
 
@@ -61,5 +62,24 @@ describe('persistStats', () => {
   it('returns null for corrupt cache payloads', () => {
     localStorage.setItem('tunicious.playlists.stats.uid-1', '{')
     expect(loadPlaylistStatsCache('uid-1')).toBeNull()
+  })
+
+  it('loads legacy cache rows that omit mosaic cover urls', () => {
+    localStorage.setItem(
+      'tunicious.playlists.stats.uid-1',
+      JSON.stringify({
+        updatedAt: 1,
+        byPlaylistId: {
+          'pl-1': {
+            albumCount: 2,
+            trackCount: 20,
+            resolvedAlbumCount: 1,
+            resolvedTrackCount: 10,
+          },
+        },
+      }),
+    )
+    const cache = loadPlaylistStatsCache('uid-1')
+    expect(cache?.byPlaylistId['pl-1']?.mosaicCoverUrls).toBeUndefined()
   })
 })

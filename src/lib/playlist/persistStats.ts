@@ -14,11 +14,22 @@ function storageKey(uid: string): string {
 function isPlaylistStats(value: unknown): value is PlaylistStats {
   if (!value || typeof value !== 'object') return false
   const stats = value as Partial<PlaylistStats>
+  if (
+    typeof stats.albumCount !== 'number' ||
+    typeof stats.trackCount !== 'number' ||
+    typeof stats.resolvedAlbumCount !== 'number' ||
+    typeof stats.resolvedTrackCount !== 'number'
+  ) {
+    return false
+  }
+
+  if (stats.mosaicCoverUrls === undefined) {
+    return true
+  }
+
   return (
-    typeof stats.albumCount === 'number' &&
-    typeof stats.trackCount === 'number' &&
-    typeof stats.resolvedAlbumCount === 'number' &&
-    typeof stats.resolvedTrackCount === 'number'
+    Array.isArray(stats.mosaicCoverUrls) &&
+    stats.mosaicCoverUrls.every((url) => typeof url === 'string')
   )
 }
 

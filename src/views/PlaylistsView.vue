@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import PlaylistCoverMosaic from '@/components/playlist/PlaylistCoverMosaic.vue'
 import SetupEvaluationFunnelPanel from '@/components/playlist/SetupEvaluationFunnelPanel.vue'
 import ExplorerError from '@/components/explorer/ExplorerError.vue'
 import ExplorerLoading from '@/components/explorer/ExplorerLoading.vue'
@@ -97,8 +98,13 @@ function playlistStatsFor(playlistId: string): PlaylistStats {
       trackCount: 0,
       resolvedAlbumCount: 0,
       resolvedTrackCount: 0,
+      mosaicCoverUrls: [],
     }
   )
+}
+
+function playlistMosaicUrls(playlistId: string): string[] {
+  return playlistStatsFor(playlistId).mosaicCoverUrls ?? []
 }
 
 function formatPlaylistCounts(playlistId: string): string {
@@ -218,8 +224,10 @@ async function load() {
     const hasCache = applyCachedStats(auth.user.uid)
     loading.value = false
 
-    // First visit: fetch once so resolve counts appear. Later visits use cache + Reload.
-    if (!hasCache && loadedPlaylists.length > 0) {
+    const needsMosaics = loadedPlaylists.some(
+      (playlist) => !Array.isArray(playlistStats.value.get(playlist.id)?.mosaicCoverUrls),
+    )
+    if ((!hasCache || needsMosaics) && loadedPlaylists.length > 0) {
       await refreshPlaylistStats(loadedPlaylists.map((playlist) => playlist.id))
     }
   } catch (err) {
@@ -476,11 +484,14 @@ onMounted(() => {
             >
               <RouterLink
                 :to="{ name: 'playlist-detail', params: { id: playlist.id } }"
-                class="min-w-0 flex-1 transition-colors hover:text-accent"
+                class="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:text-accent"
               >
-                <span class="font-medium">{{ playlist.name }}</span>
-                <span class="mt-0.5 block text-xs text-text-muted">
-                  {{ formatPlaylistCounts(playlist.id) }}
+                <PlaylistCoverMosaic :urls="playlistMosaicUrls(playlist.id)" />
+                <span class="min-w-0">
+                  <span class="font-medium">{{ playlist.name }}</span>
+                  <span class="mt-0.5 block text-xs text-text-muted">
+                    {{ formatPlaylistCounts(playlist.id) }}
+                  </span>
                 </span>
               </RouterLink>
               <button
@@ -511,11 +522,14 @@ onMounted(() => {
           >
             <RouterLink
               :to="{ name: 'playlist-detail', params: { id: playlist.id } }"
-              class="min-w-0 flex-1 transition-colors hover:text-accent"
+              class="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:text-accent"
             >
-              <span class="font-medium">{{ playlist.name }}</span>
-              <span class="mt-0.5 block text-xs text-text-muted">
-                {{ formatPlaylistCounts(playlist.id) }}
+              <PlaylistCoverMosaic :urls="playlistMosaicUrls(playlist.id)" />
+              <span class="min-w-0">
+                <span class="font-medium">{{ playlist.name }}</span>
+                <span class="mt-0.5 block text-xs text-text-muted">
+                  {{ formatPlaylistCounts(playlist.id) }}
+                </span>
               </span>
             </RouterLink>
             <button
