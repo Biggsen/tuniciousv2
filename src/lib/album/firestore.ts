@@ -25,7 +25,7 @@ import {
   applyAlbumEntryOverlay,
   filterTrackIdsByExclusions,
 } from '@/lib/album/entryOverlay'
-import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
+import { resolveAlbumCoverUrls, type ReleaseCoverUrls } from '@/lib/album/coverArt'
 import { replaceTrackTitle } from '@/lib/album/trackTitle'
 import { deleteTrackMapping } from '@/lib/youtube/firestore'
 import { findOrCreateArtistsFromCredits } from '@/lib/artist/firestore'
@@ -190,7 +190,7 @@ export function buildAlbumPickerItemFromAlbum(album: Album): Record<string, unkn
     title: album.title,
     artist: album.artist,
     albumYear: album.albumYear,
-    coverUrlSmall: album.coverUrlSmall,
+    coverUrlSmall: album.coverUrlLarge ?? album.coverUrlSmall,
     releaseMbid: album.releaseMbid,
     importedAt: album.importedAt,
     titleLower,
@@ -697,7 +697,12 @@ export async function importReleaseToLibrary(
   const release = await getRelease(releaseMbid, userAgent)
   const artists = await findOrCreateArtistsFromCredits(uid, release['artist-credit'])
   const built = buildAlbumFromRelease(release, artists)
-  const covers = await fetchReleaseCoverUrls(releaseMbid)
+  const covers = await resolveAlbumCoverUrls({
+    releaseMbid,
+    artist: built.artist,
+    title: built.title,
+    extraArtists: artists.map((artist) => artist.name),
+  })
 
   const albumId = crypto.randomUUID()
   const ref = doc(getFirestoreDb(), 'albums', albumId)
@@ -745,6 +750,29 @@ export async function updateAlbumTitle(
 
   const ref = doc(getFirestoreDb(), 'albums', albumId)
   await updateDoc(ref, { title: trimmed })
+
+  const updated = await getAlbumById(uid, albumId)
+  if (!updated) throw new Error('Album not found')
+  await upsertAlbumPickerItem(uid, updated)
+  return updated
+}
+
+export async function updateAlbumCoverUrls(
+  uid: string,
+  albumId: string,
+  covers: ReleaseCoverUrls,
+): Promise<Album> {
+  const ref = doc(getFirestoreDb(), 'albums', albumId)
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) {
+    throw new Error('Album not found')
+  }
+
+  await updateDoc(ref, {
+    coverUrlSmall: covers.small ?? deleteField(),
+    coverUrlLarge: covers.large ?? deleteField(),
+    coverUrl: deleteField(),
+  })
 
   const updated = await getAlbumById(uid, albumId)
   if (!updated) throw new Error('Album not found')

@@ -342,8 +342,9 @@ async function handleRefreshArtistImages() {
     <section class="rounded-xl border border-border bg-surface-raised/50 p-6">
       <h2 class="text-lg font-medium">Library</h2>
       <p class="mt-2 text-sm text-text-muted">
-        Re-fetch album covers from Cover Art Archive, or artist photos via MusicBrainz and Wikidata
-        (with album-cover fallback). May take a while for large libraries.
+        Re-fetch album covers from Cover Art Archive, with Apple as a fallback when CAA has
+        nothing. Artist photos come from MusicBrainz and Wikidata (with album-cover fallback).
+        May take a while for large libraries.
       </p>
 
       <div class="mt-4 flex flex-wrap items-center gap-3">

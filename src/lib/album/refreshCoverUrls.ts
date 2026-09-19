@@ -1,9 +1,5 @@
-import { deleteField, doc, updateDoc } from 'firebase/firestore'
-
-import { fetchReleaseCoverUrls } from '@/lib/album/coverArt'
-import { listAlbums, upsertAlbumPickerItem } from '@/lib/album/firestore'
-import { getFirestoreDb } from '@/lib/firebase'
-import { omitUndefined } from '@/lib/firestore/sanitize'
+import { hasCoverUrls, resolveAlbumCoverUrls } from '@/lib/album/coverArt'
+import { listAlbums, updateAlbumCoverUrls } from '@/lib/album/firestore'
 
 const COVER_FETCH_DELAY_MS = 300
 
@@ -37,32 +33,19 @@ export async function refreshAlbumCoverUrls(uid: string): Promise<RefreshCoverUr
   }
 
   for (const [index, album] of albums.entries()) {
-    if (!album.releaseMbid) {
-      result.failed++
-      continue
-    }
-
     try {
-      const covers = await fetchReleaseCoverUrls(album.releaseMbid)
+      const covers = await resolveAlbumCoverUrls({
+        releaseMbid: album.releaseMbid,
+        artist: album.artist,
+        title: album.title,
+      })
 
-      if (!covers.small && !covers.large) {
+      if (!hasCoverUrls(covers)) {
         result.noArt++
       } else if (coversMatch(album, covers)) {
         result.unchanged++
       } else {
-        const ref = doc(getFirestoreDb(), 'albums', album.id)
-        await updateDoc(
-          ref,
-          omitUndefined({
-            coverUrlSmall: covers.small,
-            coverUrlLarge: covers.large,
-            coverUrl: deleteField(),
-          }),
-        )
-        await upsertAlbumPickerItem(uid, {
-          ...album,
-          coverUrlSmall: covers.small,
-        })
+        await updateAlbumCoverUrls(uid, album.id, covers)
         result.updated++
       }
     } catch {

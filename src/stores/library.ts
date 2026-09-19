@@ -91,6 +91,15 @@ export const useLibraryStore = defineStore('library', () => {
     )
   }
 
+  function patchCardCover(
+    albumId: string,
+    coverUrlSmall: string | undefined,
+  ): void {
+    cards.value = cards.value.map((card) =>
+      card.id === albumId ? { ...card, coverUrlSmall } : card,
+    )
+  }
+
   function patchCardRating(
     albumId: string,
     patch: Pick<LibraryAlbumCard, 'rating' | 'ratingSource' | 'ratingSubmittedPipelineId'>,
@@ -124,6 +133,7 @@ export const useLibraryStore = defineStore('library', () => {
     upsertMappings,
     removeMappingTrackIds,
     patchCardTitle,
+    patchCardCover,
     patchCardRating,
     removeCard,
   }

@@ -77,6 +77,20 @@ describe('buildAlbumPickerItemFromAlbum', () => {
     expect(projection).not.toHaveProperty('tracks')
   })
 
+  it('prefers the large cover url for the picker thumbnail', () => {
+    const album = makeAlbum({
+      id: 'a4',
+      title: 'Leviathan',
+      artist: 'Mastodon',
+      coverUrlSmall: 'https://example.com/small.jpg',
+      coverUrlLarge: 'https://example.com/large.jpg',
+    })
+
+    expect(buildAlbumPickerItemFromAlbum(album).coverUrlSmall).toBe(
+      'https://example.com/large.jpg',
+    )
+  })
+
   it('projects track ids for library resolve status', () => {
     const album = makeAlbum({
       id: 'a2',

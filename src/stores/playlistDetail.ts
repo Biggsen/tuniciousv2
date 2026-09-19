@@ -75,6 +75,17 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     }))
   }
 
+  function patchAlbumCovers(
+    albumId: string,
+    covers: { coverUrlSmall?: string; coverUrlLarge?: string },
+  ): void {
+    patchAlbumInCache(albumId, (album) => ({
+      ...album,
+      coverUrlSmall: covers.coverUrlSmall,
+      coverUrlLarge: covers.coverUrlLarge,
+    }))
+  }
+
   function invalidate(playlistId?: string): void {
     if (!playlistId) {
       cacheById.value = new Map()
@@ -194,6 +205,7 @@ export const usePlaylistDetailStore = defineStore('playlistDetail', () => {
     ensureTrackData,
     patchAlbumTitle,
     patchTrackTitle,
+    patchAlbumCovers,
     invalidate,
   }
 })

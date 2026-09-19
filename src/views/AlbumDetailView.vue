@@ -18,11 +18,12 @@ import { archiveAlbum, isAlbumArchived, unarchiveAlbum } from '@/lib/album/archi
 import {
   excludeTrackFromAlbum,
   getAlbumById,
+  updateAlbumCoverUrls,
   updateAlbumRating,
   updateAlbumTitle,
   updateTrackTitle,
 } from '@/lib/album/firestore'
-import { pickAlbumCoverLarge } from '@/lib/album/coverArt'
+import { coverUrlsFromManualUrl, hasCoverUrls, pickAlbumCoverLarge, resolveAlbumCoverUrls } from '@/lib/album/coverArt'
 import { isAdminUid } from '@/lib/auth/admin'
 import { isLastfmConnected, refreshAlbumPlaycounts, setTrackLoved } from '@/lib/lastfm/scrobble'
 import { resolveAlbumRatingDisplay } from '@/lib/pipeline/rating'
@@ -101,6 +102,12 @@ const trackTitleError = ref<string | null>(null)
 const trackTitleErrorId = ref<string | null>(null)
 const editingTrackId = ref<string | null>(null)
 const trackTitleInput = ref<HTMLInputElement | null>(null)
+const fetchingCover = ref(false)
+const coverFetchError = ref<string | null>(null)
+const coverUrlDialogOpen = ref(false)
+const coverUrlDraft = ref('')
+const coverUrlError = ref<string | null>(null)
+const savingCoverUrl = ref(false)
 
 const isAdmin = computed(() => isAdminUid(auth.user?.uid))
 const isArchived = computed(() => (album.value ? isAlbumArchived(album.value) : false))
@@ -131,6 +138,8 @@ const lastfmLookupArtist = computed(() => {
 })
 
 const lastfmUsername = computed(() => auth.profile?.lastfm?.username)
+
+const hasCover = computed(() => (album.value ? Boolean(pickAlbumCoverLarge(album.value)) : false))
 
 const evaluationStage = ref<AlbumEvaluationStageContext | null>(null)
 
@@ -175,6 +184,67 @@ async function handleSaveTitle() {
     titleError.value = err instanceof Error ? err.message : 'Failed to update title'
   } finally {
     savingTitle.value = false
+  }
+}
+
+async function handleGetCover() {
+  if (!auth.user || !album.value || fetchingCover.value) return
+  coverFetchError.value = null
+  fetchingCover.value = true
+  try {
+    const covers = await resolveAlbumCoverUrls({
+      releaseMbid: album.value.releaseMbid,
+      artist: album.value.artist,
+      title: album.value.title,
+      extraArtists: primaryArtist.value?.name ? [primaryArtist.value.name] : [],
+    })
+    if (!hasCoverUrls(covers)) {
+      coverFetchError.value = 'No cover art found'
+      return
+    }
+    album.value = await updateAlbumCoverUrls(auth.user.uid, album.value.id, covers)
+    applyCoverToCaches(album.value)
+  } catch (err) {
+    coverFetchError.value = err instanceof Error ? err.message : 'Failed to fetch cover'
+  } finally {
+    fetchingCover.value = false
+  }
+}
+
+function applyCoverToCaches(next: Album) {
+    library.patchCardCover(next.id, next.coverUrlLarge ?? next.coverUrlSmall)
+  playlistDetail.patchAlbumCovers?.(next.id, {
+    coverUrlSmall: next.coverUrlSmall,
+    coverUrlLarge: next.coverUrlLarge,
+  })
+}
+
+function openCoverUrlDialog() {
+  coverUrlDraft.value = album.value ? (pickAlbumCoverLarge(album.value) ?? '') : ''
+  coverUrlError.value = null
+  coverUrlDialogOpen.value = true
+}
+
+function closeCoverUrlDialog() {
+  if (savingCoverUrl.value) return
+  coverUrlDialogOpen.value = false
+  coverUrlError.value = null
+}
+
+async function handleSaveCoverUrl() {
+  if (!auth.user || !album.value || savingCoverUrl.value) return
+  coverUrlError.value = null
+  savingCoverUrl.value = true
+  try {
+    const covers = coverUrlsFromManualUrl(coverUrlDraft.value)
+    album.value = await updateAlbumCoverUrls(auth.user.uid, album.value.id, covers)
+    applyCoverToCaches(album.value)
+    coverFetchError.value = null
+    coverUrlDialogOpen.value = false
+  } catch (err) {
+    coverUrlError.value = err instanceof Error ? err.message : 'Failed to save cover URL'
+  } finally {
+    savingCoverUrl.value = false
   }
 }
 
@@ -318,6 +388,7 @@ async function load() {
     titleDraft.value = album.value.title
     titleError.value = null
     editingTitle.value = false
+    coverFetchError.value = null
     syncTrackTitleDrafts(album.value.tracks)
     editingTrackId.value = null
     trackTitleError.value = null
@@ -652,13 +723,33 @@ onMounted(load)
       </div>
 
       <header class="mb-6 flex gap-6">
-        <div class="h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-surface-raised">
-          <img
-            v-if="pickAlbumCoverLarge(album)"
-            :src="pickAlbumCoverLarge(album)"
-            :alt="album.title"
-            class="h-full w-full object-cover"
-          />
+        <div class="flex w-40 shrink-0 flex-col gap-2">
+          <div class="relative h-40 w-40 overflow-hidden rounded-xl bg-surface-raised">
+            <img
+              v-if="hasCover"
+              :src="pickAlbumCoverLarge(album)"
+              :alt="album.title"
+              class="h-full w-full object-cover"
+            />
+          </div>
+          <p v-if="coverFetchError" class="text-xs text-red-300">{{ coverFetchError }}</p>
+          <div class="flex flex-wrap gap-x-3 gap-y-1">
+            <button
+              type="button"
+              class="text-xs font-medium text-text-muted transition-colors hover:text-text disabled:opacity-50"
+              :disabled="fetchingCover"
+              @click="handleGetCover"
+            >
+              {{ fetchingCover ? 'Looking…' : 'Get cover' }}
+            </button>
+            <button
+              type="button"
+              class="text-xs font-medium text-text-muted transition-colors hover:text-text"
+              @click="openCoverUrlDialog"
+            >
+              Add URL
+            </button>
+          </div>
         </div>
         <div class="min-w-0 flex-1">
           <div v-if="editingTitle" class="flex flex-wrap items-start gap-2">
@@ -1024,6 +1115,28 @@ onMounted(load)
           </button>
         </li>
       </ol>
+
+      <ConfirmDialog
+        :open="coverUrlDialogOpen"
+        title="Add cover URL"
+        message="Paste a direct link to an image. Tunicious will hotlink it, not download it."
+        confirm-label="Save cover"
+        :busy="savingCoverUrl"
+        @confirm="handleSaveCoverUrl"
+        @cancel="closeCoverUrlDialog"
+      >
+        <input
+          v-model="coverUrlDraft"
+          type="url"
+          inputmode="url"
+          placeholder="https://"
+          aria-label="Cover image URL"
+          class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          :disabled="savingCoverUrl"
+          @keydown.enter.prevent="handleSaveCoverUrl"
+        />
+        <p v-if="coverUrlError" class="mt-2 text-xs text-red-300">{{ coverUrlError }}</p>
+      </ConfirmDialog>
 
       <ConfirmDialog
         :open="archiveDialogOpen"
