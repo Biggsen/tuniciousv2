@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
       lastfmDevProxy(env.LASTFM_API_KEY, env.LASTFM_SHARED_SECRET),
     ],
     server: {
+      host: true,
+      allowedHosts: true,
       port: 4827,
       headers: {
         // YouTube embeds require a Referer (error 153 / stuck BUFFERING without it).
