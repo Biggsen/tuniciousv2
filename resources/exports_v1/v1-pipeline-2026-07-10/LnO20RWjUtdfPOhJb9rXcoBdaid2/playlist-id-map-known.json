@@ -1,0 +1,169 @@
+{
+  "v1Uid": "LnO20RWjUtdfPOhJb9rXcoBdaid2",
+  "v2Uid": "2NUeQ8wEAqQmtzFjDRYRbX8cznq1",
+  "v2PipelineId": null,
+  "group": "known",
+  "derivedAt": "2026-09-23T11:01:15.541Z",
+  "derivedFrom": "playlists.json graph walk (nextStagePlaylistId / terminationPlaylistId)",
+  "templateAlignment": "evaluation: Queued→Curious→Interested→Good→Excellent→Wonderful + 1★–4★ sinks",
+  "chain": [
+    {
+      "v1PlaylistId": "379HsJGvOAqPNNPVi9s7A6",
+      "inferredName": "Queued",
+      "pipelineRole": "source"
+    },
+    {
+      "v1PlaylistId": "2J5BXlvJcrEFPU8fhPOVg4",
+      "inferredName": "Curious",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "5tRUehBSR1OPDgWCraEFqG",
+      "inferredName": "1★",
+      "pipelineRole": "sink",
+      "exitFrom": "Curious"
+    },
+    {
+      "v1PlaylistId": "6f6RmPylPjuLzYDdrHiJsT",
+      "inferredName": "Interested",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "3NlpevP1xMxV7kJGHlRvbz",
+      "inferredName": "Good",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "4b9E6jDuJyquJWk69gBLrR",
+      "inferredName": "3★",
+      "pipelineRole": "sink",
+      "exitFrom": "Good"
+    },
+    {
+      "v1PlaylistId": "4sg1byVDzTpmF84vBe6cco",
+      "inferredName": "Excellent",
+      "pipelineRole": "transient"
+    },
+    {
+      "v1PlaylistId": "2xltg6AnKSpD52Wqhj7l9f",
+      "inferredName": "4★",
+      "pipelineRole": "sink",
+      "exitFrom": "Excellent"
+    },
+    {
+      "v1PlaylistId": "0tTRhPw6hCJL6UuzZ1Hwlu",
+      "inferredName": "Wonderful",
+      "pipelineRole": "terminal"
+    }
+  ],
+  "stages": {
+    "379HsJGvOAqPNNPVi9s7A6": {
+      "inferredName": "Queued",
+      "pipelineRole": "source",
+      "group": "known",
+      "firestoreDocId": "qDCYHEo938cgsVXGlYLa",
+      "nextStagePlaylistId": "N8DvTdL5k9YdJXMEjiaD",
+      "terminationPlaylistId": null,
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "2J5BXlvJcrEFPU8fhPOVg4": {
+      "inferredName": "Curious",
+      "pipelineRole": "transient",
+      "group": "known",
+      "firestoreDocId": "N8DvTdL5k9YdJXMEjiaD",
+      "nextStagePlaylistId": "wyKv2JolvFJlOd2P0Bmj",
+      "terminationPlaylistId": "twmFKxwyWi2t5z94l3KY",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "5tRUehBSR1OPDgWCraEFqG": {
+      "inferredName": "1★",
+      "pipelineRole": "sink",
+      "group": "known",
+      "firestoreDocId": "twmFKxwyWi2t5z94l3KY",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "2J5BXlvJcrEFPU8fhPOVg4",
+      "exitFromInferredName": "Curious",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "6f6RmPylPjuLzYDdrHiJsT": {
+      "inferredName": "Interested",
+      "pipelineRole": "transient",
+      "group": "known",
+      "firestoreDocId": "wyKv2JolvFJlOd2P0Bmj",
+      "nextStagePlaylistId": "2QHoer21K4ILWXh75Dnh",
+      "terminationPlaylistId": "lfAsuIZc2h6Wvrkegwwz",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "3NlpevP1xMxV7kJGHlRvbz": {
+      "inferredName": "Good",
+      "pipelineRole": "transient",
+      "group": "known",
+      "firestoreDocId": "2QHoer21K4ILWXh75Dnh",
+      "nextStagePlaylistId": "2RBz45AqdRNhNQzjJqta",
+      "terminationPlaylistId": "I6PHvxipgAG0hI7fSRmI",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "4b9E6jDuJyquJWk69gBLrR": {
+      "inferredName": "3★",
+      "pipelineRole": "sink",
+      "group": "known",
+      "firestoreDocId": "I6PHvxipgAG0hI7fSRmI",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "3NlpevP1xMxV7kJGHlRvbz",
+      "exitFromInferredName": "Good",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "4sg1byVDzTpmF84vBe6cco": {
+      "inferredName": "Excellent",
+      "pipelineRole": "transient",
+      "group": "known",
+      "firestoreDocId": "2RBz45AqdRNhNQzjJqta",
+      "nextStagePlaylistId": "SEmnqet2SJyWsxDMd7jx",
+      "terminationPlaylistId": "O589ZbeuvDDDin0I61lL",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "2xltg6AnKSpD52Wqhj7l9f": {
+      "inferredName": "4★",
+      "pipelineRole": "sink",
+      "group": "known",
+      "firestoreDocId": "O589ZbeuvDDDin0I61lL",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "exitFrom": "4sg1byVDzTpmF84vBe6cco",
+      "exitFromInferredName": "Excellent",
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    },
+    "0tTRhPw6hCJL6UuzZ1Hwlu": {
+      "inferredName": "Wonderful",
+      "pipelineRole": "terminal",
+      "group": "known",
+      "firestoreDocId": "SEmnqet2SJyWsxDMd7jx",
+      "nextStagePlaylistId": null,
+      "terminationPlaylistId": null,
+      "v2StageId": null,
+      "v2PlaylistId": null,
+      "v2StageName": null
+    }
+  },
+  "warnings": [
+    "Missing sink playlist for 2★ (exit from Interested, firestoreDocId lfAsuIZc2h6Wvrkegwwz)"
+  ]
+}

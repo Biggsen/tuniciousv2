@@ -1,6 +1,7 @@
 import type { PlaybackQueueItem } from '@/types/playback'
 
-const STORAGE_KEY = 'tunicious-playback-state'
+/** Pre-user-scoped key. Shared by every account in this browser. */
+const LEGACY_STORAGE_KEY = 'tunicious-playback-state'
 
 export interface PersistedPlaybackState {
   sourceType: 'album' | 'playlist'
@@ -14,19 +15,35 @@ export interface PersistedPlaybackState {
   savedAt: number
 }
 
+function storageKey(uid: string): string {
+  return `tunicious.playback.${uid}`
+}
+
+function discardLegacyPlaybackState(): void {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export function savePlaybackState(
+  uid: string,
   queue: PlaybackQueueItem[],
   currentIndex: number,
   sourcePlaylistId: string | null,
 ): void {
+  discardLegacyPlaybackState()
+  if (!uid) return
+
   if (currentIndex < 0 || !queue.length) {
-    clearPlaybackState()
+    clearPlaybackState(uid)
     return
   }
 
   const item = queue[currentIndex]
   if (!item) {
-    clearPlaybackState()
+    clearPlaybackState(uid)
     return
   }
 
@@ -43,15 +60,18 @@ export function savePlaybackState(
   }
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(storageKey(uid), JSON.stringify(state))
   } catch {
     // Storage full or unavailable — resume is best-effort
   }
 }
 
-export function loadPlaybackState(): PersistedPlaybackState | null {
+export function loadPlaybackState(uid: string): PersistedPlaybackState | null {
+  discardLegacyPlaybackState()
+  if (!uid) return null
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey(uid))
     if (!raw) return null
     const state = JSON.parse(raw) as PersistedPlaybackState
     if (!state.albumId || !state.currentTrackId || state.currentIndex < 0) return null
@@ -61,9 +81,12 @@ export function loadPlaybackState(): PersistedPlaybackState | null {
   }
 }
 
-export function clearPlaybackState(): void {
+export function clearPlaybackState(uid: string): void {
+  discardLegacyPlaybackState()
+  if (!uid) return
+
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey(uid))
   } catch {
     // ignore
   }

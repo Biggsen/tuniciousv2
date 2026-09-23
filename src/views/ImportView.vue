@@ -19,6 +19,7 @@ import {
   saveV1ImportSelection,
 } from '@/lib/import/persistV1Selection'
 import { importSkipReasonLabel } from '@/lib/import/skipReasons'
+import { sortPlaylistsForPickerByName } from '@/lib/pipeline/funnelDisplay'
 import { useAuthStore } from '@/stores/auth'
 import { useImportStore } from '@/stores/import'
 import type { ImportSkipDetails } from '@/lib/import/types'
@@ -51,9 +52,7 @@ const {
   importSource,
 } = storeToRefs(importStore)
 
-const sortedPlaylists = computed(() =>
-  [...playlists.value].sort((a, b) => a.name.localeCompare(b.name)),
-)
+const sortedPlaylists = computed(() => sortPlaylistsForPickerByName(playlists.value))
 
 const v1Uid = ref<string | null>(null)
 const v1Groups = ref<V1FunnelGroup[]>([])

@@ -39,7 +39,7 @@ Specifications:
 3. Enable sign-in methods in Firebase console → Authentication:
 
    - **Google**
-   - **Email/Password** (create test users as needed)
+   - **Email/Password** (users can create an account on the sign-in screen)
 
 4. Deploy Firestore rules (once per project):
 

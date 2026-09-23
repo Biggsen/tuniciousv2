@@ -88,7 +88,7 @@ interface AlbumPickerItemDocument {
   archivedAt?: AlbumDocument['archivedAt']
 }
 
-/** Library grid card — picker fields scoped to the signed-in user's album_entries. */
+/** Library grid card — shared catalog fields, with this user's album_entries overlay. */
 export interface LibraryAlbumCard {
   id: string
   title: string
@@ -629,20 +629,22 @@ export async function ensureAlbumPickerForAlbumIds(
   return toUpsert.length
 }
 
-/** User-scoped library grid: album_entries → album_picker cards (no full track payloads). */
+/**
+ * Shared catalog grid. album_picker is the album list; album_entries only
+ * overlays ratings and excluded tracks for the signed-in user.
+ */
 export async function listUserLibraryCards(uid: string): Promise<LibraryAlbumCard[]> {
-  const entries = await listUserAlbumEntries(uid)
-  const entryIds = [...entries.keys()]
-  if (entryIds.length === 0) return []
+  await ensureAlbumPickerSynced(uid)
+  const [pickerSnapshot, entries] = await Promise.all([
+    getDocs(albumPickerCollection(uid)),
+    listUserAlbumEntries(uid),
+  ])
 
-  await ensureAlbumPickerForAlbumIds(uid, entryIds)
-  const pickers = await getAlbumPickerItemsByIds(uid, entryIds)
-
-  return entryIds
-    .flatMap((id) => {
-      const item = pickers.get(id)
-      if (!item || item.archivedAt) return []
-      const entry = entries.get(id)
+  return pickerSnapshot.docs
+    .flatMap((docSnap) => {
+      const item = toAlbumPickerItem(docSnap.id, docSnap.data() as AlbumPickerItemDocument)
+      if (item.archivedAt) return []
+      const entry = entries.get(item.id)
       return [
         {
           id: item.id,

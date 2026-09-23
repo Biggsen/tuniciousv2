@@ -311,7 +311,9 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function persistState() {
-    savePlaybackState(queue.value, currentIndex.value, sourcePlaylistId.value)
+    const uid = playbackUid()
+    if (!uid) return
+    savePlaybackState(uid, queue.value, currentIndex.value, sourcePlaylistId.value)
   }
 
   async function playFromAlbum(album: Album, uid: string) {
@@ -562,8 +564,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     if (uid) await onPlaybackStop('stopped')
 
     const resumeIndex = currentIndex.value
-    if (resumeIndex >= 0) {
-      savePlaybackState(queue.value, resumeIndex, sourcePlaylistId.value)
+    if (uid && resumeIndex >= 0) {
+      savePlaybackState(uid, queue.value, resumeIndex, sourcePlaylistId.value)
     }
 
     player?.stopVideo()
@@ -589,8 +591,30 @@ export const usePlaybackStore = defineStore('playback', () => {
     sourcePlaylistId.value = null
     error.value = null
     playableSwapAttempted.clear()
-    clearPlaybackState()
+    if (uid) clearPlaybackState(uid)
     await resetSessionTracking()
+  }
+
+  /** Stop playback for an account switch without deleting that account's resume. */
+  function releaseSession(uid: string | null) {
+    discardAudition()
+    if (uid && currentIndex.value >= 0) {
+      savePlaybackState(uid, queue.value, currentIndex.value, sourcePlaylistId.value)
+    }
+
+    player?.stopVideo()
+    stopProgressTimer()
+    status.value = 'idle'
+    currentIndex.value = -1
+    positionMs.value = 0
+    durationMs.value = 0
+    queue.value = []
+    sourcePlaylistId.value = null
+    error.value = null
+    playableSwapAttempted.clear()
+    void onPlaybackStop('stopped').finally(() => {
+      void resetSessionTracking()
+    })
   }
 
   async function resumeFromPersisted(uid: string): Promise<boolean> {
@@ -599,7 +623,7 @@ export const usePlaybackStore = defineStore('playback', () => {
       return true
     }
 
-    const persisted = loadPlaybackState()
+    const persisted = loadPlaybackState(uid)
     if (!persisted) return false
 
     try {
@@ -625,7 +649,10 @@ export const usePlaybackStore = defineStore('playback', () => {
     }
   }
 
-  const hasPersistedPlayback = computed(() => loadPlaybackState() !== null)
+  const hasPersistedPlayback = computed(() => {
+    const uid = playbackUid()
+    return uid ? loadPlaybackState(uid) !== null : false
+  })
 
   function consumePendingSeek() {
     if (pendingSeekSec === null || !player || audition.value) return
@@ -831,6 +858,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     onPlayerError,
     stop,
     clearQueue,
+    releaseSession,
     resumeFromPersisted,
     hasPersistedPlayback,
     patchTrackTitle,

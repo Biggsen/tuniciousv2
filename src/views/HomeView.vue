@@ -28,7 +28,11 @@ const greeting = computed(() => {
   return `Good evening, ${name}`
 })
 
-const persistedPlayback = computed(() => loadPlaybackState())
+const persistedPlayback = computed(() => {
+  const uid = auth.user?.uid
+  if (!uid) return null
+  return loadPlaybackState(uid)
+})
 
 const showNowPlaying = computed(() => playback.showPlayerBar && playback.currentItem)
 
