@@ -434,10 +434,6 @@ function onMappingUpdated(trackId: string, mapping: TrackYouTubeMapping | null) 
   mappings.value = next
 }
 
-function onChannelPreferenceUpdated(artist: Artist) {
-  primaryArtist.value = artist
-}
-
 async function handleClearAllResolves() {
   if (!auth.user || !album.value || !resolvedCount.value) return
 
@@ -1097,13 +1093,11 @@ onMounted(load)
           <TrackResolvePanel
             v-if="auth.user"
             :uid="auth.user.uid"
-            :artist-id="album.artistId"
             :artist-name="artistName"
             :resolve-context="resolveContext"
             :track="track"
             :mapping="mappings.get(track.id) ?? null"
             @updated="(mapping) => onMappingUpdated(track.id, mapping)"
-            @channel-preference-updated="onChannelPreferenceUpdated"
           />
           <button
             type="button"

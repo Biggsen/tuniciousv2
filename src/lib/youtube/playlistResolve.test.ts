@@ -164,5 +164,6 @@ describe('buildQueueFromAlbum', () => {
     expect(queue[0]?.videoId).toBe('vid1')
     expect(queue[0]?.channelTitle).toBe('Khemmis - Topic')
     expect(queue[0]?.channelId).toBe('ch1')
+    expect(queue[0]?.mappingSource).toBe('auto')
   })
 })

@@ -25,10 +25,16 @@ const progressPercent = computed(() => {
     <div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
       <div class="flex min-w-0 items-center gap-3 md:flex-1">
         <div class="min-w-0 flex-1">
-          <p v-if="playback.currentItem" class="truncate text-sm font-medium">
+          <p v-if="playback.audition" class="truncate text-sm font-medium">
+            {{ playback.audition.title }}
+          </p>
+          <p v-else-if="playback.currentItem" class="truncate text-sm font-medium">
             {{ playback.currentItem.title }}
           </p>
-          <p v-if="playback.currentItem" class="text-xs text-text-muted">
+          <p v-if="playback.audition" class="truncate text-xs text-text-muted">
+            Preview · {{ playback.audition.channelTitle }} · {{ playback.audition.libraryTitle }}
+          </p>
+          <p v-else-if="playback.currentItem" class="text-xs text-text-muted">
             {{ playback.currentItem.artist }}
             · {{ playback.currentItem.albumTitle }}
           </p>
@@ -73,7 +79,13 @@ const progressPercent = computed(() => {
           />
         </div>
         <span class="shrink-0 text-xs tabular-nums text-text-muted">
-          {{ formatDuration(playback.durationMs || playback.currentItem?.lengthMs) }}
+          {{
+            formatDuration(
+              playback.audition
+                ? playback.durationMs
+                : playback.durationMs || playback.currentItem?.lengthMs,
+            )
+          }}
         </span>
         <button
           type="button"

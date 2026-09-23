@@ -20,6 +20,7 @@ export function buildQueueFromAlbum(
       videoId: mapping?.videoId ?? null,
       channelTitle: mapping?.channelTitle,
       channelId: mapping?.channelId,
+      mappingSource: mapping?.source,
       sourceType: sourcePlaylistId ? 'playlist' : 'album',
       sourcePlaylistId,
     }

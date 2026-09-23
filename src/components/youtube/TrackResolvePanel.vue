@@ -1,26 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import { formatDuration } from '@/lib/musicbrainz/format'
 import {
-  setArtistPreferredYouTubeChannel,
-} from '@/lib/artist/firestore'
-import { getVideoById } from '@/lib/youtube/client'
-import { youtubeChannelUrl } from '@/lib/youtube/parseUrl'
-import { buildAutoSearchQuery, buildChannelScopedSearchQuery } from '@/lib/youtube/query'
-import { deleteTrackMapping } from '@/lib/youtube/firestore'
-import {
-  autoResolveTrack,
   resolveTrackFromCandidate,
   resolveTrackFromVideoInput,
   searchTrackCandidates,
 } from '@/lib/youtube/resolve'
-import type { Artist, Track } from '@/types/library'
+import { usePlaybackStore } from '@/stores/playback'
+import type { Track } from '@/types/library'
 import type { ArtistResolveContext, TrackYouTubeMapping, YouTubeVideoCandidate } from '@/types/youtube'
 
 const props = defineProps<{
   uid: string
-  artistId: string
   artistName: string
   resolveContext: ArtistResolveContext
   track: Track
@@ -29,8 +21,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updated: [mapping: TrackYouTubeMapping | null]
-  channelPreferenceUpdated: [artist: Artist]
 }>()
+
+const playback = usePlaybackStore()
 
 const expanded = ref(false)
 const busy = ref(false)
@@ -38,77 +31,29 @@ const error = ref<string | null>(null)
 const searchQuery = ref('')
 const manualInput = ref('')
 const candidates = ref<YouTubeVideoCandidate[]>([])
-const useChannelForArtist = ref(false)
-const resolvedChannelId = ref<string | null>(null)
 
-const mappingChannelUrl = computed(() => {
-  const channelId = props.mapping?.channelId ?? resolvedChannelId.value
-  return channelId ? youtubeChannelUrl(channelId) : null
+const correctionQuery = computed(() => `${props.artistName} ${props.track.title}`.trim())
+
+const visibleCandidates = computed(() => {
+  const currentId = props.mapping?.videoId
+  return candidates.value.filter((candidate) => candidate.videoId !== currentId).slice(0, 8)
 })
 
-watch(
-  () => [props.mapping?.videoId, props.mapping?.channelId, expanded.value] as const,
-  async ([videoId, channelId, isExpanded]) => {
-    if (!isExpanded || !videoId) {
-      resolvedChannelId.value = null
-      return
-    }
-    if (channelId) {
-      resolvedChannelId.value = channelId
-      return
-    }
-    try {
-      const video = await getVideoById(videoId)
-      resolvedChannelId.value = video?.channelId ?? null
-    } catch {
-      resolvedChannelId.value = null
-    }
-  },
-  { immediate: true },
-)
-
-const isMappingChannelPreferred = computed(() => {
-  if (!props.mapping?.channelTitle || !props.resolveContext.preferredChannelTitle) return false
-  return props.mapping.channelTitle === props.resolveContext.preferredChannelTitle
-})
-
-const canSetChannelFromMapping = computed(
-  () => Boolean(props.mapping?.channelTitle) && !isMappingChannelPreferred.value,
-)
-
-async function saveChannelPreference(channel: { channelId: string; channelTitle: string }) {
-  const artist = await setArtistPreferredYouTubeChannel(props.uid, props.artistId, channel)
-  emit('channelPreferenceUpdated', artist)
+function isUnplayable(videoId: string): boolean {
+  return playback.unplayableVideoIds.includes(videoId)
 }
 
-async function handleAutoResolve() {
+function isPreviewing(videoId: string): boolean {
+  return playback.audition?.trackId === props.track.id && playback.audition.videoId === videoId
+}
+
+async function loadCandidates(query: string) {
   busy.value = true
   error.value = null
   try {
-    const mapping = await autoResolveTrack(props.uid, props.resolveContext, props.track)
-    if (!mapping) {
-      error.value = 'No match found'
-      return
-    }
-    emit('updated', mapping)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Auto-resolve failed'
-  } finally {
-    busy.value = false
-  }
-}
-
-async function handleSearch() {
-  busy.value = true
-  error.value = null
-  try {
-    candidates.value = await searchTrackCandidates(
-      props.resolveContext,
-      props.track,
-      searchQuery.value || undefined,
-    )
-    if (!candidates.value.length) {
-      error.value = 'No results'
+    candidates.value = await searchTrackCandidates(props.resolveContext, props.track, query)
+    if (!visibleCandidates.value.length) {
+      error.value = 'No other matches'
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Search failed'
@@ -117,7 +62,48 @@ async function handleSearch() {
   }
 }
 
-async function handlePickCandidate(candidate: YouTubeVideoCandidate) {
+async function toggleExpanded() {
+  if (expanded.value) {
+    if (playback.audition?.trackId === props.track.id) playback.endAudition()
+    expanded.value = false
+    return
+  }
+
+  expanded.value = true
+  searchQuery.value = correctionQuery.value
+  await loadCandidates(correctionQuery.value)
+}
+
+async function handleSearch() {
+  const query = searchQuery.value.trim() || correctionQuery.value
+  searchQuery.value = query
+  await loadCandidates(query)
+}
+
+function handlePreview(candidate: YouTubeVideoCandidate) {
+  if (isUnplayable(candidate.videoId)) return
+  playback.startAudition({
+    videoId: candidate.videoId,
+    title: candidate.title,
+    channelTitle: candidate.channelTitle,
+    trackId: props.track.id,
+    libraryTitle: props.track.title,
+  })
+}
+
+async function commitMapping(mapping: TrackYouTubeMapping) {
+  playback.adoptManualMapping(props.track.id, {
+    videoId: mapping.videoId,
+    channelTitle: mapping.channelTitle,
+    channelId: mapping.channelId,
+    durationMs: mapping.durationMs,
+  })
+  emit('updated', mapping)
+  expanded.value = false
+}
+
+async function handleUse(candidate: YouTubeVideoCandidate) {
+  if (isUnplayable(candidate.videoId)) return
   busy.value = true
   error.value = null
   try {
@@ -128,16 +114,7 @@ async function handlePickCandidate(candidate: YouTubeVideoCandidate) {
       'manual',
       searchQuery.value || undefined,
     )
-    emit('updated', mapping)
-
-    if (useChannelForArtist.value && candidate.channelId) {
-      await saveChannelPreference({
-        channelId: candidate.channelId,
-        channelTitle: candidate.channelTitle,
-      })
-    }
-
-    expanded.value = false
+    await commitMapping(mapping)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to save mapping'
   } finally {
@@ -149,74 +126,18 @@ async function handleManualSave() {
   busy.value = true
   error.value = null
   try {
-    const mapping = await resolveTrackFromVideoInput(props.uid, props.track.id, manualInput.value)
-    emit('updated', mapping)
-
-    if (useChannelForArtist.value) {
-      const video = await getVideoById(mapping.videoId)
-      if (video?.channelId) {
-        await saveChannelPreference({
-          channelId: video.channelId,
-          channelTitle: video.channelTitle,
-        })
-      }
-    }
-
+    const mapping = await resolveTrackFromVideoInput(
+      props.uid,
+      props.track.id,
+      manualInput.value,
+      'manual',
+    )
     manualInput.value = ''
-    expanded.value = false
+    await commitMapping(mapping)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Invalid video'
   } finally {
     busy.value = false
-  }
-}
-
-async function handleUseMappingChannel() {
-  if (!props.mapping) return
-
-  busy.value = true
-  error.value = null
-  try {
-    const video = await getVideoById(props.mapping.videoId)
-    if (!video?.channelId) {
-      error.value = 'Could not load channel for this video'
-      return
-    }
-    await saveChannelPreference({
-      channelId: video.channelId,
-      channelTitle: video.channelTitle,
-    })
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save channel preference'
-  } finally {
-    busy.value = false
-  }
-}
-
-async function handleClear() {
-  busy.value = true
-  error.value = null
-  try {
-    await deleteTrackMapping(props.uid, props.track.id)
-    emit('updated', null)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to clear mapping'
-  } finally {
-    busy.value = false
-  }
-}
-
-function defaultSearchQuery(): string {
-  if (props.resolveContext.preferredChannelId) {
-    return buildChannelScopedSearchQuery(props.track.title)
-  }
-  return buildAutoSearchQuery(props.resolveContext.artistDisplay, props.track.title)
-}
-
-function toggleExpanded() {
-  expanded.value = !expanded.value
-  if (expanded.value && !searchQuery.value) {
-    searchQuery.value = defaultSearchQuery()
   }
 }
 </script>
@@ -243,7 +164,7 @@ function toggleExpanded() {
         :disabled="busy"
         @click="toggleExpanded"
       >
-        {{ expanded ? 'Close' : 'Resolve' }}
+        {{ expanded ? 'Close' : mapping ? 'Wrong' : 'Find' }}
       </button>
     </div>
 
@@ -251,54 +172,53 @@ function toggleExpanded() {
       v-if="expanded"
       class="w-full max-w-md rounded-lg border border-border bg-surface p-3 text-left"
     >
-      <div v-if="mapping" class="mb-3 text-xs text-text-muted">
-        <p class="truncate font-medium text-text">{{ mapping.videoTitle }}</p>
-        <p v-if="mapping.channelTitle">
-          <a
-            v-if="mappingChannelUrl"
-            :href="mappingChannelUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="transition-colors hover:text-accent hover:underline"
-          >
-            {{ mapping.channelTitle }}
-          </a>
-          <template v-else>{{ mapping.channelTitle }}</template>
-        </p>
-        <p>{{ mapping.source }} · {{ mapping.videoId }}</p>
-        <button
-          v-if="canSetChannelFromMapping"
-          type="button"
-          class="mt-2 rounded bg-white/10 px-2 py-1 text-xs transition-colors hover:bg-white/15 disabled:opacity-50"
-          :disabled="busy"
-          @click="handleUseMappingChannel"
-        >
-          Use this channel for {{ artistName }}
-        </button>
-        <p v-else-if="isMappingChannelPreferred" class="mt-2 text-emerald-300">
-          Preferred channel for {{ artistName }}
-        </p>
-      </div>
+      <p v-if="mapping" class="mb-3 truncate text-xs text-text-muted">
+        <span class="font-medium text-text">{{ mapping.videoTitle }}</span>
+        <template v-if="mapping.channelTitle"> · {{ mapping.channelTitle }}</template>
+      </p>
 
-      <div class="flex flex-wrap gap-2">
-        <button
-          type="button"
-          class="rounded bg-accent/20 px-2.5 py-1 text-xs text-accent transition-colors hover:bg-accent/30 disabled:opacity-50"
-          :disabled="busy"
-          @click="handleAutoResolve"
+      <p v-if="busy && !visibleCandidates.length" class="text-xs text-text-muted">Searching…</p>
+
+      <ul
+        v-if="visibleCandidates.length"
+        class="max-h-64 divide-y divide-border overflow-y-auto rounded border border-border"
+      >
+        <li
+          v-for="candidate in visibleCandidates"
+          :key="candidate.videoId"
+          class="px-2 py-2 text-xs"
+          :class="isPreviewing(candidate.videoId) ? 'bg-accent/10' : ''"
         >
-          Auto-resolve
-        </button>
-        <button
-          v-if="mapping"
-          type="button"
-          class="rounded px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-red-300 disabled:opacity-50"
-          :disabled="busy"
-          @click="handleClear"
-        >
-          Clear
-        </button>
-      </div>
+          <span class="block truncate font-medium">{{ candidate.title }}</span>
+          <span class="block truncate text-text-muted">
+            {{ candidate.channelTitle }}
+            <template v-if="candidate.durationMs">
+              · {{ formatDuration(candidate.durationMs) }}
+            </template>
+          </span>
+          <p v-if="isUnplayable(candidate.videoId)" class="mt-1 text-amber-200">
+            Can't embed
+          </p>
+          <div class="mt-1.5 flex gap-2">
+            <button
+              type="button"
+              class="rounded bg-white/10 px-2 py-1 transition-colors hover:bg-white/15 disabled:opacity-50"
+              :disabled="busy || isUnplayable(candidate.videoId)"
+              @click="handlePreview(candidate)"
+            >
+              {{ isPreviewing(candidate.videoId) ? 'Playing' : 'Preview' }}
+            </button>
+            <button
+              type="button"
+              class="rounded bg-accent/20 px-2 py-1 text-accent transition-colors hover:bg-accent/30 disabled:opacity-50"
+              :disabled="busy || isUnplayable(candidate.videoId)"
+              @click="handleUse(candidate)"
+            >
+              Use this
+            </button>
+          </div>
+        </li>
+      </ul>
 
       <form class="mt-3 flex gap-2" @submit.prevent="handleSearch">
         <input
@@ -316,41 +236,7 @@ function toggleExpanded() {
         </button>
       </form>
 
-      <label
-        v-if="candidates.length || manualInput.trim()"
-        class="mt-3 flex cursor-pointer items-center gap-2 text-xs text-text-muted"
-      >
-        <input
-          v-model="useChannelForArtist"
-          type="checkbox"
-          class="rounded border-border"
-        />
-        Use this channel for {{ artistName }}
-      </label>
-
-      <ul v-if="candidates.length" class="mt-2 max-h-40 divide-y divide-border overflow-y-auto rounded border border-border">
-        <li v-for="candidate in candidates" :key="candidate.videoId">
-          <button
-            type="button"
-            class="w-full px-2 py-2 text-left text-xs transition-colors hover:bg-white/5"
-            :disabled="busy"
-            @click="handlePickCandidate(candidate)"
-          >
-            <span class="block truncate font-medium">{{ candidate.title }}</span>
-            <span class="block truncate text-text-muted">
-              {{ candidate.channelTitle }}
-              <template v-if="candidate.durationMs">
-                · {{ formatDuration(candidate.durationMs) }}
-              </template>
-              <template v-if="resolveContext.preferredChannelId === candidate.channelId">
-                · preferred
-              </template>
-            </span>
-          </button>
-        </li>
-      </ul>
-
-      <form class="mt-3 flex gap-2" @submit.prevent="handleManualSave">
+      <form class="mt-2 flex gap-2" @submit.prevent="handleManualSave">
         <input
           v-model="manualInput"
           type="text"

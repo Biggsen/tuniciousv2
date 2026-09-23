@@ -33,7 +33,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import type { Album, PlaylistMember } from '@/types/library'
-import type { PlaybackQueueItem } from '@/types/playback'
+import type { PlaybackAudition, PlaybackQueueItem } from '@/types/playback'
 import type { ListenEndReason } from '@/types/sessions'
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'buffering'
@@ -46,12 +46,20 @@ export const usePlaybackStore = defineStore('playback', () => {
   const positionMs = ref(0)
   const durationMs = ref(0)
   const error = ref<string | null>(null)
+  const audition = ref<PlaybackAudition | null>(null)
+  const unplayableVideoIds = ref<string[]>([])
 
   let player: YouTubePlayerInstance | null = null
   let progressTimer: ReturnType<typeof setInterval> | null = null
   const playableSwapAttempted = new Set<string>()
   /** Mute-then-unmute: async queue loads drop the click gesture; muted autoplay is allowed. */
   let unmuteOnPlaying = false
+  /** Video and position to put back when an audition ends. */
+  let auditionRestore: { videoId: string | null; positionMs: number; status: PlaybackStatus } | null =
+    null
+  let pendingSeekSec: number | null = null
+  /** Ignore the pause event fired while leaving an audition. */
+  let discardPauseUntil = 0
 
   function playbackUid(): string | null {
     return useAuthStore().user?.uid ?? null
@@ -67,6 +75,10 @@ export const usePlaybackStore = defineStore('playback', () => {
     const item = currentItem.value
     const uid = playbackUid()
     if (!item || !uid) return false
+
+    if (item.mappingSource === 'manual' && item.videoId) {
+      return !options.force
+    }
 
     const needsResolve = !item.videoId
     const needsTopicSwap =
@@ -126,6 +138,7 @@ export const usePlaybackStore = defineStore('playback', () => {
       channelTitle: playable.channelTitle,
       channelId: playable.channelId,
       lengthMs: playable.durationMs ?? nextQueue[index].lengthMs,
+      mappingSource: 'auto',
     }
     queue.value = nextQueue
     useLibraryStore().upsertMappings([mapping])
@@ -158,7 +171,9 @@ export const usePlaybackStore = defineStore('playback', () => {
     currentIndex.value >= 0 ? (queue.value[currentIndex.value] ?? null) : null,
   )
   const activeVideoId = computed(() => currentItem.value?.videoId ?? null)
-  const showPlayerBar = computed(() => queue.value.length > 0 && currentIndex.value >= 0)
+  const showPlayerBar = computed(
+    () => audition.value !== null || (queue.value.length > 0 && currentIndex.value >= 0),
+  )
   const isPlaying = computed(() => status.value === 'playing')
 
   function registerPlayer(instance: YouTubePlayerInstance) {
@@ -181,19 +196,20 @@ export const usePlaybackStore = defineStore('playback', () => {
     stopProgressTimer()
     progressTimer = setInterval(() => {
       if (!player || status.value !== 'playing') return
-      onPlaying()
+      if (!audition.value) onPlaying()
       positionMs.value = Math.round(player.getCurrentTime() * 1000)
       const duration = player.getDuration()
       if (duration > 0) {
         const ms = Math.round(duration * 1000)
         durationMs.value = ms
-        updateTrackLength(ms)
+        if (!audition.value) updateTrackLength(ms)
       }
     }, 500)
   }
 
   /** Advance from `fromIndex`, resolving unmapped tracks on demand until one loads. */
   async function startPlayback(fromIndex = 0) {
+    discardAudition()
     error.value = null
     if (queue.value.length === 0) {
       error.value = 'No tracks to play'
@@ -309,6 +325,23 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function play() {
+    if (audition.value) {
+      if (!player) {
+        status.value = 'playing'
+        return
+      }
+      unmuteOnPlaying = false
+      try {
+        player.unMute()
+      } catch {
+        /* ignore */
+      }
+      player.playVideo()
+      status.value = 'playing'
+      startProgressTimer()
+      return
+    }
+
     if (!activeVideoId.value) return
     if (!player) {
       status.value = 'playing'
@@ -343,6 +376,8 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   async function next(endReason: ListenEndReason = 'skipped') {
+    const saved = discardAudition()
+    if (saved) positionMs.value = saved.positionMs
     if (currentIndex.value < 0) return
 
     const uid = playbackUid()
@@ -366,7 +401,16 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   async function previous() {
+    const leftAudition = audition.value !== null
+    const saved = discardAudition()
+    if (saved) positionMs.value = saved.positionMs
     if (currentIndex.value < 0) return
+
+    if (leftAudition && positionMs.value > 3000 && activeVideoId.value) {
+      positionMs.value = 0
+      loadCurrentVideo(true)
+      return
+    }
 
     if (positionMs.value > 3000 && player) {
       player.seekTo(0, true)
@@ -397,6 +441,10 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function onPlayerReady() {
+    if (audition.value) {
+      loadAuditionVideo()
+      return
+    }
     if (
       (status.value === 'playing' || status.value === 'buffering') &&
       activeVideoId.value
@@ -406,6 +454,39 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function onPlayerStateChange(state: number) {
+    if (state === YT_PLAYER_STATE.PAUSED && Date.now() < discardPauseUntil) return
+
+    if (
+      state === YT_PLAYER_STATE.PLAYING ||
+      state === YT_PLAYER_STATE.PAUSED ||
+      state === YT_PLAYER_STATE.CUED
+    ) {
+      consumePendingSeek()
+    }
+
+    if (audition.value) {
+      if (state === YT_PLAYER_STATE.PLAYING) {
+        status.value = 'playing'
+        startProgressTimer()
+        return
+      }
+      if (state === YT_PLAYER_STATE.PAUSED) {
+        status.value = 'paused'
+        stopProgressTimer()
+        return
+      }
+      if (state === YT_PLAYER_STATE.BUFFERING) {
+        status.value = 'buffering'
+        return
+      }
+      if (state === YT_PLAYER_STATE.ENDED) {
+        status.value = 'paused'
+        stopProgressTimer()
+        return
+      }
+      return
+    }
+
     if (state === YT_PLAYER_STATE.PLAYING) {
       if (unmuteOnPlaying) {
         unmuteOnPlaying = false
@@ -440,6 +521,16 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function onPlayerError(errorCode?: number) {
+    if (audition.value) {
+      const videoId = audition.value.videoId
+      if (!unplayableVideoIds.value.includes(videoId)) {
+        unplayableVideoIds.value = [...unplayableVideoIds.value, videoId]
+      }
+      error.value = null
+      endAudition()
+      return
+    }
+
     const embedBlocked = errorCode === 101 || errorCode === 150
     void (async () => {
       if (embedBlocked) {
@@ -462,6 +553,11 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   async function stop() {
+    if (audition.value) {
+      endAudition()
+      return
+    }
+
     const uid = playbackUid()
     if (uid) await onPlaybackStop('stopped')
 
@@ -479,6 +575,7 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   async function clearQueue() {
+    discardAudition()
     const uid = playbackUid()
     if (uid) await onPlaybackStop('queue_cleared')
 
@@ -530,6 +627,163 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   const hasPersistedPlayback = computed(() => loadPlaybackState() !== null)
 
+  function consumePendingSeek() {
+    if (pendingSeekSec === null || !player || audition.value) return
+    const seconds = pendingSeekSec
+    pendingSeekSec = null
+    if (seconds > 0.5) player.seekTo(seconds, true)
+    positionMs.value = Math.round(seconds * 1000)
+  }
+
+  function loadAuditionVideo() {
+    if (!player || !audition.value) return
+    player.loadVideoById(audition.value.videoId)
+    unmuteOnPlaying = false
+    try {
+      player.unMute()
+    } catch {
+      /* ignore */
+    }
+    player.playVideo()
+    status.value = 'playing'
+    startProgressTimer()
+  }
+
+  function discardAudition() {
+    const wasAuditioning = audition.value !== null
+    const saved = auditionRestore
+    audition.value = null
+    auditionRestore = null
+    pendingSeekSec = null
+    if (wasAuditioning) {
+      discardPauseUntil = Date.now() + 500
+      player?.pauseVideo()
+    }
+    return saved
+  }
+
+  function restorePlayback(saved: { videoId: string | null; positionMs: number; status: PlaybackStatus }) {
+    positionMs.value = saved.positionMs
+    durationMs.value = currentItem.value?.lengthMs ?? 0
+    if (!saved.videoId || !player) {
+      player?.stopVideo()
+      stopProgressTimer()
+      status.value = currentIndex.value >= 0 ? 'paused' : 'idle'
+      return
+    }
+
+    pendingSeekSec = saved.positionMs / 1000
+    player.loadVideoById(saved.videoId)
+    const resume = saved.status === 'playing' || saved.status === 'buffering'
+    if (resume) {
+      try {
+        player.unMute()
+      } catch {
+        /* ignore */
+      }
+      player.playVideo()
+      status.value = 'playing'
+      startProgressTimer()
+      onPlaying()
+    } else {
+      player.pauseVideo()
+      status.value = 'paused'
+      stopProgressTimer()
+    }
+  }
+
+  function endAudition() {
+    const saved = discardAudition()
+    if (!saved) return
+    onPaused()
+    restorePlayback(saved)
+  }
+
+  function startAudition(input: PlaybackAudition) {
+    if (unplayableVideoIds.value.includes(input.videoId)) return
+    if (!audition.value) {
+      onPaused()
+      auditionRestore = {
+        videoId: activeVideoId.value,
+        positionMs: positionMs.value,
+        status: status.value,
+      }
+    }
+    audition.value = input
+    error.value = null
+    positionMs.value = 0
+    durationMs.value = 0
+    pendingSeekSec = null
+    loadAuditionVideo()
+  }
+
+  function patchQueueMapping(
+    trackId: string,
+    video: {
+      videoId: string
+      channelTitle?: string
+      channelId?: string
+      durationMs?: number
+    },
+  ) {
+    let changed = false
+    const next = queue.value.map((item) => {
+      if (item.trackId !== trackId) return item
+      changed = true
+      return {
+        ...item,
+        videoId: video.videoId,
+        channelTitle: video.channelTitle,
+        channelId: video.channelId,
+        lengthMs: video.durationMs ?? item.lengthMs,
+        mappingSource: 'manual' as const,
+      }
+    })
+    if (changed) queue.value = next
+  }
+
+  function adoptManualMapping(
+    trackId: string,
+    video: {
+      videoId: string
+      channelTitle?: string
+      channelId?: string
+      durationMs?: number
+    },
+  ) {
+    const previewingThis =
+      audition.value?.trackId === trackId && audition.value.videoId === video.videoId
+    patchQueueMapping(trackId, video)
+    const isCurrent = currentItem.value?.trackId === trackId && currentIndex.value >= 0
+
+    if (isCurrent && previewingThis) {
+      audition.value = null
+      auditionRestore = null
+      pendingSeekSec = null
+      if (status.value !== 'playing') {
+        player?.seekTo(0, true)
+        player?.playVideo()
+        status.value = 'playing'
+        startProgressTimer()
+      }
+      persistState()
+      void trackCurrentItem()
+      return
+    }
+
+    if (audition.value?.trackId === trackId) {
+      const saved = discardAudition()
+      if (!isCurrent && saved) restorePlayback(saved)
+    }
+
+    if (isCurrent) {
+      positionMs.value = 0
+      loadCurrentVideo(true)
+      persistState()
+      void trackCurrentItem()
+    }
+  }
+
   function patchTrackTitle(trackId: string, title: string): void {
     let changed = false
     const next = queue.value.map((item) => {
@@ -548,6 +802,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     positionMs,
     durationMs,
     error,
+    audition,
+    unplayableVideoIds,
     trackCount,
     resolvedCount,
     unresolvedCount,
@@ -578,5 +834,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     resumeFromPersisted,
     hasPersistedPlayback,
     patchTrackTitle,
+    startAudition,
+    endAudition,
+    adoptManualMapping,
   }
 })
