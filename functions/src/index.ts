@@ -6,7 +6,6 @@ import { onRequest } from 'firebase-functions/v2/https'
 import {
   buildAuthUrl,
   callAuthenticatedLastfm,
-  callLastfmApi,
   callLastfmPublicApi,
   getAuthSession,
   getAuthToken,
@@ -240,8 +239,11 @@ export const youtubeProxy = onRequest({ cors: true }, async (req, res) => {
     params.set('key', apiKey)
 
     const targetUrl = `https://www.googleapis.com/youtube/v3/${rawPath}?${params.toString()}`
+    const referer = process.env.YOUTUBE_API_REFERER?.trim()
 
-    const upstream = await fetch(targetUrl)
+    const upstream = await fetch(targetUrl, {
+      headers: referer ? { Referer: referer } : undefined,
+    })
     const body = await upstream.text()
     res.status(upstream.status).set('Content-Type', 'application/json').send(body)
   } catch (error) {

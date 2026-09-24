@@ -13,7 +13,7 @@ function album(overrides: Partial<Album> = {}): Album {
     artist: 'Reso',
     artistId: 'artist-1',
     artistIds: ['artist-1'],
-    albumYear: 2016,
+    albumYear: '2016',
     releaseMbid: 'mbid',
     tracks: [
       { id: 't1', trackNumber: '1', title: 'Taiga' },

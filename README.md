@@ -79,12 +79,12 @@ YOUTUBE_API_KEY=your-api-key
 **API key restrictions (Google Cloud Console → Credentials):**
 
 - **Local dev:** Application restriction → *HTTP referrers* → add `http://localhost:4827/*`. The Vite proxy sends this referrer on your behalf. If your dev URL differs, set `YOUTUBE_API_REFERER` in `.env` to match (e.g. `http://localhost:4827/`).
-- **Production (Cloud Functions):** Server-side calls have no browser referrer — use *None* for application restrictions on a separate key, or IP-restrict to Google’s egress ranges. Set that key as `YOUTUBE_API_KEY` in Functions config.
+- **Production (Cloud Functions):** `youtubeProxy` sends `YOUTUBE_API_REFERER` when that variable is set in `functions/.env`. The key currently allows `http://localhost:4827/` only, so that is the value in use. An unrestricted key can omit `YOUTUBE_API_REFERER`.
 
 Resolve tracks from **Library → album detail**: auto-resolve, manual search, paste URL, or **resolve from Topic playlist** (find/link playlist URL).
 
 - **Local dev:** Vite proxies `/api/youtube` → YouTube Data API (set `YOUTUBE_API_REFERER` if key is referrer-restricted)
-- **Production:** Firebase Cloud Function `youtubeProxy` (set `YOUTUBE_API_KEY` in Functions config)
+- **Production:** Firebase Cloud Function `youtubeProxy` (`YOUTUBE_API_KEY` and, when the key is referrer-restricted, `YOUTUBE_API_REFERER` in `functions/.env`)
 
 ## Scripts
 
@@ -96,19 +96,27 @@ Resolve tracks from **Library → album detail**: auto-resolve, manual search, p
 
 ## Deploy (Firebase Hosting)
 
+v2 is hosted on Firebase project `tunicious-40e1b` (already set in `.firebaserc`):
+
+- https://tunicious-40e1b.web.app
+- https://tunicious-40e1b.firebaseapp.com
+
+v1 (`tunicious.com`) is a different Firebase project. Deploy this repo only to `tunicious-40e1b`.
+
 ```bash
 npm run build
 cd functions && npm install && npm run build
+cd ..
 firebase deploy --only firestore:rules,firestore:indexes,functions,hosting
 ```
 
-Deploy Firestore rules and indexes before or with the first production release. Ensure `.env` values are set in your CI/deploy environment (Vite inlines `VITE_*` at build time). Set `YOUTUBE_API_KEY`, `LASTFM_*`, and `MUSICBRAINZ_DEFAULT_USER_AGENT` in Cloud Functions config:
+Vite inlines `VITE_*` from the repo root `.env` at build time. Use the existing `tunicious-40e1b` web app config. The placeholders in `.github/workflows/ci.yml` are for the CI build only.
 
-```bash
-firebase functions:config:set youtube.api_key="..." lastfm.api_key="..." lastfm.shared_secret="..." lastfm.callback_url="..."
-```
+2nd gen functions read `functions/.env` at deploy time (`YOUTUBE_API_KEY`, `LASTFM_API_KEY`, `LASTFM_SHARED_SECRET`, `MUSICBRAINZ_DEFAULT_USER_AGENT`). Copy `functions/.env.example` to `functions/.env` and fill it in. That file is gitignored. `firebase functions:config:set` does not set these variables.
 
-Or use Firebase environment secrets / `.env` in functions as configured in your project.
+- `YOUTUBE_API_KEY` — YouTube Data API v3 key. If the key is HTTP-referrer restricted, also set `YOUTUBE_API_REFERER` to an allow-listed value. The key in use allows `http://localhost:4827/` only, so `functions/.env` sets that referer until the key allow list includes `https://tunicious-40e1b.web.app/` or the key has no referrer restriction.
+- `LASTFM_API_KEY` and `LASTFM_SHARED_SECRET` — a Last.fm application whose callback is `https://tunicious-40e1b.web.app/lastfm/callback`. Localhost keeps its own app. The functions do not read `LASTFM_CALLBACK_URL`; Last.fm stores the callback on the API application.
+- `MUSICBRAINZ_DEFAULT_USER_AGENT` — a contact string.
 
 ## Project layout
 
@@ -135,7 +143,7 @@ docs/             Product specification
 - [x] Phase 5 — Playback engine (IFrame player, global bar, album/playlist play)
 - [x] Phase 6 — Session tracking (PlaybackSession, TrackListenRecord, /history, local playcounts)
 - [x] Phase 7 — Last.fm (connect, scrobbling, now playing, playcount sync)
-- [ ] Phase 8 — Polish and ship (in progress; deploy deferred)
+- [ ] Phase 8 — Polish and ship (in progress; hosted at https://tunicious-40e1b.web.app)
 
 ## Phase 8 (in progress)
 
@@ -143,7 +151,7 @@ docs/             Product specification
 - [x] Mobile-responsive layout and player bar
 - [x] Settings polish
 - [x] Firestore indexes and security rules audit
-- [ ] Production deploy (deferred)
+- [x] Production deploy (https://tunicious-40e1b.web.app)
 
 ## Last.fm (Phase 7)
 
@@ -160,8 +168,8 @@ Use a separate Last.fm app per environment (dev vs production) — each app allo
 Connect in **Settings → Last.fm**. Scrobbles fire when a listen reaches `min(track length / 2, 4 minutes)` of playing time.
 
 - **Local dev:** Vite middleware proxies `/api/lastfm` (uses `LASTFM_*` from `.env`)
-- **Production:** Firebase Cloud Function `lastfmProxy` (set `LASTFM_*` in Functions config)
+- **Production:** Firebase Cloud Function `lastfmProxy` (`LASTFM_API_KEY` and `LASTFM_SHARED_SECRET` in `functions/.env`). Register the callback `https://tunicious-40e1b.web.app/lastfm/callback` on that Last.fm application.
 
 ## Next
 
-Continue UI polish locally. Production deploy and a prod Last.fm app can wait until you need a public URL. See spec §11 Phase 8.
+The app is hosted at https://tunicious-40e1b.web.app. Use a Last.fm application whose callback is `https://tunicious-40e1b.web.app/lastfm/callback` before connecting Last.fm there. Localhost keeps its own Last.fm app. See spec §11 Phase 8.

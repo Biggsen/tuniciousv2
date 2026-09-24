@@ -22,12 +22,16 @@ Local dev uses the Vite plugin instead (`src/lib/youtube/vitePlugin.ts` + `YOUTU
 
 ## Deploy
 
+Hosted at https://tunicious-40e1b.web.app. See the repo README for the full deploy.
+
 ```bash
 cd functions && npm install && npm run build
-firebase deploy --only functions,hosting
 ```
 
-Set environment variables in Firebase Functions config:
+Copy `.env.example` to `.env` in this directory before `firebase deploy`. 2nd gen functions load that file as environment variables:
 
 - `MUSICBRAINZ_DEFAULT_USER_AGENT` — contact string for MusicBrainz
 - `YOUTUBE_API_KEY` — YouTube Data API v3 key
+- `YOUTUBE_API_REFERER` — optional Referer sent upstream when the key is HTTP-referrer restricted
+- `LASTFM_API_KEY` — Last.fm API key
+- `LASTFM_SHARED_SECRET` — Last.fm shared secret

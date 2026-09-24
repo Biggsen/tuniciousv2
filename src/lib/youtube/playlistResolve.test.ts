@@ -140,7 +140,7 @@ describe('buildQueueFromAlbum', () => {
       artist: 'Khemmis',
       artistId: 'art1',
       artistIds: ['art1'],
-      albumYear: 2016,
+      albumYear: '2016',
       releaseMbid: 'mb',
       tracks: [{ id: 't1', trackNumber: '1', title: 'Above the Water', lengthMs: 1000 }],
       importedAt: new Date('2026-01-01'),

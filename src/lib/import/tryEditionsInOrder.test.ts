@@ -78,7 +78,7 @@ describe('isReleaseAlignedWithAlbum', () => {
         tracks: [{ id: 't1', position: 1, number: '1', title: 'Alpha', length: 1000 }],
       },
     ],
-  } as MbReleaseDetail
+  } as unknown as MbReleaseDetail
 
   it('treats v1 source albums as aligned without track comparison', () => {
     const v1Album: StagedAlbum = {

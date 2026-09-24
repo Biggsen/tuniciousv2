@@ -256,10 +256,6 @@ function syncTrackTitleDrafts(tracks: Track[]) {
   trackTitleDrafts.value = drafts
 }
 
-function isTrackTitleDirty(track: Track): boolean {
-  return (trackTitleDrafts.value[track.id] ?? '').trim() !== track.title
-}
-
 function setTrackTitleInput(el: unknown) {
   trackTitleInput.value = el instanceof HTMLInputElement ? el : null
 }

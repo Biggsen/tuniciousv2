@@ -99,7 +99,7 @@ describe('playlistMembersNeedHydration', () => {
         artist: 'Artist',
         artistId: 'ar1',
         artistIds: ['ar1'],
-        albumYear: 2020,
+        albumYear: '2020',
         releaseMbid: 'mbid',
         tracks: [],
         importedAt: new Date(),
