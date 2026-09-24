@@ -52,10 +52,12 @@ const progressPercent = computed(() => {
           <button
             type="button"
             class="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-muted"
-            :title="playback.isPlaying ? 'Pause' : 'Play'"
-            @click="playback.togglePlayPause()"
+            :title="
+              playback.needsSoundTap ? 'Turn sound on' : playback.isPlaying ? 'Pause' : 'Play'
+            "
+            @click="playback.needsSoundTap ? playback.enableSound() : playback.togglePlayPause()"
           >
-            {{ playback.status === 'playing' ? '⏸' : '▶' }}
+            {{ playback.needsSoundTap ? '🔊' : playback.status === 'playing' ? '⏸' : '▶' }}
           </button>
           <button
             type="button"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 import { loadYouTubeIframeApi } from '@/lib/youtube/iframeApi'
 import type { YouTubePlayerInstance } from '@/lib/youtube/iframeApi'
@@ -7,8 +7,24 @@ import { usePlaybackStore } from '@/stores/playback'
 
 const playback = usePlaybackStore()
 const hostEl = ref<HTMLElement | null>(null)
+const mobileQuery = window.matchMedia('(max-width: 767px)')
+const isMobile = ref(mobileQuery.matches)
+
+/** Phone browsers will not play a 48px embed parked under the tab bar. */
+const showMobileStage = computed(() => isMobile.value && playback.showPlayerBar)
 
 let player: YouTubePlayerInstance | null = null
+
+function onMobileChange(event: MediaQueryListEvent) {
+  isMobile.value = event.matches
+}
+
+function fitIframe(iframe: HTMLIFrameElement) {
+  iframe.style.width = '100%'
+  iframe.style.height = '100%'
+  iframe.style.border = '0'
+  iframe.style.pointerEvents = 'none'
+}
 
 function purgeLeakedPlayers() {
   document.querySelectorAll('[data-tunicious-yt-player="1"]').forEach((node) => {
@@ -18,6 +34,7 @@ function purgeLeakedPlayers() {
 }
 
 onMounted(async () => {
+  mobileQuery.addEventListener('change', onMobileChange)
   purgeLeakedPlayers()
   await nextTick()
   if (!hostEl.value) return
@@ -26,8 +43,8 @@ onMounted(async () => {
 
   // Non-zero in-viewport size: Chrome often refuses PLAYING on 0×0 / display:none embeds.
   player = new yt.Player(hostEl.value, {
-    height: '48',
-    width: '48',
+    height: '135',
+    width: '240',
     playerVars: {
       controls: 0,
       disablekb: 1,
@@ -36,6 +53,7 @@ onMounted(async () => {
       modestbranding: 1,
       playsinline: 1,
       mute: 1,
+      origin: window.location.origin,
     },
     events: {
       onReady: (event) => {
@@ -44,6 +62,7 @@ onMounted(async () => {
         try {
           const iframe = readyPlayer.getIframe()
           iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
+          fitIframe(iframe)
           iframe.setAttribute(
             'allow',
             'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
@@ -66,6 +85,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  mobileQuery.removeEventListener('change', onMobileChange)
   playback.unregisterPlayer()
   try {
     player?.destroy()
@@ -78,9 +98,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Keep a real painted box in the viewport so Chrome will allow media playback. -->
+  <!--
+    Desktop: a painted speck is enough for Chrome.
+    Phone: the speck sits under the tab bar, so iOS/Chrome never reach PLAYING.
+    While the bar is up, keep a real 240×135 stage above that chrome.
+  -->
   <div
-    class="pointer-events-none fixed bottom-0 left-0 z-0 h-12 w-12 overflow-hidden opacity-[0.02]"
+    class="pointer-events-none fixed overflow-hidden"
+    :class="
+      showMobileStage
+        ? 'bottom-[calc(12rem+env(safe-area-inset-bottom))] left-4 z-40 h-[135px] w-60 rounded-lg opacity-100 shadow-lg'
+        : 'bottom-0 left-0 z-0 h-12 w-12 opacity-[0.02]'
+    "
     aria-hidden="true"
     data-tunicious-yt-player="1"
   >

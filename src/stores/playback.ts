@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { getAlbumById } from '@/lib/album/firestore'
 import {
@@ -54,6 +54,9 @@ export const usePlaybackStore = defineStore('playback', () => {
   const playableSwapAttempted = new Set<string>()
   /** Mute-then-unmute: async queue loads drop the click gesture; muted autoplay is allowed. */
   let unmuteOnPlaying = false
+  /** After one Sound tap, later tracks on a phone stay at that volume. */
+  let soundUnlocked = false
+  const needsSoundTap = ref(false)
   /** Video and position to put back when an audition ends. */
   let auditionRestore: { videoId: string | null; positionMs: number; status: PlaybackStatus } | null =
     null
@@ -148,8 +151,25 @@ export const usePlaybackStore = defineStore('playback', () => {
   async function prepareAndLoadCurrentVideo(autoplay = true): Promise<boolean> {
     const ready = await ensurePlayableForCurrentItem()
     if (!ready || !activeVideoId.value) return false
+    // Let the mobile stage grow into the viewport before playVideo().
+    await nextTick()
     loadCurrentVideo(autoplay)
     return true
+  }
+
+  function enableSound() {
+    soundUnlocked = true
+    needsSoundTap.value = false
+    unmuteOnPlaying = false
+    if (!player) return
+    try {
+      player.unMute()
+    } catch {
+      /* ignore */
+    }
+    player.playVideo()
+    status.value = 'playing'
+    startProgressTimer()
   }
 
   async function trackCurrentItem() {
@@ -281,12 +301,37 @@ export const usePlaybackStore = defineStore('playback', () => {
     if (!player || !activeVideoId.value) return
     player.loadVideoById(activeVideoId.value)
     if (autoplay) {
-      // After awaits (mappings fetch), Chrome blocks unmuted autoplay — start muted.
-      try {
-        player.mute()
-        unmuteOnPlaying = true
-      } catch {
+      const coarse = window.matchMedia('(pointer: coarse)').matches
+      if (!coarse) {
+        // After awaits (mappings fetch), Chrome blocks unmuted autoplay — start muted.
+        needsSoundTap.value = false
+        try {
+          player.mute()
+          unmuteOnPlaying = true
+        } catch {
+          unmuteOnPlaying = false
+        }
+      } else if (soundUnlocked && navigator.userActivation?.isActive) {
         unmuteOnPlaying = false
+        needsSoundTap.value = false
+        try {
+          player.unMute()
+        } catch {
+          /* ignore */
+        }
+      } else if (soundUnlocked) {
+        // Volume was unlocked by a real tap. Leave it alone; unMute here would pause iOS.
+        unmuteOnPlaying = false
+        needsSoundTap.value = false
+      } else {
+        // Phone: play muted so the embed actually starts, then one Sound tap unmutes in a gesture.
+        try {
+          player.mute()
+        } catch {
+          /* ignore */
+        }
+        unmuteOnPlaying = false
+        needsSoundTap.value = true
       }
       player.playVideo()
       status.value = 'playing'
@@ -351,6 +396,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     }
     // Direct user gesture — unmuted play is allowed.
     unmuteOnPlaying = false
+    needsSoundTap.value = false
+    soundUnlocked = true
     try {
       player.unMute()
     } catch {
@@ -571,6 +618,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     player?.stopVideo()
     stopProgressTimer()
     status.value = 'idle'
+    needsSoundTap.value = false
     currentIndex.value = -1
     positionMs.value = 0
     durationMs.value = 0
@@ -584,6 +632,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     player?.stopVideo()
     stopProgressTimer()
     status.value = 'idle'
+    needsSoundTap.value = false
     currentIndex.value = -1
     positionMs.value = 0
     durationMs.value = 0
@@ -605,6 +654,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     player?.stopVideo()
     stopProgressTimer()
     status.value = 'idle'
+    needsSoundTap.value = false
     currentIndex.value = -1
     positionMs.value = 0
     durationMs.value = 0
@@ -838,6 +888,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     activeVideoId,
     showPlayerBar,
     isPlaying,
+    needsSoundTap,
     registerPlayer,
     unregisterPlayer,
     setQueueFromPlaylist,
@@ -849,6 +900,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     playFromAlbum,
     playFromAlbumAtTrack,
     play,
+    enableSound,
     pause,
     togglePlayPause,
     next,
